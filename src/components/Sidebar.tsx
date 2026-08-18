@@ -110,25 +110,47 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   return (
-    <aside
-      className={`w-64 bg-[#07080c] border-r border-[#151822] flex flex-col h-screen sticky top-0 shrink-0 text-gray-300 font-sans z-30 select-none ${
-        isOpen ? 'fixed inset-y-0 left-0 z-50 shadow-2xl block' : 'hidden md:flex'
-      }`}
-    >
-      {/* Brand Header */}
-      <div className="p-4 px-5 flex items-center gap-3 border-b border-[#151822]">
-        <div className="w-8 h-8 rounded-lg bg-[#22c55e] flex items-center justify-center text-black shadow-[0_0_15px_rgba(34,197,94,0.4)]">
-          <Zap className="w-5 h-5 fill-black text-black" />
-        </div>
-        <div>
-          <div className="font-extrabold text-white text-base tracking-tight leading-none">
-            AgencyOS
+    <>
+      {/* Mobile Backdrop Overlay */}
+      {isOpen && (
+        <div
+          onClick={onClose}
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 md:hidden animate-fade-in"
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        className={`w-64 bg-[#07080c] border-r border-[#151822] flex flex-col h-screen sticky top-0 shrink-0 text-gray-300 font-sans select-none transition-all duration-200 ${
+          isOpen ? 'fixed inset-y-0 left-0 z-50 shadow-2xl block' : 'hidden md:flex z-30'
+        }`}
+      >
+        {/* Brand Header */}
+        <div className="p-4 px-5 flex items-center justify-between border-b border-[#151822]">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-[#22c55e] flex items-center justify-center text-black shadow-[0_0_15px_rgba(34,197,94,0.35)] shrink-0">
+              <Zap className="w-5 h-5 fill-black text-black" />
+            </div>
+            <div>
+              <div className="font-extrabold text-white text-base tracking-tight leading-none">
+                AgencyOS
+              </div>
+              <div className="text-[9px] font-extrabold text-[#22c55e] tracking-wider uppercase mt-1">
+                BY TECHIFY
+              </div>
+            </div>
           </div>
-          <div className="text-[9px] font-extrabold text-[#22c55e] tracking-wider uppercase mt-1">
-            BY TECHIFY
-          </div>
+
+          {/* Close button on mobile drawer */}
+          {isOpen && onClose && (
+            <button
+              onClick={onClose}
+              className="md:hidden p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-[#151824] cursor-pointer"
+            >
+              <LogOut className="w-4 h-4 rotate-180" />
+            </button>
+          )}
         </div>
-      </div>
 
       {/* Navigation List */}
       <div className="flex-1 overflow-y-auto py-3 px-3 space-y-4 custom-scrollbar">
@@ -247,6 +269,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </button>
       </div>
     </aside>
+    </>
   );
 };
 
