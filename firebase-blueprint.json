@@ -1,0 +1,116 @@
+{
+  "entities": {
+    "users": {
+      "title": "User Profile & Subscription",
+      "description": "Stores user credentials, trial timer, agency name, and current plan status",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "agencyName": { "type": "string" },
+        "plan": { "type": "string" },
+        "status": { "type": "string" },
+        "trialStartDate": { "type": "number" },
+        "trialEndsAt": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["uid", "email", "trialStartDate", "trialEndsAt"]
+    },
+    "kpiPeriods": {
+      "title": "KPI Periods",
+      "description": "User specific MRR, ARR, LTV, CAC monthly metrics",
+      "type": "object",
+      "properties": {
+        "monthYear": { "type": "string" },
+        "mrr": { "type": "number" },
+        "arr": { "type": "number" },
+        "ltv": { "type": "number" },
+        "cac": { "type": "number" },
+        "churnRate": { "type": "number" },
+        "activeClients": { "type": "number" }
+      }
+    },
+    "transactions": {
+      "title": "Cash Flow Transactions",
+      "description": "User income and expense financial records",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "amount": { "type": "number" },
+        "date": { "type": "string" }
+      }
+    },
+    "campaigns": {
+      "title": "Ad Campaigns",
+      "description": "User ad marketing campaigns and ROAS tracking",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "platform": { "type": "string" },
+        "spend": { "type": "number" },
+        "revenue": { "type": "number" },
+        "clicks": { "type": "number" },
+        "conversions": { "type": "number" },
+        "roas": { "type": "number" },
+        "status": { "type": "string" }
+      }
+    },
+    "leads": {
+      "title": "CRM Leads",
+      "description": "User CRM pipeline and scraped leads",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "city": { "type": "string" },
+        "category": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "website": { "type": "string" },
+        "instagram": { "type": "string" },
+        "rating": { "type": "number" },
+        "status": { "type": "string" }
+      }
+    },
+    "tasks": {
+      "title": "Kanban Tasks",
+      "description": "User task management cards",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "client": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string" },
+        "priority": { "type": "string" }
+      }
+    },
+    "stockItems": {
+      "title": "Stock Items",
+      "description": "User inventory items",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "quantity": { "type": "number" },
+        "minQuantity": { "type": "number" },
+        "unitPrice": { "type": "number" },
+        "status": { "type": "string" }
+      }
+    },
+    "events": {
+      "title": "Agenda Meetings",
+      "description": "User calendar meetings and events",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "client": { "type": "string" },
+        "type": { "type": "string" },
+        "meetUrl": { "type": "string" }
+      }
+    }
+  }
+}
