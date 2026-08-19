@@ -103,7 +103,7 @@ export const RelatoriosView: React.FC<RelatoriosViewProps> = ({
 
   const exportFullSystemReport = () => {
     let text = `=========================================\n`;
-    text += `   RELATÓRIO EXECUTIVO COMPLETO - AGENCYOS BY TECHIFY\n`;
+    text += `   RELATÓRIO EXECUTIVO COMPLETO - AGENCYOS\n`;
     text += `   Data de Emissão: ${new Date().toLocaleString('pt-BR')}\n`;
     text += `=========================================\n\n`;
 
@@ -124,15 +124,15 @@ export const RelatoriosView: React.FC<RelatoriosViewProps> = ({
   };
 
   return (
-    <div className="space-y-6 text-gray-200">
+    <div className="space-y-6 text-neutral-200 font-sans max-w-7xl mx-auto pb-16">
       {/* Notice Banner */}
-      <div className="p-6 rounded-2xl bg-[#12141c] border border-[#1e2332] space-y-2">
-        <div className="flex items-center gap-2 text-[#22c55e] font-bold text-xs">
-          <CheckCircle2 className="w-4 h-4" />
+      <div className="p-6 rounded-2xl bg-[#0e0e0e] border border-neutral-800 space-y-2">
+        <div className="flex items-center gap-2 text-neutral-300 font-bold text-xs">
+          <CheckCircle2 className="w-4 h-4 text-white" />
           <span>CENTRAL DE EXPORTAÇÃO NATIVA</span>
         </div>
         <h2 className="text-xl font-black text-white">Exporte relatórios completos em formato .txt</h2>
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-neutral-400">
           Gere arquivos de texto formatados para backup local, auditoria interna ou envio rápido por
           WhatsApp e email.
         </p>
@@ -141,100 +141,100 @@ export const RelatoriosView: React.FC<RelatoriosViewProps> = ({
       {/* Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Financeiro */}
-        <div className="p-5 rounded-2xl bg-[#12141c] border border-[#1e2332] space-y-4 flex flex-col justify-between">
+        <div className="p-5 rounded-2xl bg-[#0e0e0e] border border-neutral-800 space-y-4 flex flex-col justify-between">
           <div className="space-y-2">
-            <div className="w-10 h-10 rounded-xl bg-[#182a1b] text-[#22c55e] border border-[#22c55e]/40 flex items-center justify-center font-bold">
+            <div className="w-10 h-10 rounded-xl bg-neutral-900 text-white border border-neutral-700 flex items-center justify-center font-bold">
               <FileText className="w-5 h-5" />
             </div>
             <h3 className="font-bold text-white text-sm">Relatório Financeiro</h3>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-neutral-400">
               Contém KPIs do último período (MRR, ARR, LTV, CAC, Churn) e histórico completo de
               entradas e saídas de caixa.
             </p>
           </div>
           <button
             onClick={exportFinancialReport}
-            className="w-full py-2.5 rounded-xl bg-[#181a26] hover:bg-[#22c55e] text-gray-200 hover:text-black font-extrabold text-xs flex items-center justify-center gap-2 transition-all border border-[#2b3145]"
+            className="w-full py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-neutral-200 hover:text-white font-extrabold text-xs flex items-center justify-center gap-2 transition-all border border-neutral-700 cursor-pointer"
           >
             <Download className="w-4 h-4" /> Exportar Financeiro (.txt)
           </button>
         </div>
 
         {/* Tráfego */}
-        <div className="p-5 rounded-2xl bg-[#12141c] border border-[#1e2332] space-y-4 flex flex-col justify-between">
+        <div className="p-5 rounded-2xl bg-[#0e0e0e] border border-neutral-800 space-y-4 flex flex-col justify-between">
           <div className="space-y-2">
-            <div className="w-10 h-10 rounded-xl bg-[#182a1b] text-[#22c55e] border border-[#22c55e]/40 flex items-center justify-center font-bold">
+            <div className="w-10 h-10 rounded-xl bg-neutral-900 text-white border border-neutral-700 flex items-center justify-center font-bold">
               <FileText className="w-5 h-5" />
             </div>
             <h3 className="font-bold text-white text-sm">Relatório de Tráfego</h3>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-neutral-400">
               Desempenho de anúncios (Meta Ads, Google Ads), investimentos, conversões, ROAS e
               cliques.
             </p>
           </div>
           <button
             onClick={exportTrafficReport}
-            className="w-full py-2.5 rounded-xl bg-[#181a26] hover:bg-[#22c55e] text-gray-200 hover:text-black font-extrabold text-xs flex items-center justify-center gap-2 transition-all border border-[#2b3145]"
+            className="w-full py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-neutral-200 hover:text-white font-extrabold text-xs flex items-center justify-center gap-2 transition-all border border-neutral-700 cursor-pointer"
           >
             <Download className="w-4 h-4" /> Exportar Tráfego (.txt)
           </button>
         </div>
 
         {/* CRM */}
-        <div className="p-5 rounded-2xl bg-[#12141c] border border-[#1e2332] space-y-4 flex flex-col justify-between">
+        <div className="p-5 rounded-2xl bg-[#0e0e0e] border border-neutral-800 space-y-4 flex flex-col justify-between">
           <div className="space-y-2">
-            <div className="w-10 h-10 rounded-xl bg-[#182a1b] text-[#22c55e] border border-[#22c55e]/40 flex items-center justify-center font-bold">
+            <div className="w-10 h-10 rounded-xl bg-neutral-900 text-white border border-neutral-700 flex items-center justify-center font-bold">
               <FileText className="w-5 h-5" />
             </div>
             <h3 className="font-bold text-white text-sm">Relatório de CRM & Leads</h3>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-neutral-400">
               Lista de todos os leads extraídos pelo Maps Scraper com telefones, emails e status no
               funil.
             </p>
           </div>
           <button
             onClick={exportCRMReport}
-            className="w-full py-2.5 rounded-xl bg-[#181a26] hover:bg-[#22c55e] text-gray-200 hover:text-black font-extrabold text-xs flex items-center justify-center gap-2 transition-all border border-[#2b3145]"
+            className="w-full py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-neutral-200 hover:text-white font-extrabold text-xs flex items-center justify-center gap-2 transition-all border border-neutral-700 cursor-pointer"
           >
             <Download className="w-4 h-4" /> Exportar CRM (.txt)
           </button>
         </div>
 
         {/* Estoque */}
-        <div className="p-5 rounded-2xl bg-[#12141c] border border-[#1e2332] space-y-4 flex flex-col justify-between">
+        <div className="p-5 rounded-2xl bg-[#0e0e0e] border border-neutral-800 space-y-4 flex flex-col justify-between">
           <div className="space-y-2">
-            <div className="w-10 h-10 rounded-xl bg-[#182a1b] text-[#22c55e] border border-[#22c55e]/40 flex items-center justify-center font-bold">
+            <div className="w-10 h-10 rounded-xl bg-neutral-900 text-white border border-neutral-700 flex items-center justify-center font-bold">
               <FileText className="w-5 h-5" />
             </div>
             <h3 className="font-bold text-white text-sm">Relatório de Estoque</h3>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-neutral-400">
               Mapeamento de produtos, unidades disponíveis, reposições pendentes e valor total
               imobilizado.
             </p>
           </div>
           <button
             onClick={exportStockReport}
-            className="w-full py-2.5 rounded-xl bg-[#181a26] hover:bg-[#22c55e] text-gray-200 hover:text-black font-extrabold text-xs flex items-center justify-center gap-2 transition-all border border-[#2b3145]"
+            className="w-full py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-neutral-200 hover:text-white font-extrabold text-xs flex items-center justify-center gap-2 transition-all border border-neutral-700 cursor-pointer"
           >
             <Download className="w-4 h-4" /> Exportar Estoque (.txt)
           </button>
         </div>
 
         {/* Completo */}
-        <div className="p-5 rounded-2xl bg-[#122215] border-2 border-[#22c55e] space-y-4 flex flex-col justify-between lg:col-span-2 shadow-[0_0_20px_rgba(34,197,94,0.15)]">
+        <div className="p-5 rounded-2xl bg-[#0e0e0e] border border-neutral-700 space-y-4 flex flex-col justify-between lg:col-span-2 shadow-lg">
           <div className="space-y-2">
-            <div className="w-10 h-10 rounded-xl bg-[#1e3a1e] text-[#22c55e] border border-[#22c55e] flex items-center justify-center font-bold">
+            <div className="w-10 h-10 rounded-xl bg-neutral-900 text-white border border-neutral-700 flex items-center justify-center font-bold">
               <ShieldCheck className="w-6 h-6" />
             </div>
             <h3 className="font-bold text-white text-base">Relatório Consolidado Executivo</h3>
-            <p className="text-xs text-gray-300">
+            <p className="text-xs text-neutral-300">
               Gera um dossiê técnico e operacional unificado agregando finanças, tráfego, CRM e
               projetos da agência em um único arquivo de texto de auditoria.
             </p>
           </div>
           <button
             onClick={exportFullSystemReport}
-            className="w-full py-3 rounded-xl bg-[#22c55e] hover:bg-[#1eb054] text-black font-black text-xs shadow-md transition-all flex items-center justify-center gap-2"
+            className="w-full py-3 rounded-xl bg-white hover:bg-neutral-200 text-black font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <Download className="w-4 h-4" /> Exportar Relatório Executivo Completo (.txt)
           </button>

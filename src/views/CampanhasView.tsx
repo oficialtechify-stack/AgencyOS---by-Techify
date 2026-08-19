@@ -36,16 +36,18 @@ export const CampanhasView: React.FC<CampanhasViewProps> = ({
     const conv = parseInt(conversions) || 0;
     const roasCalc = sp > 0 ? parseFloat((rev / sp).toFixed(2)) : 0;
 
-    onAddCampaign({
-      name: name.trim(),
-      platform,
-      spend: sp,
-      revenue: rev,
-      roas: roasCalc,
-      clicks: clk,
-      conversions: conv,
-      status: 'Ativa',
-    });
+    if (onAddCampaign) {
+      onAddCampaign({
+        name: name.trim(),
+        platform,
+        spend: sp,
+        revenue: rev,
+        roas: roasCalc,
+        clicks: clk,
+        conversions: conv,
+        status: 'Ativa',
+      });
+    }
 
     setShowModal(false);
     setName('');
@@ -56,82 +58,82 @@ export const CampanhasView: React.FC<CampanhasViewProps> = ({
   };
 
   return (
-    <div className="space-y-6 text-gray-200">
+    <div className="space-y-6 text-neutral-200 font-sans max-w-7xl mx-auto pb-16">
       {/* Top Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="p-4 rounded-2xl bg-[#12141c] border border-[#1e2332] space-y-1">
-          <div className="flex items-center justify-between text-[11px] font-bold text-gray-400">
+        <div className="p-4 rounded-2xl bg-[#0e0e0e] border border-neutral-800 space-y-1">
+          <div className="flex items-center justify-between text-[11px] font-bold text-neutral-400">
             <span>INVESTIMENTO</span>
-            <DollarSign className="w-4 h-4 text-[#22c55e]" />
+            <DollarSign className="w-4 h-4 text-white" />
           </div>
           <div className="text-2xl font-black text-white">
             R$ {totalSpend.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </div>
-          <p className="text-[10px] text-gray-500">Gasto em mídia paga</p>
+          <p className="text-[10px] text-neutral-500">Gasto em mídia paga</p>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[#12141c] border border-[#1e2332] space-y-1">
-          <div className="flex items-center justify-between text-[11px] font-bold text-gray-400">
+        <div className="p-4 rounded-2xl bg-[#0e0e0e] border border-neutral-800 space-y-1">
+          <div className="flex items-center justify-between text-[11px] font-bold text-neutral-400">
             <span>RECEITA GERADA</span>
-            <TrendingUp className="w-4 h-4 text-[#22c55e]" />
+            <TrendingUp className="w-4 h-4 text-white" />
           </div>
-          <div className="text-2xl font-black text-[#22c55e]">
+          <div className="text-2xl font-black text-white">
             R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </div>
-          <p className="text-[10px] text-gray-500">Retorno de vendas</p>
+          <p className="text-[10px] text-neutral-500">Retorno de vendas</p>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[#12141c] border border-[#1e2332] space-y-1">
-          <div className="flex items-center justify-between text-[11px] font-bold text-gray-400">
+        <div className="p-4 rounded-2xl bg-[#0e0e0e] border border-neutral-800 space-y-1">
+          <div className="flex items-center justify-between text-[11px] font-bold text-neutral-400">
             <span>ROAS MÉDIO</span>
-            <Target className="w-4 h-4 text-emerald-400" />
+            <Target className="w-4 h-4 text-white" />
           </div>
-          <div className="text-2xl font-black text-emerald-400">{avgRoas}x</div>
-          <p className="text-[10px] text-gray-500">Multiplicador do investimento</p>
+          <div className="text-2xl font-black text-white">{avgRoas}x</div>
+          <p className="text-[10px] text-neutral-500">Multiplicador do investimento</p>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[#12141c] border border-[#1e2332] space-y-1">
-          <div className="flex items-center justify-between text-[11px] font-bold text-gray-400">
+        <div className="p-4 rounded-2xl bg-[#0e0e0e] border border-neutral-800 space-y-1">
+          <div className="flex items-center justify-between text-[11px] font-bold text-neutral-400">
             <span>TOTAL CLIQUES</span>
-            <MousePointer className="w-4 h-4 text-blue-400" />
+            <MousePointer className="w-4 h-4 text-white" />
           </div>
           <div className="text-2xl font-black text-white">{totalClicks.toLocaleString('pt-BR')}</div>
-          <p className="text-[10px] text-gray-500">Tráfego enviado aos funis</p>
+          <p className="text-[10px] text-neutral-500">Tráfego enviado aos funis</p>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[#12141c] border border-[#1e2332] space-y-1">
-          <div className="flex items-center justify-between text-[11px] font-bold text-gray-400">
+        <div className="p-4 rounded-2xl bg-[#0e0e0e] border border-neutral-800 space-y-1">
+          <div className="flex items-center justify-between text-[11px] font-bold text-neutral-400">
             <span>CONVERSÕES</span>
-            <Target className="w-4 h-4 text-[#22c55e]" />
+            <Target className="w-4 h-4 text-white" />
           </div>
-          <div className="text-2xl font-black text-[#22c55e]">{totalConversions.toLocaleString('pt-BR')}</div>
-          <p className="text-[10px] text-gray-500">Leads & compras</p>
+          <div className="text-2xl font-black text-white">{totalConversions.toLocaleString('pt-BR')}</div>
+          <p className="text-[10px] text-neutral-500">Leads & compras</p>
         </div>
       </div>
 
       {/* Main Campaign List Header */}
       <div className="flex items-center justify-between">
         <h3 className="text-base font-bold text-white flex items-center gap-2">
-          <Megaphone className="w-5 h-5 text-[#22c55e]" /> Gestão de Anúncios & Performance
+          <Megaphone className="w-5 h-5 text-white" /> Gestão de Anúncios & Performance
         </h3>
         <button
           onClick={() => setShowModal(true)}
-          className="px-4 py-2 rounded-xl bg-[#22c55e] hover:bg-[#1eb054] text-black font-extrabold text-xs flex items-center gap-1.5 shadow-md"
+          className="px-4 py-2 rounded-xl bg-white hover:bg-neutral-200 text-black font-extrabold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all"
         >
           <Plus className="w-4 h-4" /> + Nova Campanha
         </button>
       </div>
 
       {/* Campaign Cards Table */}
-      <div className="p-5 rounded-2xl bg-[#12141c] border border-[#1e2332]">
+      <div className="p-5 rounded-2xl bg-[#0e0e0e] border border-neutral-800">
         {campaigns.length === 0 ? (
-          <div className="p-8 text-center text-xs text-gray-500">
+          <div className="p-8 text-center text-xs text-neutral-500">
             Nenhuma campanha cadastrada. Clique em "+ Nova Campanha" para registrar.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-[#181b26] text-gray-400 uppercase font-bold text-[10px]">
+              <thead className="bg-neutral-950 text-neutral-400 uppercase font-bold text-[10px]">
                 <tr>
                   <th className="p-3 rounded-l-lg">Nome da Campanha</th>
                   <th className="p-3">Plataforma</th>
@@ -144,33 +146,34 @@ export const CampanhasView: React.FC<CampanhasViewProps> = ({
                   <th className="p-3 text-right rounded-r-lg">Ação</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#1d2232]">
+              <tbody className="divide-y divide-neutral-800/60">
                 {campaigns.map((c) => (
-                  <tr key={c.id} className="hover:bg-[#161824] transition-colors">
+                  <tr key={c.id} className="hover:bg-neutral-900/40 transition-colors">
                     <td className="p-3 font-bold text-white">{c.name}</td>
                     <td className="p-3">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#1d2334] text-gray-300">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-neutral-900 border border-neutral-700 text-neutral-200">
                         {c.platform}
                       </span>
                     </td>
-                    <td className="p-3 font-bold text-gray-200">
+                    <td className="p-3 font-bold text-neutral-300">
                       R$ {c.spend.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </td>
-                    <td className="p-3 font-bold text-[#22c55e]">
+                    <td className="p-3 font-bold text-white">
                       R$ {c.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </td>
-                    <td className="p-3 font-extrabold text-emerald-400">{c.roas}x</td>
-                    <td className="p-3 text-gray-300">{c.clicks.toLocaleString('pt-BR')}</td>
-                    <td className="p-3 text-gray-300">{c.conversions.toLocaleString('pt-BR')}</td>
+                    <td className="p-3 font-extrabold text-white">{c.roas}x</td>
+                    <td className="p-3 text-neutral-300">{c.clicks.toLocaleString('pt-BR')}</td>
+                    <td className="p-3 text-neutral-300">{c.conversions.toLocaleString('pt-BR')}</td>
                     <td className="p-3">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#183a1d] text-[#22c55e]">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-neutral-900 border border-neutral-700 text-white">
                         {c.status}
                       </span>
                     </td>
                     <td className="p-3 text-right">
                       <button
-                        onClick={() => onDeleteCampaign(c.id)}
-                        className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-950/30 rounded transition-colors"
+                        onClick={() => onDeleteCampaign && onDeleteCampaign(c.id)}
+                        className="p-1.5 text-neutral-500 hover:text-white hover:bg-neutral-800 rounded transition-colors cursor-pointer"
+                        title="Excluir campanha"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -186,28 +189,28 @@ export const CampanhasView: React.FC<CampanhasViewProps> = ({
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-md bg-[#11131c] border border-[#22c55e]/40 rounded-2xl p-6 shadow-2xl space-y-4">
+          <div className="w-full max-w-md bg-[#0e0e0e] border border-neutral-700 rounded-2xl p-6 shadow-2xl space-y-4">
             <h3 className="text-base font-bold text-white">Cadastrar Campanha de Tráfego</h3>
 
             <form onSubmit={handleSubmit} className="space-y-3 text-xs">
               <div>
-                <label className="block text-gray-300 font-bold mb-1">Nome da Campanha</label>
+                <label className="block text-neutral-300 font-bold mb-1">Nome da Campanha</label>
                 <input
                   type="text"
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Ex: Reteteu - Meta Ads Conversão Whatsapp"
-                  className="w-full bg-[#181a26] border border-[#2a2f44] rounded-xl px-3 py-2 text-white"
+                  placeholder="Ex: Meta Ads Conversão Whatsapp"
+                  className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-white placeholder-neutral-500 focus:outline-none focus:border-white"
                 />
               </div>
 
               <div>
-                <label className="block text-gray-300 font-bold mb-1">Plataforma</label>
+                <label className="block text-neutral-300 font-bold mb-1">Plataforma</label>
                 <select
                   value={platform}
                   onChange={(e) => setPlatform(e.target.value as any)}
-                  className="w-full bg-[#181a26] border border-[#2a2f44] rounded-xl px-3 py-2 text-white font-bold"
+                  className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-white font-bold focus:outline-none focus:border-white"
                 >
                   <option value="Meta Ads">Meta Ads (Instagram / Facebook)</option>
                   <option value="Google Ads">Google Ads (Pesquisa / YouTube)</option>
@@ -218,7 +221,7 @@ export const CampanhasView: React.FC<CampanhasViewProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-gray-300 font-bold mb-1">Investimento (R$)</label>
+                  <label className="block text-neutral-300 font-bold mb-1">Investimento (R$)</label>
                   <input
                     type="number"
                     step="0.01"
@@ -226,11 +229,11 @@ export const CampanhasView: React.FC<CampanhasViewProps> = ({
                     value={spend}
                     onChange={(e) => setSpend(e.target.value)}
                     placeholder="1500.00"
-                    className="w-full bg-[#181a26] border border-[#2a2f44] rounded-xl px-3 py-2 text-white"
+                    className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-white placeholder-neutral-500 focus:outline-none focus:border-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-300 font-bold mb-1">Retorno (R$)</label>
+                  <label className="block text-neutral-300 font-bold mb-1">Retorno (R$)</label>
                   <input
                     type="number"
                     step="0.01"
@@ -238,30 +241,30 @@ export const CampanhasView: React.FC<CampanhasViewProps> = ({
                     value={revenue}
                     onChange={(e) => setRevenue(e.target.value)}
                     placeholder="8500.00"
-                    className="w-full bg-[#181a26] border border-[#2a2f44] rounded-xl px-3 py-2 text-white"
+                    className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-white placeholder-neutral-500 focus:outline-none focus:border-white"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-gray-300 font-bold mb-1">Total de Cliques</label>
+                  <label className="block text-neutral-300 font-bold mb-1">Total de Cliques</label>
                   <input
                     type="number"
                     value={clicks}
                     onChange={(e) => setClicks(e.target.value)}
                     placeholder="1200"
-                    className="w-full bg-[#181a26] border border-[#2a2f44] rounded-xl px-3 py-2 text-white"
+                    className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-white placeholder-neutral-500 focus:outline-none focus:border-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-300 font-bold mb-1">Conversões / Leads</label>
+                  <label className="block text-neutral-300 font-bold mb-1">Conversões / Leads</label>
                   <input
                     type="number"
                     value={conversions}
                     onChange={(e) => setConversions(e.target.value)}
                     placeholder="85"
-                    className="w-full bg-[#181a26] border border-[#2a2f44] rounded-xl px-3 py-2 text-white"
+                    className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-white placeholder-neutral-500 focus:outline-none focus:border-white"
                   />
                 </div>
               </div>
@@ -270,13 +273,13 @@ export const CampanhasView: React.FC<CampanhasViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 rounded-xl bg-[#1e2332] text-gray-300 hover:text-white"
+                  className="px-4 py-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-[#22c55e] text-black font-extrabold"
+                  className="px-4 py-2 rounded-xl bg-white hover:bg-neutral-200 text-black font-extrabold cursor-pointer"
                 >
                   Salvar Campanha
                 </button>

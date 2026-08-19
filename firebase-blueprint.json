@@ -111,6 +111,65 @@
         "type": { "type": "string" },
         "meetUrl": { "type": "string" }
       }
+    },
+    "marketingCampaigns": {
+      "title": "Marketing Campaigns",
+      "description": "Inbound, Outbound and Launch marketing campaigns",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "clientName": { "type": "string" },
+        "type": { "type": "string" },
+        "channel": { "type": "string" },
+        "budget": { "type": "number" },
+        "spent": { "type": "number" },
+        "revenue": { "type": "number" },
+        "leadsGoal": { "type": "number" },
+        "leadsGenerated": { "type": "number" },
+        "status": { "type": "string" }
+      }
+    },
+    "marketingEditorials": {
+      "title": "Editorial Planning",
+      "description": "Content calendar across channels, personas and funnel stages",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "clientName": { "type": "string" },
+        "channel": { "type": "string" },
+        "contentType": { "type": "string" },
+        "persona": { "type": "string" },
+        "funnelStage": { "type": "string" },
+        "status": { "type": "string" },
+        "publishDate": { "type": "string" }
+      }
+    },
+    "marketingFunnels": {
+      "title": "Marketing Funnels",
+      "description": "Funnel stages and conversion metrics",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "trafficSource": { "type": "string" },
+        "visitors": { "type": "number" },
+        "leads": { "type": "number" },
+        "mqls": { "type": "number" },
+        "sqls": { "type": "number" },
+        "sales": { "type": "number" },
+        "averageTicket": { "type": "number" }
+      }
+    },
+    "marketingCopies": {
+      "title": "Marketing Copies & Scripts",
+      "description": "Hooks, headlines and VSL scripts repository",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "hookText": { "type": "string" },
+        "bodyText": { "type": "string" },
+        "ctaText": { "type": "string" }
+      }
     }
   }
 }

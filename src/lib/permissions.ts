@@ -39,6 +39,13 @@ export const ALL_SYSTEM_MODULES: SystemModuleInfo[] = [
     iconName: 'Megaphone',
   },
   {
+    id: 'marketing',
+    name: 'Marketing & Lançamentos',
+    category: 'Tráfego & Vendas',
+    description: 'Estratégia de marketing, calendário editorial, funis de aquisição, automações e copywriting',
+    iconName: 'Target',
+  },
+  {
     id: 'agenda',
     name: 'Agenda & Reuniões',
     category: 'Gestão & Projetos',

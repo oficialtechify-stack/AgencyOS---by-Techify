@@ -417,7 +417,10 @@ export async function deleteCollectionItem(uid: string, collectionName: string, 
 }
 
 // Subscribe to ALL Users across the platform for Admin Panel
-export function subscribeAllUsers(onData: (users: FirestoreUserProfile[]) => void) {
+export function subscribeAllUsers(
+  onData: (users: FirestoreUserProfile[]) => void,
+  onError?: (err: any) => void
+) {
   const usersRef = collection(db, 'users');
   return onSnapshot(
     usersRef,
@@ -430,6 +433,7 @@ export function subscribeAllUsers(onData: (users: FirestoreUserProfile[]) => voi
     },
     (err) => {
       console.error('Error fetching all users:', err);
+      if (onError) onError(err);
     }
   );
 }

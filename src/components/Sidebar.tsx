@@ -4,6 +4,7 @@ import {
   DollarSign,
   TrendingUp,
   Megaphone,
+  Target,
   Calendar,
   MapPin,
   Palette,
@@ -79,8 +80,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ],
     },
     {
-      title: 'TRÁFEGO',
-      items: [{ id: 'campanhas' as ViewMode, label: 'Campanhas', icon: Megaphone }],
+      title: 'TRÁFEGO & MARKETING',
+      items: [
+        { id: 'campanhas' as ViewMode, label: 'Campanhas', icon: Megaphone },
+        { id: 'marketing' as ViewMode, label: 'Marketing & Lançamentos', icon: Target },
+      ],
     },
     {
       title: 'GESTÃO',
@@ -94,48 +98,53 @@ export const Sidebar: React.FC<SidebarProps> = ({
       title: 'CRIAÇÃO & DESIGN',
       items: [
         { id: 'designer' as ViewMode, label: 'Área do Designer', icon: Palette },
-        { id: 'social-hub' as ViewMode, label: 'Social Hub', icon: Share2 },
+        { id: 'social-hub' as ViewMode, label: 'Social Hub (Instagram & WhatsApp)', icon: Share2 },
       ],
     },
     {
-      title: 'ESTOQUE',
-      items: [{ id: 'estoque' as ViewMode, label: 'Estoque', icon: Package }],
+      title: 'OPERAÇÕES',
+      items: [
+        { id: 'estoque' as ViewMode, label: 'Estoque de Recursos', icon: Package },
+        { id: 'kanban' as ViewMode, label: 'Kanban de Projetos', icon: Kanban },
+        { id: 'relatorios' as ViewMode, label: 'Relatórios', icon: FileText },
+      ],
     },
     {
-      title: 'PROJETOS',
+      title: 'ESTRATÉGIA & IA',
       items: [
-        { id: 'kanban' as ViewMode, label: 'Kanban', icon: Kanban },
+        { id: 'calculadora-roi' as ViewMode, label: 'Calculadora ROI', icon: Calculator },
+        { id: 'ia-consultora' as ViewMode, label: 'IA Consultora', icon: Bot },
       ],
     },
   ];
 
   return (
     <>
-      {/* Mobile Backdrop Overlay */}
+      {/* Mobile Drawer Overlay Backdrop */}
       {isOpen && (
         <div
           onClick={onClose}
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 md:hidden animate-fade-in"
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 md:hidden animate-fade-in"
           aria-hidden="true"
         />
       )}
 
       <aside
-        className={`w-64 bg-[#07080c] border-r border-[#151822] flex flex-col h-screen sticky top-0 shrink-0 text-gray-300 font-sans select-none transition-all duration-200 ${
+        className={`w-64 bg-[#0a0a0a] border-r border-neutral-800 flex flex-col h-screen sticky top-0 shrink-0 text-neutral-300 font-sans select-none transition-all duration-200 ${
           isOpen ? 'fixed inset-y-0 left-0 z-50 shadow-2xl block' : 'hidden md:flex z-30'
         }`}
       >
         {/* Brand Header */}
-        <div className="p-4 px-5 flex items-center justify-between border-b border-[#151822]">
+        <div className="p-4 px-5 flex items-center justify-between border-b border-neutral-800">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-[#22c55e] flex items-center justify-center text-black shadow-[0_0_15px_rgba(34,197,94,0.35)] shrink-0">
-              <Zap className="w-5 h-5 fill-black text-black" />
+            <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-black shrink-0 font-black">
+              <Zap className="w-4 h-4 fill-black text-black" />
             </div>
             <div>
               <div className="font-extrabold text-white text-base tracking-tight leading-none">
                 AgencyOS
               </div>
-              <div className="text-[9px] font-extrabold text-[#22c55e] tracking-wider uppercase mt-1">
+              <div className="text-[9px] font-bold text-neutral-400 tracking-wider uppercase mt-1">
                 BY TECHIFY
               </div>
             </div>
@@ -145,131 +154,130 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {isOpen && onClose && (
             <button
               onClick={onClose}
-              className="md:hidden p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-[#151824] cursor-pointer"
+              className="md:hidden p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 cursor-pointer"
             >
               <LogOut className="w-4 h-4 rotate-180" />
             </button>
           )}
         </div>
 
-      {/* Navigation List */}
-      <div className="flex-1 overflow-y-auto py-3 px-3 space-y-4 custom-scrollbar">
-        {menuSections.map((section, idx) => (
-          <div key={idx}>
-            <div className="px-3 text-[10px] font-bold text-gray-500 tracking-wider uppercase mb-1.5">
-              {section.title}
+        {/* Navigation List */}
+        <div className="flex-1 overflow-y-auto py-3 px-3 space-y-4 custom-scrollbar">
+          {menuSections.map((section, idx) => (
+            <div key={idx}>
+              <div className="px-3 text-[10px] font-bold text-neutral-500 tracking-wider uppercase mb-1.5">
+                {section.title}
+              </div>
+              <div className="space-y-1">
+                {section.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = active === item.id;
+                  const isAllowed = hasModuleAccess(item.id, userProfile as any);
+
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => handleNav(item.id)}
+                      title={!isAllowed ? 'Módulo bloqueado pelo administrador' : undefined}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all duration-150 cursor-pointer ${
+                        isActive
+                          ? 'bg-white text-black font-extrabold shadow-sm'
+                          : isAllowed
+                          ? 'text-neutral-400 hover:text-white hover:bg-neutral-900 font-medium'
+                          : 'text-neutral-600 hover:text-neutral-400 hover:bg-neutral-950 opacity-70 font-medium'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Icon
+                          className={`w-4 h-4 ${
+                            isActive
+                              ? 'text-black'
+                              : isAllowed
+                              ? 'text-neutral-400'
+                              : 'text-neutral-600'
+                          }`}
+                        />
+                        <span
+                          className={
+                            isActive
+                              ? 'text-black'
+                              : isAllowed
+                              ? 'text-neutral-300'
+                              : 'text-neutral-500'
+                          }
+                        >
+                          {item.label}
+                        </span>
+                      </div>
+
+                      {isActive ? (
+                        <ChevronRight className="w-3.5 h-3.5 text-black" />
+                      ) : !isAllowed ? (
+                        <Lock className="w-3 h-3 text-neutral-600" />
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            <div className="space-y-1">
-              {section.items.map((item) => {
-                const Icon = item.icon;
-                const isActive = active === item.id;
-                const isAllowed = hasModuleAccess(item.id, userProfile as any);
+          ))}
 
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => handleNav(item.id)}
-                    title={!isAllowed ? 'Módulo bloqueado pelo administrador' : undefined}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all duration-150 cursor-pointer ${
-                      isActive
-                        ? 'bg-[#152e18] text-[#22c55e] font-bold border border-[#22c55e]/40 shadow-[0_0_12px_rgba(34,197,94,0.15)]'
-                        : isAllowed
-                        ? 'text-gray-400 hover:text-white hover:bg-[#10131c] font-medium'
-                        : 'text-gray-600 hover:text-gray-400 hover:bg-[#0c0e14] opacity-70 font-medium'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Icon
-                        className={`w-4 h-4 ${
-                          isActive
-                            ? 'text-[#22c55e]'
-                            : isAllowed
-                            ? 'text-gray-400'
-                            : 'text-gray-600'
-                        }`}
-                      />
-                      <span
-                        className={
-                          isActive
-                            ? 'text-[#22c55e]'
-                            : isAllowed
-                            ? 'text-gray-300'
-                            : 'text-gray-500'
-                        }
-                      >
-                        {item.label}
-                      </span>
-                    </div>
+          {/* Agency Badge & Admin Section */}
+          <div className="pt-2 space-y-1">
+            <div className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg bg-neutral-900 border border-neutral-700 text-xs font-bold text-neutral-200">
+              <Shield className="w-3.5 h-3.5 text-white" />
+              <span>Agency</span>
+            </div>
 
-                    {isActive ? (
-                      <ChevronRight className="w-3.5 h-3.5 text-[#22c55e]" />
-                    ) : !isAllowed ? (
-                      <Lock className="w-3 h-3 text-gray-600" />
-                    ) : null}
-                  </button>
-                );
-              })}
+            <button
+              onClick={() => handleNav('admin')}
+              title={!canAccessAdmin ? 'Painel restrito a administradores' : undefined}
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all duration-150 cursor-pointer ${
+                active === 'admin'
+                  ? 'bg-white text-black font-extrabold shadow-sm'
+                  : canAccessAdmin
+                  ? 'text-neutral-400 hover:text-white hover:bg-neutral-900 font-medium'
+                  : 'text-neutral-600 hover:text-neutral-400 hover:bg-neutral-950 opacity-70 font-medium'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <ShieldCheck className={`w-4 h-4 ${canAccessAdmin ? 'text-neutral-400' : 'text-neutral-600'}`} />
+                <span>Admin — Assinaturas</span>
+              </div>
+              {!canAccessAdmin && <Lock className="w-3 h-3 text-neutral-600" />}
+            </button>
+          </div>
+        </div>
+
+        {/* User Profile Footer */}
+        <div className="p-3 px-4 border-t border-neutral-800 bg-[#0a0a0a] flex items-center justify-between">
+          <div className="flex items-center gap-2.5 overflow-hidden">
+            <div className="w-8 h-8 rounded-full bg-neutral-900 border border-neutral-700 flex items-center justify-center text-xs font-bold text-white shrink-0">
+              <UserIcon className="w-4 h-4 text-white" />
+            </div>
+            <div className="truncate">
+              <div className="text-xs font-bold text-white truncate flex items-center gap-1">
+                <span>{profile.name || 'Marcos Henrique'}</span>
+                {isMaster && (
+                  <span className="text-[9px] bg-white text-black px-1 rounded font-black">
+                    ADMIN
+                  </span>
+                )}
+              </div>
+              <div className="text-[10px] text-neutral-400 truncate">
+                {profile.email || 'rickmarketing81@gmail.com'}
+              </div>
             </div>
           </div>
-        ))}
-
-        {/* Agency Badge & Admin Section */}
-        <div className="pt-2 space-y-1">
-          <div className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#142816] border border-[#22c55e]/50 text-xs font-bold text-[#22c55e]">
-            <Shield className="w-3.5 h-3.5 text-[#22c55e]" />
-            <span>Agency</span>
-          </div>
-
           <button
-            onClick={() => handleNav('admin')}
-            title={!canAccessAdmin ? 'Painel restrito a administradores' : undefined}
-            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all duration-150 cursor-pointer ${
-              active === 'admin'
-                ? 'bg-[#152e18] text-[#22c55e] font-bold border border-[#22c55e]/40'
-                : canAccessAdmin
-                ? 'text-gray-400 hover:text-white hover:bg-[#10131c] font-medium'
-                : 'text-gray-600 hover:text-gray-400 hover:bg-[#0c0e14] opacity-70 font-medium'
-            }`}
+            onClick={handleExit}
+            title="Sair / Encerrar Sessão"
+            className="p-1.5 text-neutral-400 hover:text-white hover:bg-neutral-900 rounded-md transition-colors shrink-0 cursor-pointer"
           >
-            <div className="flex items-center gap-2.5">
-              <ShieldCheck className={`w-4 h-4 ${canAccessAdmin ? 'text-gray-400' : 'text-gray-600'}`} />
-              <span>Admin — Assinaturas</span>
-            </div>
-            {!canAccessAdmin && <Lock className="w-3 h-3 text-gray-600" />}
+            <LogOut className="w-4 h-4" />
           </button>
         </div>
-      </div>
-
-      {/* User Profile Footer */}
-      <div className="p-3 px-4 border-t border-[#151822] bg-[#07080c] flex items-center justify-between">
-        <div className="flex items-center gap-2.5 overflow-hidden">
-          <div className="w-8 h-8 rounded-full bg-[#142816] border border-[#22c55e]/40 flex items-center justify-center text-xs font-bold text-[#22c55e] shrink-0">
-            <UserIcon className="w-4 h-4 text-[#22c55e]" />
-          </div>
-          <div className="truncate">
-            <div className="text-xs font-bold text-white truncate flex items-center gap-1">
-              <span>{profile.name || 'Marcos Henrique'}</span>
-              {isMaster && (
-                <span className="text-[9px] bg-[#22c55e]/20 text-[#22c55e] px-1 rounded font-black">
-                  ADMIN
-                </span>
-              )}
-            </div>
-            <div className="text-[10px] text-gray-400 truncate">
-              {profile.email || 'rickmarketing81@gmail.com'}
-            </div>
-          </div>
-        </div>
-        <button
-          onClick={handleExit}
-          title="Sair / Encerrar Sessão"
-          className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-950/30 rounded-md transition-colors shrink-0 cursor-pointer"
-        >
-          <LogOut className="w-4 h-4" />
-        </button>
-      </div>
-    </aside>
+      </aside>
     </>
   );
 };
-

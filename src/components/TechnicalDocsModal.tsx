@@ -65,19 +65,19 @@ O AgencyOS é uma plataforma SaaS completa de gestão para agências de tráfego
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-      <div className="w-full max-w-4xl bg-[#11131a] border border-[#22c55e]/40 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in">
+      <div className="w-full max-w-4xl bg-[#0e0e0e] border border-neutral-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="p-5 bg-[#161a24] border-b border-[#212738] flex items-center justify-between">
+        <div className="p-5 bg-neutral-900 border-b border-neutral-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#1e3a1e] border border-[#22c55e] flex items-center justify-center text-[#22c55e]">
-              <BookOpen className="w-6 h-6" />
+            <div className="w-10 h-10 rounded-xl bg-neutral-800 border border-neutral-700 flex items-center justify-center text-white">
+              <BookOpen className="w-5 h-5" />
             </div>
             <div>
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
                 Documentação Técnica & Soluções — AgencyOS
               </h2>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-neutral-400">
                 Guia passo a passo de desenvolvimento, arquitetura e soluções técnicas
               </p>
             </div>
@@ -85,14 +85,14 @@ O AgencyOS é uma plataforma SaaS completa de gestão para agências de tráfego
           <div className="flex items-center gap-2">
             <button
               onClick={copyToClipboard}
-              className="px-3 py-1.5 rounded-lg bg-[#1e3a1e] text-[#22c55e] border border-[#22c55e]/40 hover:bg-[#274e27] text-xs font-semibold flex items-center gap-1.5 transition-all"
+              className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-neutral-200 text-black text-xs font-extrabold flex items-center gap-1.5 transition-all cursor-pointer"
             >
-              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              {copied ? <Check className="w-4 h-4 text-black" /> : <Copy className="w-4 h-4 text-black" />}
               <span>{copied ? 'Copiado!' : 'Copiar Texto'}</span>
             </button>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-[#202534] transition-colors"
+              className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -100,12 +100,12 @@ O AgencyOS é uma plataforma SaaS completa de gestão para agências de tráfego
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex border-b border-[#212738] bg-[#131620] px-4 gap-2 text-xs font-semibold text-gray-400">
+        <div className="flex border-b border-neutral-800 bg-[#0e0e0e] px-4 gap-2 text-xs font-semibold text-neutral-400">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`py-3 px-4 border-b-2 flex items-center gap-1.5 transition-all ${
+            className={`py-3 px-4 border-b-2 flex items-center gap-1.5 transition-all cursor-pointer ${
               activeTab === 'overview'
-                ? 'border-[#22c55e] text-[#22c55e]'
+                ? 'border-white text-white font-bold'
                 : 'border-transparent hover:text-white'
             }`}
           >
@@ -113,9 +113,9 @@ O AgencyOS é uma plataforma SaaS completa de gestão para agências de tráfego
           </button>
           <button
             onClick={() => setActiveTab('steps')}
-            className={`py-3 px-4 border-b-2 flex items-center gap-1.5 transition-all ${
+            className={`py-3 px-4 border-b-2 flex items-center gap-1.5 transition-all cursor-pointer ${
               activeTab === 'steps'
-                ? 'border-[#22c55e] text-[#22c55e]'
+                ? 'border-white text-white font-bold'
                 : 'border-transparent hover:text-white'
             }`}
           >
@@ -123,9 +123,9 @@ O AgencyOS é uma plataforma SaaS completa de gestão para agências de tráfego
           </button>
           <button
             onClick={() => setActiveTab('architecture')}
-            className={`py-3 px-4 border-b-2 flex items-center gap-1.5 transition-all ${
+            className={`py-3 px-4 border-b-2 flex items-center gap-1.5 transition-all cursor-pointer ${
               activeTab === 'architecture'
-                ? 'border-[#22c55e] text-[#22c55e]'
+                ? 'border-white text-white font-bold'
                 : 'border-transparent hover:text-white'
             }`}
           >
@@ -133,9 +133,9 @@ O AgencyOS é uma plataforma SaaS completa de gestão para agências de tráfego
           </button>
           <button
             onClick={() => setActiveTab('ia')}
-            className={`py-3 px-4 border-b-2 flex items-center gap-1.5 transition-all ${
+            className={`py-3 px-4 border-b-2 flex items-center gap-1.5 transition-all cursor-pointer ${
               activeTab === 'ia'
-                ? 'border-[#22c55e] text-[#22c55e]'
+                ? 'border-white text-white font-bold'
                 : 'border-transparent hover:text-white'
             }`}
           >
@@ -144,14 +144,14 @@ O AgencyOS é uma plataforma SaaS completa de gestão para agências de tráfego
         </div>
 
         {/* Content Body */}
-        <div className="p-6 overflow-y-auto flex-1 text-sm text-gray-300 space-y-6 custom-scrollbar leading-relaxed">
+        <div className="p-6 overflow-y-auto flex-1 text-sm text-neutral-300 space-y-6 custom-scrollbar leading-relaxed">
           {activeTab === 'overview' && (
             <div className="space-y-4">
-              <div className="p-4 rounded-xl bg-[#181c28] border border-[#262c3e]">
+              <div className="p-4 rounded-2xl bg-neutral-900 border border-neutral-800">
                 <h3 className="text-base font-bold text-white mb-2 flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-[#22c55e]" /> O que é o AgencyOS BY TECHIFY?
+                  <CheckCircle2 className="w-5 h-5 text-white" /> O que é o AgencyOS BY TECHIFY?
                 </h3>
-                <p className="text-xs text-gray-300">
+                <p className="text-xs text-neutral-300">
                   O AgencyOS é um sistema de gestão operacional e financeira idealizado para
                   agências de marketing, tráfego pago, influenciadores e empresas de software. O
                   sistema centraliza todos os setores vitais em uma interface integrada e responsiva.
@@ -159,23 +159,23 @@ O AgencyOS é uma plataforma SaaS completa de gestão para agências de tráfego
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                <div className="p-4 rounded-xl bg-[#141722] border border-[#212738]">
-                  <span className="font-bold text-[#22c55e] block mb-1">Módulos Financeiros</span>
+                <div className="p-4 rounded-2xl bg-neutral-900 border border-neutral-800">
+                  <span className="font-bold text-white block mb-1">Módulos Financeiros</span>
                   Acompanhamento de KPIs em tempo real (MRR, ARR, LTV, CAC, Churn Rate) e Fluxo de
                   Caixa com relatórios por categorias (Fixos, Variáveis, Tráfego, Software).
                 </div>
-                <div className="p-4 rounded-xl bg-[#141722] border border-[#212738]">
-                  <span className="font-bold text-[#22c55e] block mb-1">Maps Scraper + CRM</span>
+                <div className="p-4 rounded-2xl bg-neutral-900 border border-neutral-800">
+                  <span className="font-bold text-white block mb-1">Maps Scraper + CRM</span>
                   Busca inteligente de empresas locais no Google Maps com importação direta para o
                   funil CRM (Novo, Contatado, Qualificado, Proposta, Fechado).
                 </div>
-                <div className="p-4 rounded-xl bg-[#141722] border border-[#212738]">
-                  <span className="font-bold text-[#22c55e] block mb-1">IA Consultora Integrada</span>
+                <div className="p-4 rounded-2xl bg-neutral-900 border border-neutral-800">
+                  <span className="font-bold text-white block mb-1">IA Consultora Integrada</span>
                   Agente inteligente alimentado pelo Gemini 3.6 Flash que lê dados de faturamento da
                   agência e sugere planos de ação para escalar receitas.
                 </div>
-                <div className="p-4 rounded-xl bg-[#141722] border border-[#212738]">
-                  <span className="font-bold text-[#22c55e] block mb-1">Social Hub & Ferramentas</span>
+                <div className="p-4 rounded-2xl bg-neutral-900 border border-neutral-800">
+                  <span className="font-bold text-white block mb-1">Social Hub & Ferramentas</span>
                   Gerador de legendas e hashtags por IA, Calculadora de ROI de campanhas e exportador
                   de relatórios completos em formato .txt.
                 </div>
@@ -186,52 +186,52 @@ O AgencyOS é uma plataforma SaaS completa de gestão para agências de tráfego
           {activeTab === 'steps' && (
             <div className="space-y-4 text-xs">
               <h3 className="text-base font-bold text-white mb-3">
-                🛠️ Etapas do Desenvolvimento Passo a Passo
+                Etapas do Desenvolvimento Passo a Passo
               </h3>
 
               <div className="space-y-3">
-                <div className="p-3.5 rounded-xl bg-[#161a26] border border-[#23293c]">
+                <div className="p-3.5 rounded-2xl bg-neutral-900 border border-neutral-800">
                   <span className="font-bold text-white text-sm block mb-1">
                     Passo 1: Configuração do Ambiente Node.js & Vite
                   </span>
-                  <p className="text-gray-400">
+                  <p className="text-neutral-400">
                     Inicialização do React 19 com TypeScript e Tailwind CSS v4 via Vite.
-                    Configuração do servidor Express em <code className="text-[#22c55e]">server.ts</code>{' '}
+                    Configuração do servidor Express em <code className="text-white">server.ts</code>{' '}
                     com esbuild para empacotamento em CJS seguro.
                   </p>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-[#161a26] border border-[#23293c]">
+                <div className="p-3.5 rounded-2xl bg-neutral-900 border border-neutral-800">
                   <span className="font-bold text-white text-sm block mb-1">
                     Passo 2: Modelagem de Dados & TypeScript
                   </span>
-                  <p className="text-gray-400">
-                    Criação de tipos rígidos em <code className="text-[#22c55e]">/src/types.ts</code>{' '}
+                  <p className="text-neutral-400">
+                    Criação de tipos rígidos em <code className="text-white">/src/types.ts</code>{' '}
                     para usuários, transações financeiras, campanhas de ads, leads do CRM, itens de
                     estoque, atualizações e planos de assinatura.
                   </p>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-[#161a26] border border-[#23293c]">
+                <div className="p-3.5 rounded-2xl bg-neutral-900 border border-neutral-800">
                   <span className="font-bold text-white text-sm block mb-1">
                     Passo 3: Módulos de Interface & Navegação
                   </span>
-                  <p className="text-gray-400">
+                  <p className="text-neutral-400">
                     Desenvolvimento dos 15 modos de visualização (Landing Page, Trial Signup, Dashboard
                     Geral, KPIs, Fluxo de Caixa, Maps Scraper, Social Hub, Kanban, Estoque, Admin, etc.)
                     com alinhamento estético fiel às telas oficiais.
                   </p>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-[#161a26] border border-[#23293c]">
+                <div className="p-3.5 rounded-2xl bg-neutral-900 border border-neutral-800">
                   <span className="font-bold text-white text-sm block mb-1">
                     Passo 4: Integração das Rotas de IA Server-Side
                   </span>
-                  <p className="text-gray-400">
-                    Criação dos endpoints <code className="text-[#22c55e]">/api/ai/consultant</code>,{' '}
-                    <code className="text-[#22c55e]">/api/ai/social-caption</code> e{' '}
-                    <code className="text-[#22c55e]">/api/ai/lead-scraper</code> no servidor Express
-                    utilizando o SDK oficial <code className="text-[#22c55e]">@google/genai</code>.
+                  <p className="text-neutral-400">
+                    Criação dos endpoints <code className="text-white">/api/ai/consultant</code>,{' '}
+                    <code className="text-white">/api/ai/social-caption</code> e{' '}
+                    <code className="text-white">/api/ai/lead-scraper</code> no servidor Express
+                    utilizando o SDK oficial <code className="text-white">@google/genai</code>.
                   </p>
                 </div>
               </div>
@@ -241,16 +241,16 @@ O AgencyOS é uma plataforma SaaS completa de gestão para agências de tráfego
           {activeTab === 'architecture' && (
             <div className="space-y-4 text-xs">
               <h3 className="text-base font-bold text-white mb-2">
-                🏛️ Arquitetura de Estado e Servidor
+                Arquitetura de Estado e Servidor
               </h3>
-              <p className="text-gray-400 leading-relaxed">
+              <p className="text-neutral-400 leading-relaxed">
                 A aplicação utiliza o padrão de Arquitetura em Camadas com servidor Express
                 intermediário. O estado da aplicação é desacoplado entre componentes e gerenciado
                 por um repositório central de armazenamento em{' '}
-                <code className="text-[#22c55e]">/src/lib/storage.ts</code>.
+                <code className="text-white">/src/lib/storage.ts</code>.
               </p>
 
-              <div className="p-4 rounded-xl bg-[#12141c] border border-[#212738] font-mono text-[11px] text-[#22c55e] space-y-1">
+              <div className="p-4 rounded-2xl bg-neutral-950 border border-neutral-800 font-mono text-[11px] text-neutral-300 space-y-1">
                 <div>[Navegador Client] ─── Requests ───► [Express Server :3000]</div>
                 <div> &nbsp; &nbsp;│ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; │</div>
                 <div> [LocalStorage] &lt;── State Sync ─── [Gemini API @google/genai]</div>
@@ -261,16 +261,16 @@ O AgencyOS é uma plataforma SaaS completa de gestão para agências de tráfego
           {activeTab === 'ia' && (
             <div className="space-y-4 text-xs">
               <h3 className="text-base font-bold text-white mb-2">
-                ⚡ Como Funciona a Integração com Gemini API
+                Como Funciona a Integração com Gemini API
               </h3>
-              <p className="text-gray-400 leading-relaxed">
-                Utilizamos o SDK <code className="text-[#22c55e]">@google/genai</code> no servidor com
-                o modelo <code className="text-[#22c55e]">gemini-3.6-flash</code>. Para garantir respostas
+              <p className="text-neutral-400 leading-relaxed">
+                Utilizamos o SDK <code className="text-white">@google/genai</code> no servidor com
+                o modelo <code className="text-white">gemini-3.6-flash</code>. Para garantir respostas
                 precisas da IA Consultora, injetamos um prompt de sistema contendo a estrutura de
                 dados do usuário em tempo real.
               </p>
 
-              <div className="p-4 rounded-xl bg-[#0d0f15] border border-[#1f2434] font-mono text-[11px] text-gray-300 overflow-x-auto">
+              <div className="p-4 rounded-2xl bg-neutral-950 border border-neutral-800 font-mono text-[11px] text-neutral-300 overflow-x-auto">
                 <pre>{`const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
   httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }

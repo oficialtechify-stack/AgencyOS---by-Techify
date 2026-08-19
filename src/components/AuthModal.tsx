@@ -98,27 +98,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-[#0f111a] border border-[#22c55e]/30 rounded-3xl p-6 sm:p-8 shadow-[0_0_60px_rgba(34,197,94,0.15)] relative space-y-6">
+    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-[#0e0e0e] border border-neutral-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative space-y-6">
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 text-gray-400 hover:text-white p-1 rounded-lg hover:bg-[#1c2030] transition-colors"
+          className="absolute top-5 right-5 text-neutral-400 hover:text-white p-1 rounded-lg hover:bg-neutral-800 transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* Tab Headers */}
-        <div className="flex bg-[#141724] p-1 rounded-2xl border border-[#202538]">
+        <div className="flex bg-neutral-900 p-1 rounded-2xl border border-neutral-800">
           <button
             type="button"
             onClick={() => {
               setMode('login');
               setErrorMsg('');
             }}
-            className={`flex-1 py-2.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 transition-all ${
+            className={`flex-1 py-2.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
               mode === 'login'
-                ? 'bg-[#22c55e] text-black shadow'
-                : 'text-gray-400 hover:text-white'
+                ? 'bg-white text-black shadow-sm'
+                : 'text-neutral-400 hover:text-white'
             }`}
           >
             <LogIn className="w-4 h-4" /> Entrar
@@ -129,10 +129,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               setMode('signup');
               setErrorMsg('');
             }}
-            className={`flex-1 py-2.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 transition-all ${
+            className={`flex-1 py-2.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
               mode === 'signup'
-                ? 'bg-[#22c55e] text-black shadow'
-                : 'text-gray-400 hover:text-white'
+                ? 'bg-white text-black shadow-sm'
+                : 'text-neutral-400 hover:text-white'
             }`}
           >
             <UserPlus className="w-4 h-4" /> Criar Conta (14 dias)
@@ -143,7 +143,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <h3 className="text-xl font-extrabold text-white">
             {mode === 'login' ? 'Acesse seu Dashboard Individual' : 'Inicie seu Teste Grátis de 14 Dias'}
           </h3>
-          <p className="text-xs text-gray-400 mt-1">
+          <p className="text-xs text-neutral-400 mt-1">
             {mode === 'login'
               ? 'Seus dados e relatórios estão salvos no seu banco de dados individual.'
               : 'Sem cartão de crédito necessário. Acesso completo liberado.'}
@@ -151,8 +151,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </div>
 
         {errorMsg && (
-          <div className="p-3 bg-red-950/80 border border-red-500/50 rounded-xl text-xs font-semibold text-red-300 flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+          <div className="p-3 bg-neutral-900 border border-neutral-700 rounded-xl text-xs font-semibold text-neutral-200 flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-white shrink-0 mt-0.5" />
             <span>{errorMsg}</span>
           </div>
         )}
@@ -161,31 +161,31 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           {mode === 'signup' && (
             <>
               <div>
-                <label className="block text-xs font-semibold text-gray-300 mb-1">Seu Nome</label>
+                <label className="block text-xs font-semibold text-neutral-300 mb-1">Seu Nome</label>
                 <div className="relative">
-                  <UserIcon className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+                  <UserIcon className="w-4 h-4 text-neutral-500 absolute left-3 top-3" />
                   <input
                     type="text"
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Ex: Carlos Silva"
-                    className="w-full bg-[#151824] border border-[#242a3d] focus:border-[#22c55e] rounded-xl pl-9 pr-3 py-2.5 text-xs text-white focus:outline-none transition-colors"
+                    className="w-full bg-neutral-950 border border-neutral-800 focus:border-white rounded-xl pl-9 pr-3 py-2.5 text-xs text-white focus:outline-none transition-colors"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-300 mb-1">Nome da sua Agência</label>
+                <label className="block text-xs font-semibold text-neutral-300 mb-1">Nome da sua Agência</label>
                 <div className="relative">
-                  <Briefcase className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+                  <Briefcase className="w-4 h-4 text-neutral-500 absolute left-3 top-3" />
                   <input
                     type="text"
                     required
                     value={agencyName}
                     onChange={(e) => setAgencyName(e.target.value)}
                     placeholder="Ex: Techify Digital"
-                    className="w-full bg-[#151824] border border-[#242a3d] focus:border-[#22c55e] rounded-xl pl-9 pr-3 py-2.5 text-xs text-white focus:outline-none transition-colors"
+                    className="w-full bg-neutral-950 border border-neutral-800 focus:border-white rounded-xl pl-9 pr-3 py-2.5 text-xs text-white focus:outline-none transition-colors"
                   />
                 </div>
               </div>
@@ -193,31 +193,31 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-gray-300 mb-1">E-mail Comercial</label>
+            <label className="block text-xs font-semibold text-neutral-300 mb-1">E-mail Comercial</label>
             <div className="relative">
-              <Mail className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+              <Mail className="w-4 h-4 text-neutral-500 absolute left-3 top-3" />
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="seu.email@agencia.com"
-                className="w-full bg-[#151824] border border-[#242a3d] focus:border-[#22c55e] rounded-xl pl-9 pr-3 py-2.5 text-xs text-white focus:outline-none transition-colors"
+                className="w-full bg-neutral-950 border border-neutral-800 focus:border-white rounded-xl pl-9 pr-3 py-2.5 text-xs text-white focus:outline-none transition-colors"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-300 mb-1">Senha</label>
+            <label className="block text-xs font-semibold text-neutral-300 mb-1">Senha</label>
             <div className="relative">
-              <Lock className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+              <Lock className="w-4 h-4 text-neutral-500 absolute left-3 top-3" />
               <input
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full bg-[#151824] border border-[#242a3d] focus:border-[#22c55e] rounded-xl pl-9 pr-3 py-2.5 text-xs text-white focus:outline-none transition-colors"
+                className="w-full bg-neutral-950 border border-neutral-800 focus:border-white rounded-xl pl-9 pr-3 py-2.5 text-xs text-white focus:outline-none transition-colors"
               />
             </div>
           </div>
@@ -225,7 +225,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 rounded-xl bg-[#22c55e] hover:bg-[#1eb054] text-black font-extrabold text-xs shadow-lg shadow-[#22c55e]/20 transition-all hover:scale-[1.02] flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full py-3 rounded-xl bg-white hover:bg-neutral-200 text-black font-extrabold text-xs transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
           >
             {loading ? (
               <span>Autenticando...</span>
@@ -235,24 +235,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </>
             ) : (
               <>
-                <Sparkles className="w-4 h-4" /> Criar Conta & Iniciar Teste (14 Dias)
+                <Sparkles className="w-4 h-4 text-black" /> Criar Conta & Iniciar Teste (14 Dias)
               </>
             )}
           </button>
         </form>
 
         <div className="relative flex items-center justify-center">
-          <div className="border-t border-[#1d2235] w-full"></div>
-          <span className="bg-[#0f111a] px-3 text-[11px] text-gray-500 font-semibold absolute">OU</span>
+          <div className="border-t border-neutral-800 w-full"></div>
+          <span className="bg-[#0e0e0e] px-3 text-[11px] text-neutral-500 font-semibold absolute">OU</span>
         </div>
 
         <button
           type="button"
           onClick={handleGoogleLogin}
           disabled={loading}
-          className="w-full py-2.5 rounded-xl bg-[#171a29] hover:bg-[#202538] border border-[#282f45] text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+          className="w-full py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors disabled:opacity-50 cursor-pointer"
         >
-          <Globe className="w-4 h-4 text-[#22c55e]" /> Entrar com Google
+          <Globe className="w-4 h-4 text-white" /> Entrar com Google
         </button>
       </div>
     </div>

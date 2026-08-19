@@ -59,12 +59,12 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   const displaySubtitle = subtitle || currentModule?.description || 'Visão 360° da sua agência';
 
   return (
-    <header className="h-16 border-b border-[#151822] bg-[#07080c] px-4 sm:px-6 flex items-center justify-between sticky top-0 z-20 font-sans backdrop-blur-md">
+    <header className="h-16 border-b border-neutral-800 bg-[#0a0a0a] px-4 sm:px-6 flex items-center justify-between sticky top-0 z-20 font-sans backdrop-blur-md">
       <div className="flex items-center gap-3 min-w-0">
         {onToggleSidebar && (
           <button
             onClick={onToggleSidebar}
-            className="md:hidden p-2 rounded-xl text-gray-400 hover:text-white hover:bg-[#141722] border border-transparent hover:border-[#22283a] transition-all cursor-pointer shrink-0"
+            className="md:hidden p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-900 border border-transparent hover:border-neutral-700 transition-all cursor-pointer shrink-0"
             aria-label="Abrir Menu Lateral"
           >
             <Menu className="w-5 h-5" />
@@ -76,12 +76,12 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
               {displayTitle}
             </h1>
             {agencyName && (
-              <span className="hidden xl:inline-flex px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#141824] text-gray-300 border border-[#22283a]">
+              <span className="hidden xl:inline-flex px-2 py-0.5 rounded-md text-[10px] font-bold bg-neutral-900 text-neutral-300 border border-neutral-700">
                 🏢 {agencyName}
               </span>
             )}
           </div>
-          <p className="text-[11px] sm:text-xs text-gray-400 font-normal leading-tight mt-0.5 truncate hidden sm:block">
+          <p className="text-[11px] sm:text-xs text-neutral-400 font-normal leading-tight mt-0.5 truncate hidden sm:block">
             {displaySubtitle}
           </p>
         </div>
@@ -102,23 +102,23 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
         <div className="relative">
           <button
             onClick={() => setShowNotifications(!showNotifications)}
-            className="p-2 rounded-xl bg-[#0e111a] hover:bg-[#161a28] border border-[#1b2030] text-gray-300 hover:text-white transition-colors relative cursor-pointer"
+            className="p-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-neutral-300 hover:text-white transition-colors relative cursor-pointer"
             title="Atualizações do Sistema"
           >
             <Bell className="w-4 h-4" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#22c55e] animate-pulse" />
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-white" />
           </button>
 
           {/* Notifications Dropdown Popup */}
           {showNotifications && (
-            <div className="absolute right-0 mt-2 w-80 sm:w-88 bg-[#0d0f17] border border-[#1e2332] rounded-2xl shadow-2xl p-4 z-50 text-xs text-gray-300 animate-in fade-in slide-in-from-top-2">
-              <div className="flex items-center justify-between border-b border-[#1f2332] pb-2 mb-3">
+            <div className="absolute right-0 mt-2 w-80 sm:w-88 bg-neutral-950 border border-neutral-800 rounded-2xl shadow-2xl p-4 z-50 text-xs text-neutral-300 animate-in fade-in slide-in-from-top-2">
+              <div className="flex items-center justify-between border-b border-neutral-800 pb-2 mb-3">
                 <span className="font-bold text-white text-xs flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-[#22c55e]" /> Atualizações da Plataforma
+                  <Sparkles className="w-4 h-4 text-white" /> Atualizações da Plataforma
                 </span>
                 <button
                   onClick={() => setShowNotifications(false)}
-                  className="text-gray-400 hover:text-white cursor-pointer"
+                  className="text-neutral-400 hover:text-white cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -128,18 +128,18 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
                 {updatesList.map((item) => (
                   <div
                     key={item.id}
-                    className="p-3 rounded-xl bg-[#141824] border border-[#202738] space-y-1"
+                    className="p-3 rounded-xl bg-neutral-900 border border-neutral-800 space-y-1"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-bold text-white text-xs leading-snug">{item.title}</span>
-                      <span className="text-[10px] font-bold text-[#22c55e] bg-[#162e1c] px-1.5 py-0.5 rounded-md border border-[#22c55e]/30 shrink-0">
+                      <span className="text-[10px] font-bold text-white bg-neutral-800 px-1.5 py-0.5 rounded-md border border-neutral-700 shrink-0">
                         {item.version}
                       </span>
                     </div>
-                    <p className="text-[11px] text-gray-400 leading-relaxed">
+                    <p className="text-[11px] text-neutral-400 leading-relaxed">
                       {item.description}
                     </p>
-                    <div className="text-[10px] text-gray-500 font-mono pt-1">{item.date}</div>
+                    <div className="text-[10px] text-neutral-500 font-mono pt-1">{item.date}</div>
                   </div>
                 ))}
               </div>
@@ -147,14 +147,12 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
           )}
         </div>
 
-        {/* Live status badge: Green Dot + Sistema ativo */}
-        <div className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-[#0c1610] border border-[#1b3a22] text-[#22c55e]">
-          <span className="w-2 h-2 rounded-full bg-[#22c55e] shrink-0 animate-pulse" />
+        {/* Live status badge */}
+        <div className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-neutral-900 border border-neutral-800 text-neutral-200">
+          <span className="w-2 h-2 rounded-full bg-white shrink-0" />
           <span className="text-[11px] font-bold hidden sm:inline">Sistema online</span>
         </div>
       </div>
     </header>
   );
 };
-
-

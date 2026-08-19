@@ -138,10 +138,10 @@ export const SocialHubView: React.FC = () => {
               <button
                 onClick={handleGenerateCaption}
                 disabled={loading}
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-[#22c55e] to-[#16a34a] hover:opacity-90 text-black font-extrabold text-xs shadow-[0_0_15px_rgba(34,197,94,0.3)] transition-all flex items-center justify-center gap-2"
+                className="w-full py-3 rounded-xl bg-[#22c55e] hover:bg-[#1ea750] disabled:opacity-50 text-black font-extrabold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
               >
                 <Sparkles className="w-4 h-4 fill-black" />
-                <span>{loading ? 'Sintetizando Legenda com IA...' : '⚡ Gerar Legenda'}</span>
+                <span>{loading ? 'Sintetizando Legenda com IA...' : 'Gerar Legenda'}</span>
               </button>
             </div>
 

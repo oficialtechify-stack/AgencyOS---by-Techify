@@ -56,9 +56,9 @@ export const TrialCountdownWidget: React.FC<TrialCountdownWidgetProps> = ({
   // Paid Plan Active State
   if (userProfile.plan !== 'Trial Gratuito') {
     return (
-      <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#142618] border border-[#22c55e]/40 shadow-[0_0_15px_rgba(34,197,94,0.15)] text-xs font-bold text-[#22c55e]">
-        <ShieldCheck className="w-4 h-4 text-[#22c55e] animate-pulse" />
-        <span>Plano {userProfile.plan} • Ativo 🟢</span>
+      <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-neutral-900 border border-neutral-700 text-xs font-bold text-neutral-200">
+        <ShieldCheck className="w-4 h-4 text-white" />
+        <span>Plano {userProfile.plan} • Ativo</span>
       </div>
     );
   }
@@ -68,10 +68,10 @@ export const TrialCountdownWidget: React.FC<TrialCountdownWidgetProps> = ({
     return (
       <button
         onClick={onOpenUpgradeModal}
-        className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-red-950/80 border border-red-500/50 text-xs font-extrabold text-red-400 hover:bg-red-900 transition-all shadow-[0_0_15px_rgba(239,68,68,0.3)] animate-bounce"
+        className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-neutral-900 border border-neutral-700 text-xs font-extrabold text-white hover:bg-neutral-800 transition-all cursor-pointer"
       >
-        <AlertTriangle className="w-4 h-4 text-red-400" />
-        <span>Teste de 14 Dias Expirado — Assinar Agora</span>
+        <AlertTriangle className="w-4 h-4 text-white" />
+        <span>Teste de 14 Dias Expirado — Assinar</span>
       </button>
     );
   }
@@ -79,26 +79,27 @@ export const TrialCountdownWidget: React.FC<TrialCountdownWidgetProps> = ({
   // Active Trial Timer State
   return (
     <div className="flex items-center gap-3">
-      <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#181d2c] border border-[#22c55e]/30 shadow-[0_0_12px_rgba(34,197,94,0.12)] text-xs font-medium text-gray-200">
-        <Clock className="w-4 h-4 text-[#22c55e] animate-spin-slow shrink-0" />
-        <div className="flex items-center gap-1 font-mono font-extrabold text-[#39e01e]">
-          <span className="text-gray-400 text-[11px] font-sans">Teste 14 dias:</span>
+      <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-neutral-900 border border-neutral-800 text-xs font-medium text-neutral-200">
+        <Clock className="w-4 h-4 text-neutral-400 shrink-0" />
+        <div className="flex items-center gap-1 font-mono font-extrabold text-white">
+          <span className="text-neutral-400 text-[11px] font-sans">Teste 14 dias:</span>
           <span>{timeLeft.days}d</span>
-          <span className="text-gray-500">:</span>
+          <span className="text-neutral-500">:</span>
           <span>{String(timeLeft.hours).padStart(2, '0')}h</span>
-          <span className="text-gray-500">:</span>
+          <span className="text-neutral-500">:</span>
           <span>{String(timeLeft.minutes).padStart(2, '0')}m</span>
-          <span className="text-gray-500">:</span>
+          <span className="text-neutral-500">:</span>
           <span className="w-5 text-center">{String(timeLeft.seconds).padStart(2, '0')}s</span>
         </div>
       </div>
 
       <button
         onClick={onOpenUpgradeModal}
-        className="px-3 py-1.5 rounded-xl bg-[#22c55e] hover:bg-[#1eb054] text-black font-extrabold text-xs flex items-center gap-1 shadow-[0_0_12px_rgba(34,197,94,0.3)] transition-all hover:scale-105 shrink-0"
+        className="px-3 py-1.5 rounded-xl bg-white hover:bg-neutral-200 text-black font-extrabold text-xs flex items-center gap-1 transition-all cursor-pointer shrink-0"
       >
         <Zap className="w-3.5 h-3.5 fill-black" />
-        <span className="hidden sm:inline">Fazer Upgrade</span>
+        <span>Upgrade</span>
+        <ArrowRight className="w-3 h-3 text-black" />
       </button>
     </div>
   );

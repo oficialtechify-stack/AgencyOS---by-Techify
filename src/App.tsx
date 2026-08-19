@@ -43,6 +43,7 @@ import { CalculadoraROIView } from './views/CalculadoraROIView';
 import { IAConsultoraView } from './views/IAConsultoraView';
 import { AdminView } from './views/AdminView';
 import { DesignerHubView } from './views/DesignerHubView';
+import { MarketingHubView } from './views/MarketingHubView';
 
 export default function App() {
   const [state, setState] = useState<AppState>(() => loadState());
@@ -163,6 +164,21 @@ export default function App() {
         const unsubDesignComments = subscribeToUserCollection(activeUid, 'designComments', (designComments) => {
           setState((prev) => ({ ...prev, designComments }));
         });
+        const unsubMktCamp = subscribeToUserCollection(activeUid, 'marketingCampaigns', (marketingCampaigns) => {
+          setState((prev) => ({ ...prev, marketingCampaigns }));
+        });
+        const unsubMktEd = subscribeToUserCollection(activeUid, 'marketingEditorials', (marketingEditorials) => {
+          setState((prev) => ({ ...prev, marketingEditorials }));
+        });
+        const unsubMktFun = subscribeToUserCollection(activeUid, 'marketingFunnels', (marketingFunnels) => {
+          setState((prev) => ({ ...prev, marketingFunnels }));
+        });
+        const unsubMktEmails = subscribeToUserCollection(activeUid, 'marketingEmailFlows', (marketingEmailFlows) => {
+          setState((prev) => ({ ...prev, marketingEmailFlows }));
+        });
+        const unsubMktCopies = subscribeToUserCollection(activeUid, 'marketingCopies', (marketingCopies) => {
+          setState((prev) => ({ ...prev, marketingCopies }));
+        });
 
         unsubs.push(
           unsubKPIs,
@@ -177,7 +193,12 @@ export default function App() {
           unsubDesignFolders,
           unsubDesignBriefings,
           unsubDesignPackages,
-          unsubDesignComments
+          unsubDesignComments,
+          unsubMktCamp,
+          unsubMktEd,
+          unsubMktFun,
+          unsubMktEmails,
+          unsubMktCopies
         );
       } else {
         setUserProfile(null);
@@ -606,6 +627,145 @@ export default function App() {
     }));
   };
 
+  // Marketing Hub Handlers
+  const handleAddMarketingCampaign = async (campaign: any) => {
+    if (user) {
+      await addCollectionItem(user.uid, 'marketingCampaigns', campaign);
+    } else {
+      setState((prev) => ({
+        ...prev,
+        marketingCampaigns: [{ ...campaign, id: `mkt-c-${Date.now()}` }, ...(prev.marketingCampaigns || [])],
+      }));
+    }
+  };
+
+  const handleDeleteMarketingCampaign = async (id: string) => {
+    if (user) {
+      await deleteCollectionItem(user.uid, 'marketingCampaigns', id);
+    } else {
+      setState((prev) => ({
+        ...prev,
+        marketingCampaigns: (prev.marketingCampaigns || []).filter((c) => c.id !== id),
+      }));
+    }
+  };
+
+  const handleAddMarketingEditorial = async (item: any) => {
+    if (user) {
+      await addCollectionItem(user.uid, 'marketingEditorials', item);
+    } else {
+      setState((prev) => ({
+        ...prev,
+        marketingEditorials: [{ ...item, id: `mkt-e-${Date.now()}` }, ...(prev.marketingEditorials || [])],
+      }));
+    }
+  };
+
+  const handleDeleteMarketingEditorial = async (id: string) => {
+    if (user) {
+      await deleteCollectionItem(user.uid, 'marketingEditorials', id);
+    } else {
+      setState((prev) => ({
+        ...prev,
+        marketingEditorials: (prev.marketingEditorials || []).filter((e) => e.id !== id),
+      }));
+    }
+  };
+
+  const handleAddMarketingFunnel = async (funnel: any) => {
+    if (user) {
+      await addCollectionItem(user.uid, 'marketingFunnels', funnel);
+    } else {
+      setState((prev) => ({
+        ...prev,
+        marketingFunnels: [{ ...funnel, id: `mkt-f-${Date.now()}` }, ...(prev.marketingFunnels || [])],
+      }));
+    }
+  };
+
+  const handleDeleteMarketingFunnel = async (id: string) => {
+    if (user) {
+      await deleteCollectionItem(user.uid, 'marketingFunnels', id);
+    } else {
+      setState((prev) => ({
+        ...prev,
+        marketingFunnels: (prev.marketingFunnels || []).filter((f) => f.id !== id),
+      }));
+    }
+  };
+
+  const handleAddMarketingEmailFlow = async (flow: any) => {
+    if (user) {
+      await addCollectionItem(user.uid, 'marketingEmailFlows', flow);
+    } else {
+      setState((prev) => ({
+        ...prev,
+        marketingEmailFlows: [{ ...flow, id: `mkt-ef-${Date.now()}` }, ...(prev.marketingEmailFlows || [])],
+      }));
+    }
+  };
+
+  const handleDeleteMarketingEmailFlow = async (id: string) => {
+    if (user) {
+      await deleteCollectionItem(user.uid, 'marketingEmailFlows', id);
+    } else {
+      setState((prev) => ({
+        ...prev,
+        marketingEmailFlows: (prev.marketingEmailFlows || []).filter((ef) => ef.id !== id),
+      }));
+    }
+  };
+
+  const handleAddMarketingCopyScript = async (copy: any) => {
+    if (user) {
+      await addCollectionItem(user.uid, 'marketingCopies', copy);
+    } else {
+      setState((prev) => ({
+        ...prev,
+        marketingCopies: [{ ...copy, id: `mkt-cp-${Date.now()}` }, ...(prev.marketingCopies || [])],
+      }));
+    }
+  };
+
+  const handleDeleteMarketingCopyScript = async (id: string) => {
+    if (user) {
+      await deleteCollectionItem(user.uid, 'marketingCopies', id);
+    } else {
+      setState((prev) => ({
+        ...prev,
+        marketingCopies: (prev.marketingCopies || []).filter((cp) => cp.id !== id),
+      }));
+    }
+  };
+
+  const handleClearAllMarketingData = async () => {
+    if (user) {
+      for (const c of state.marketingCampaigns || []) {
+        await deleteCollectionItem(user.uid, 'marketingCampaigns', c.id);
+      }
+      for (const e of state.marketingEditorials || []) {
+        await deleteCollectionItem(user.uid, 'marketingEditorials', e.id);
+      }
+      for (const f of state.marketingFunnels || []) {
+        await deleteCollectionItem(user.uid, 'marketingFunnels', f.id);
+      }
+      for (const ef of state.marketingEmailFlows || []) {
+        await deleteCollectionItem(user.uid, 'marketingEmailFlows', ef.id);
+      }
+      for (const cp of state.marketingCopies || []) {
+        await deleteCollectionItem(user.uid, 'marketingCopies', cp.id);
+      }
+    }
+    setState((prev) => ({
+      ...prev,
+      marketingCampaigns: [],
+      marketingEditorials: [],
+      marketingFunnels: [],
+      marketingEmailFlows: [],
+      marketingCopies: [],
+    }));
+  };
+
   // Render Public Landing View
   if (state.activeView === 'landing') {
     return (
@@ -761,6 +921,29 @@ export default function App() {
                   campaigns={state.campaigns}
                   onAddCampaign={handleAddCampaign}
                   onDeleteCampaign={handleDeleteCampaign}
+                />
+              )}
+
+              {state.activeView === 'marketing' && (
+                <MarketingHubView
+                  userProfile={userProfile}
+                  marketingCampaigns={state.marketingCampaigns}
+                  marketingEditorials={state.marketingEditorials}
+                  marketingFunnels={state.marketingFunnels}
+                  marketingEmailFlows={state.marketingEmailFlows}
+                  marketingCopies={state.marketingCopies}
+                  onAddCampaign={handleAddMarketingCampaign}
+                  onDeleteCampaign={handleDeleteMarketingCampaign}
+                  onAddEditorial={handleAddMarketingEditorial}
+                  onDeleteEditorial={handleDeleteMarketingEditorial}
+                  onAddFunnel={handleAddMarketingFunnel}
+                  onDeleteFunnel={handleDeleteMarketingFunnel}
+                  onAddEmailFlow={handleAddMarketingEmailFlow}
+                  onDeleteEmailFlow={handleDeleteMarketingEmailFlow}
+                  onAddCopyScript={handleAddMarketingCopyScript}
+                  onDeleteCopyScript={handleDeleteMarketingCopyScript}
+                  onClearAllMarketingData={handleClearAllMarketingData}
+                  onNavigate={setView}
                 />
               )}
 

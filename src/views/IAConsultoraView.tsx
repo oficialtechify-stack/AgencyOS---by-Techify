@@ -82,14 +82,14 @@ export const IAConsultoraView: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6 text-gray-200">
+    <div className="space-y-6 text-neutral-200">
       {/* Header Banner */}
-      <div className="p-6 rounded-2xl bg-[#12141c] border border-[#1e2332] space-y-2">
-        <div className="flex items-center gap-2 text-[#22c55e] font-bold text-xs">
+      <div className="p-6 rounded-2xl bg-[#0e0e0e] border border-neutral-800 space-y-2">
+        <div className="flex items-center gap-2 text-neutral-300 font-bold text-xs">
           <Bot className="w-4 h-4" /> IA CONSULTORA & GERADOR DE CONTEÚDO AGENCYOS
         </div>
         <h2 className="text-xl font-black text-white">Techify AI Copilot 2.0</h2>
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-neutral-400">
           Assistente inteligente alimentado pelo Google Gemini API para automação de propostas, copies,
           scripts de prospecção e estratégias de crescimento.
         </p>
@@ -102,19 +102,19 @@ export const IAConsultoraView: React.FC = () => {
             key={i}
             onClick={() => sendMessage(t.prompt)}
             disabled={loading}
-            className="p-4 rounded-xl bg-[#12141c] border border-[#1e2332] hover:border-[#22c55e] text-left transition-all space-y-1.5 group disabled:opacity-50"
+            className="p-4 rounded-xl bg-neutral-900 border border-neutral-800 hover:border-neutral-700 text-left transition-all space-y-1.5 group disabled:opacity-50 cursor-pointer"
           >
-            <div className="flex items-center gap-1.5 text-xs font-bold text-[#22c55e] group-hover:underline">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-neutral-200 group-hover:underline">
               <Sparkles className="w-3.5 h-3.5" />
               <span>{t.title}</span>
             </div>
-            <p className="text-[11px] text-gray-400 line-clamp-2">{t.prompt}</p>
+            <p className="text-[11px] text-neutral-400 line-clamp-2">{t.prompt}</p>
           </button>
         ))}
       </div>
 
       {/* Chat Window */}
-      <div className="p-5 rounded-2xl bg-[#12141c] border border-[#1e2332] flex flex-col h-[500px]">
+      <div className="p-5 rounded-2xl bg-[#0e0e0e] border border-neutral-800 flex flex-col h-[500px]">
         {/* Messages list */}
         <div className="flex-1 overflow-y-auto space-y-4 pr-2">
           {messages.map((m, idx) => (
@@ -125,16 +125,16 @@ export const IAConsultoraView: React.FC = () => {
               <div
                 className={`max-w-[85%] p-4 rounded-2xl text-xs leading-relaxed space-y-2 relative ${
                   m.sender === 'user'
-                    ? 'bg-[#1e2920] text-white border border-[#22c55e]/40'
-                    : 'bg-[#181a26] text-gray-200 border border-[#262b3d]'
+                    ? 'bg-neutral-800 text-white border border-neutral-700'
+                    : 'bg-neutral-900 text-neutral-200 border border-neutral-800'
                 }`}
               >
-                <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-1 text-[10px] text-gray-400 font-bold">
+                <div className="flex items-center justify-between gap-2 border-b border-neutral-800 pb-1 text-[10px] text-neutral-400 font-bold">
                   <span>{m.sender === 'user' ? 'Você (Gestor)' : 'Techify AI Copilot'}</span>
                   {m.sender === 'ai' && (
                     <button
                       onClick={() => handleCopy(m.text, idx)}
-                      className="flex items-center gap-1 text-[#22c55e] hover:underline"
+                      className="flex items-center gap-1 text-neutral-300 hover:text-white hover:underline cursor-pointer"
                     >
                       {copiedIndex === idx ? (
                         <>
@@ -155,7 +155,7 @@ export const IAConsultoraView: React.FC = () => {
 
           {loading && (
             <div className="flex justify-start">
-              <div className="p-3 rounded-2xl bg-[#181a26] border border-[#262b3d] text-xs text-[#22c55e] flex items-center gap-2 font-bold animate-pulse">
+              <div className="p-3 rounded-2xl bg-neutral-900 border border-neutral-800 text-xs text-neutral-300 flex items-center gap-2 font-bold animate-pulse">
                 <Sparkles className="w-4 h-4 animate-spin" />
                 Processando insights com Gemini 2.5 Flash...
               </div>
@@ -164,7 +164,7 @@ export const IAConsultoraView: React.FC = () => {
         </div>
 
         {/* Input Bar */}
-        <div className="pt-4 border-t border-[#1d2232] flex items-center gap-2">
+        <div className="pt-4 border-t border-neutral-800 flex items-center gap-2">
           <input
             type="text"
             value={input}
@@ -172,12 +172,12 @@ export const IAConsultoraView: React.FC = () => {
             onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
             placeholder="Digite o comando ou dúvida para a IA..."
             disabled={loading}
-            className="flex-1 bg-[#181a26] border border-[#2b3145] rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[#22c55e]"
+            className="flex-1 bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-700"
           />
           <button
             onClick={() => sendMessage()}
             disabled={loading || !input.trim()}
-            className="px-5 py-2.5 rounded-xl bg-[#22c55e] hover:bg-[#1eb054] text-black font-black text-xs flex items-center gap-2 disabled:opacity-50 transition-all shadow-md"
+            className="px-5 py-2.5 rounded-xl bg-white hover:bg-neutral-200 text-black font-black text-xs flex items-center gap-2 disabled:opacity-50 transition-all shadow-md cursor-pointer"
           >
             <Send className="w-4 h-4" /> Enviar
           </button>

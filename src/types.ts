@@ -2,6 +2,7 @@ export type ViewType =
   | 'landing'
   | 'trial-signup'
   | 'dashboard'
+  | 'marketing'
   | 'designer'
   | 'kpis'
   | 'fluxo-caixa'
@@ -286,6 +287,80 @@ export interface DesignPackage {
   createdAt: string;
 }
 
+export interface MarketingCampaign {
+  id: string;
+  title: string;
+  clientName: string;
+  type: 'Lançamento' | 'Inbound' | 'Outbound' | 'Branding' | 'Perpétuo' | 'Tráfego Direto';
+  channel: 'Multi-Canal' | 'Meta Ads' | 'Google Ads' | 'Email + CRM' | 'Orgânico / SEO' | 'TikTok Ads';
+  budget: number;
+  spent: number;
+  revenue: number;
+  leadsGoal: number;
+  leadsGenerated: number;
+  status: 'Planejamento' | 'Ativa' | 'Em Otimização' | 'Pausada' | 'Concluída';
+  startDate: string;
+  endDate?: string;
+  responsible: string;
+  notes?: string;
+}
+
+export interface MarketingEditorialItem {
+  id: string;
+  title: string;
+  clientName: string;
+  channel: 'Instagram' | 'LinkedIn' | 'Blog / SEO' | 'YouTube' | 'TikTok' | 'Email Newsletter';
+  contentType: 'Carrossel' | 'Reels / Shorts' | 'Artigo Longo' | 'Vídeo VSL' | 'Post Estático' | 'Infográfico';
+  persona: string;
+  funnelStage: 'Topo (Atração)' | 'Meio (Nutrição)' | 'Fundo (Conversão)';
+  status: 'Ideia' | 'Em Redação' | 'Design / Revisão' | 'Agendado' | 'Publicado';
+  publishDate: string;
+  author: string;
+  copyOutline?: string;
+}
+
+export interface MarketingFunnel {
+  id: string;
+  name: string;
+  clientName: string;
+  trafficSource: string;
+  visitors: number;
+  leads: number;
+  mqls: number;
+  sqls: number;
+  sales: number;
+  averageTicket: number;
+  status: 'Ativo' | 'Testando' | 'Pausado';
+  createdAt: string;
+}
+
+export interface MarketingEmailFlow {
+  id: string;
+  name: string;
+  clientName: string;
+  triggerEvent: string;
+  stepsCount: number;
+  subscribersCount: number;
+  openRate: number;
+  clickRate: number;
+  conversionRate: number;
+  status: 'Ativo' | 'Rascunho' | 'Pausado';
+  createdAt: string;
+}
+
+export interface MarketingCopyScript {
+  id: string;
+  title: string;
+  clientName: string;
+  category: 'Gancho / Hook' | 'Headline Matadora' | 'Script de VSL' | 'Email de Vendas' | 'Anúncio Meta' | 'Página de Captura';
+  targetAudience: string;
+  hookText: string;
+  bodyText: string;
+  ctaText: string;
+  rating?: number;
+  createdAt: string;
+}
+
 export interface AppState {
   activeView: ViewType;
   organization: OrganizationState;
@@ -302,4 +377,9 @@ export interface AppState {
   designBriefings?: DesignBriefingDemand[];
   designPackages?: DesignPackage[];
   designComments?: DesignComment[];
+  marketingCampaigns?: MarketingCampaign[];
+  marketingEditorials?: MarketingEditorialItem[];
+  marketingFunnels?: MarketingFunnel[];
+  marketingEmailFlows?: MarketingEmailFlow[];
+  marketingCopies?: MarketingCopyScript[];
 }
