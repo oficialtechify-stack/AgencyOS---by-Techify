@@ -77,8 +77,93 @@ export default function App() {
       unsubs = [];
     };
 
+    let activeDataUnsubs: (() => void)[] = [];
+
+    const initDataSubscriptions = (dataOwnerUid: string) => {
+      activeDataUnsubs.forEach((u) => u());
+      activeDataUnsubs = [];
+
+      const unsubKPIs = subscribeToUserCollection(dataOwnerUid, 'kpiPeriods', (kpiPeriods) => {
+        setState((prev) => ({ ...prev, kpiPeriods }));
+      });
+      const unsubTX = subscribeToUserCollection(dataOwnerUid, 'transactions', (transactions) => {
+        setState((prev) => ({ ...prev, transactions }));
+      });
+      const unsubCamp = subscribeToUserCollection(dataOwnerUid, 'campaigns', (campaigns) => {
+        setState((prev) => ({ ...prev, campaigns }));
+      });
+      const unsubLeads = subscribeToUserCollection(dataOwnerUid, 'leads', (leads) => {
+        setState((prev) => ({ ...prev, leads }));
+      });
+      const unsubTasks = subscribeToUserCollection(dataOwnerUid, 'tasks', (tasks) => {
+        setState((prev) => ({ ...prev, tasks }));
+      });
+      const unsubStock = subscribeToUserCollection(dataOwnerUid, 'stockItems', (stockItems) => {
+        setState((prev) => ({ ...prev, stockItems }));
+      });
+      const unsubEvents = subscribeToUserCollection(dataOwnerUid, 'events', (events) => {
+        setState((prev) => ({ ...prev, events }));
+      });
+      const unsubSocial = subscribeToUserCollection(dataOwnerUid, 'socialPosts', (socialPosts) => {
+        setState((prev) => ({ ...prev, socialPosts }));
+      });
+      const unsubDesignProjects = subscribeToUserCollection(dataOwnerUid, 'designProjects', (designProjects) => {
+        setState((prev) => ({ ...prev, designProjects }));
+      });
+      const unsubDesignFolders = subscribeToUserCollection(dataOwnerUid, 'designFolders', (designFolders) => {
+        setState((prev) => ({ ...prev, designFolders }));
+      });
+      const unsubDesignBriefings = subscribeToUserCollection(dataOwnerUid, 'designBriefings', (designBriefings) => {
+        setState((prev) => ({ ...prev, designBriefings }));
+      });
+      const unsubDesignPackages = subscribeToUserCollection(dataOwnerUid, 'designPackages', (designPackages) => {
+        setState((prev) => ({ ...prev, designPackages }));
+      });
+      const unsubDesignComments = subscribeToUserCollection(dataOwnerUid, 'designComments', (designComments) => {
+        setState((prev) => ({ ...prev, designComments }));
+      });
+      const unsubMktCamp = subscribeToUserCollection(dataOwnerUid, 'marketingCampaigns', (marketingCampaigns) => {
+        setState((prev) => ({ ...prev, marketingCampaigns }));
+      });
+      const unsubMktEd = subscribeToUserCollection(dataOwnerUid, 'marketingEditorials', (marketingEditorials) => {
+        setState((prev) => ({ ...prev, marketingEditorials }));
+      });
+      const unsubMktFun = subscribeToUserCollection(dataOwnerUid, 'marketingFunnels', (marketingFunnels) => {
+        setState((prev) => ({ ...prev, marketingFunnels }));
+      });
+      const unsubMktEmails = subscribeToUserCollection(dataOwnerUid, 'marketingEmailFlows', (marketingEmailFlows) => {
+        setState((prev) => ({ ...prev, marketingEmailFlows }));
+      });
+      const unsubMktCopies = subscribeToUserCollection(dataOwnerUid, 'marketingCopies', (marketingCopies) => {
+        setState((prev) => ({ ...prev, marketingCopies }));
+      });
+
+      activeDataUnsubs.push(
+        unsubKPIs,
+        unsubTX,
+        unsubCamp,
+        unsubLeads,
+        unsubTasks,
+        unsubStock,
+        unsubEvents,
+        unsubSocial,
+        unsubDesignProjects,
+        unsubDesignFolders,
+        unsubDesignBriefings,
+        unsubDesignPackages,
+        unsubDesignComments,
+        unsubMktCamp,
+        unsubMktEd,
+        unsubMktFun,
+        unsubMktEmails,
+        unsubMktCopies
+      );
+    };
+
     const resolveActiveUser = async () => {
       clearSubscriptions();
+      activeDataUnsubs.forEach((u) => u());
+      activeDataUnsubs = [];
 
       const currentAuthUser = auth.currentUser;
       const stored = getStoredSession();
@@ -102,10 +187,17 @@ export default function App() {
       setUser(activeUserObj);
 
       if (activeUid) {
+        let lastSubscribedDataUid = '';
+
         // Realtime subscription to User Profile
         const unsubProfile = subscribeToUserProfile(activeUid, (p) => {
           if (p) {
             setUserProfile(p);
+            const targetWorkspace = (p.userType === 'employee' && p.agencyOwnerUid) ? p.agencyOwnerUid : activeUid!;
+            if (targetWorkspace !== lastSubscribedDataUid) {
+              lastSubscribedDataUid = targetWorkspace;
+              initDataSubscriptions(targetWorkspace);
+            }
           } else if (activeUserObj) {
             // Default active profile state if doc is not initialized
             setUserProfile({
@@ -120,86 +212,13 @@ export default function App() {
               createdAt: new Date().toLocaleDateString('pt-BR'),
               allowedModules: ALL_OPERATIONAL_MODULE_IDS,
             });
+            if (activeUid !== lastSubscribedDataUid) {
+              lastSubscribedDataUid = activeUid!;
+              initDataSubscriptions(activeUid!);
+            }
           }
         });
-        unsubs.push(unsubProfile);
-
-        // Realtime subscriptions to User Subcollections
-        const unsubKPIs = subscribeToUserCollection(activeUid, 'kpiPeriods', (kpiPeriods) => {
-          setState((prev) => ({ ...prev, kpiPeriods }));
-        });
-        const unsubTX = subscribeToUserCollection(activeUid, 'transactions', (transactions) => {
-          setState((prev) => ({ ...prev, transactions }));
-        });
-        const unsubCamp = subscribeToUserCollection(activeUid, 'campaigns', (campaigns) => {
-          setState((prev) => ({ ...prev, campaigns }));
-        });
-        const unsubLeads = subscribeToUserCollection(activeUid, 'leads', (leads) => {
-          setState((prev) => ({ ...prev, leads }));
-        });
-        const unsubTasks = subscribeToUserCollection(activeUid, 'tasks', (tasks) => {
-          setState((prev) => ({ ...prev, tasks }));
-        });
-        const unsubStock = subscribeToUserCollection(activeUid, 'stockItems', (stockItems) => {
-          setState((prev) => ({ ...prev, stockItems }));
-        });
-        const unsubEvents = subscribeToUserCollection(activeUid, 'events', (events) => {
-          setState((prev) => ({ ...prev, events }));
-        });
-        const unsubSocial = subscribeToUserCollection(activeUid, 'socialPosts', (socialPosts) => {
-          setState((prev) => ({ ...prev, socialPosts }));
-        });
-        const unsubDesignProjects = subscribeToUserCollection(activeUid, 'designProjects', (designProjects) => {
-          setState((prev) => ({ ...prev, designProjects }));
-        });
-        const unsubDesignFolders = subscribeToUserCollection(activeUid, 'designFolders', (designFolders) => {
-          setState((prev) => ({ ...prev, designFolders }));
-        });
-        const unsubDesignBriefings = subscribeToUserCollection(activeUid, 'designBriefings', (designBriefings) => {
-          setState((prev) => ({ ...prev, designBriefings }));
-        });
-        const unsubDesignPackages = subscribeToUserCollection(activeUid, 'designPackages', (designPackages) => {
-          setState((prev) => ({ ...prev, designPackages }));
-        });
-        const unsubDesignComments = subscribeToUserCollection(activeUid, 'designComments', (designComments) => {
-          setState((prev) => ({ ...prev, designComments }));
-        });
-        const unsubMktCamp = subscribeToUserCollection(activeUid, 'marketingCampaigns', (marketingCampaigns) => {
-          setState((prev) => ({ ...prev, marketingCampaigns }));
-        });
-        const unsubMktEd = subscribeToUserCollection(activeUid, 'marketingEditorials', (marketingEditorials) => {
-          setState((prev) => ({ ...prev, marketingEditorials }));
-        });
-        const unsubMktFun = subscribeToUserCollection(activeUid, 'marketingFunnels', (marketingFunnels) => {
-          setState((prev) => ({ ...prev, marketingFunnels }));
-        });
-        const unsubMktEmails = subscribeToUserCollection(activeUid, 'marketingEmailFlows', (marketingEmailFlows) => {
-          setState((prev) => ({ ...prev, marketingEmailFlows }));
-        });
-        const unsubMktCopies = subscribeToUserCollection(activeUid, 'marketingCopies', (marketingCopies) => {
-          setState((prev) => ({ ...prev, marketingCopies }));
-        });
-
-        unsubs.push(
-          unsubKPIs,
-          unsubTX,
-          unsubCamp,
-          unsubLeads,
-          unsubTasks,
-          unsubStock,
-          unsubEvents,
-          unsubSocial,
-          unsubDesignProjects,
-          unsubDesignFolders,
-          unsubDesignBriefings,
-          unsubDesignPackages,
-          unsubDesignComments,
-          unsubMktCamp,
-          unsubMktEd,
-          unsubMktFun,
-          unsubMktEmails,
-          unsubMktCopies
-        );
+        unsubs.push(unsubProfile, () => activeDataUnsubs.forEach((u) => u()));
       } else {
         setUserProfile(null);
       }
@@ -250,10 +269,19 @@ export default function App() {
     }
   };
 
+  // Helper to resolve workspace UID (shared for agency staff, isolated for SaaS clients)
+  const getWorkspaceTargetUid = () => {
+    if (userProfile?.userType === 'employee' && userProfile?.agencyOwnerUid) {
+      return userProfile.agencyOwnerUid;
+    }
+    return user?.uid || null;
+  };
+
   // Realtime Firestore CRUD Handlers
   const handleAddKPIPeriod = async (period: any) => {
-    if (user) {
-      await addCollectionItem(user.uid, 'kpiPeriods', period);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await addCollectionItem(targetUid, 'kpiPeriods', period);
     } else {
       setState((prev) => ({
         ...prev,
@@ -263,8 +291,9 @@ export default function App() {
   };
 
   const handleDeleteKPIPeriod = async (id: string) => {
-    if (user) {
-      await deleteCollectionItem(user.uid, 'kpiPeriods', id);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await deleteCollectionItem(targetUid, 'kpiPeriods', id);
     } else {
       setState((prev) => ({
         ...prev,
@@ -274,8 +303,9 @@ export default function App() {
   };
 
   const handleAddTransaction = async (t: any) => {
-    if (user) {
-      await addCollectionItem(user.uid, 'transactions', t);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await addCollectionItem(targetUid, 'transactions', t);
     } else {
       setState((prev) => ({
         ...prev,
@@ -285,8 +315,9 @@ export default function App() {
   };
 
   const handleDeleteTransaction = async (id: string) => {
-    if (user) {
-      await deleteCollectionItem(user.uid, 'transactions', id);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await deleteCollectionItem(targetUid, 'transactions', id);
     } else {
       setState((prev) => ({
         ...prev,
@@ -296,8 +327,9 @@ export default function App() {
   };
 
   const handleAddCampaign = async (c: any) => {
-    if (user) {
-      await addCollectionItem(user.uid, 'campaigns', c);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await addCollectionItem(targetUid, 'campaigns', c);
     } else {
       setState((prev) => ({
         ...prev,
@@ -307,8 +339,9 @@ export default function App() {
   };
 
   const handleDeleteCampaign = async (id: string) => {
-    if (user) {
-      await deleteCollectionItem(user.uid, 'campaigns', id);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await deleteCollectionItem(targetUid, 'campaigns', id);
     } else {
       setState((prev) => ({
         ...prev,
@@ -318,8 +351,9 @@ export default function App() {
   };
 
   const handleAddSocialPost = async (post: any) => {
-    if (user) {
-      await addCollectionItem(user.uid, 'socialPosts', post);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await addCollectionItem(targetUid, 'socialPosts', post);
     } else {
       setState((prev) => ({
         ...prev,
@@ -329,8 +363,9 @@ export default function App() {
   };
 
   const handleDeleteSocialPost = async (id: string) => {
-    if (user) {
-      await deleteCollectionItem(user.uid, 'socialPosts', id);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await deleteCollectionItem(targetUid, 'socialPosts', id);
     } else {
       setState((prev) => ({
         ...prev,
@@ -340,8 +375,9 @@ export default function App() {
   };
 
   const handleAddStockItem = async (item: any) => {
-    if (user) {
-      await addCollectionItem(user.uid, 'stockItems', item);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await addCollectionItem(targetUid, 'stockItems', item);
     } else {
       setState((prev) => ({
         ...prev,
@@ -351,8 +387,9 @@ export default function App() {
   };
 
   const handleDeleteStockItem = async (id: string) => {
-    if (user) {
-      await deleteCollectionItem(user.uid, 'stockItems', id);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await deleteCollectionItem(targetUid, 'stockItems', id);
     } else {
       setState((prev) => ({
         ...prev,
@@ -362,8 +399,9 @@ export default function App() {
   };
 
   const handleAddTask = async (task: any) => {
-    if (user) {
-      await addCollectionItem(user.uid, 'tasks', task);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await addCollectionItem(targetUid, 'tasks', task);
     } else {
       setState((prev) => ({
         ...prev,
@@ -373,8 +411,9 @@ export default function App() {
   };
 
   const handleUpdateTaskStatus = async (id: string, status: any) => {
-    if (user) {
-      await updateCollectionItem(user.uid, 'tasks', id, { status });
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await updateCollectionItem(targetUid, 'tasks', id, { status });
     } else {
       setState((prev) => ({
         ...prev,
@@ -384,8 +423,9 @@ export default function App() {
   };
 
   const handleDeleteTask = async (id: string) => {
-    if (user) {
-      await deleteCollectionItem(user.uid, 'tasks', id);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await deleteCollectionItem(targetUid, 'tasks', id);
     } else {
       setState((prev) => ({
         ...prev,
@@ -395,8 +435,9 @@ export default function App() {
   };
 
   const handleAddLead = async (lead: any) => {
-    if (user) {
-      await addCollectionItem(user.uid, 'leads', lead);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await addCollectionItem(targetUid, 'leads', lead);
     } else {
       setState((prev) => ({
         ...prev,
@@ -406,8 +447,9 @@ export default function App() {
   };
 
   const handleUpdateLeadStatus = async (id: string, status: any) => {
-    if (user) {
-      await updateCollectionItem(user.uid, 'leads', id, { status });
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await updateCollectionItem(targetUid, 'leads', id, { status });
     } else {
       setState((prev) => ({
         ...prev,
@@ -417,8 +459,9 @@ export default function App() {
   };
 
   const handleDeleteLead = async (id: string) => {
-    if (user) {
-      await deleteCollectionItem(user.uid, 'leads', id);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await deleteCollectionItem(targetUid, 'leads', id);
     } else {
       setState((prev) => ({
         ...prev,
@@ -428,8 +471,9 @@ export default function App() {
   };
 
   const handleAddEvent = async (ev: any) => {
-    if (user) {
-      await addCollectionItem(user.uid, 'events', ev);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await addCollectionItem(targetUid, 'events', ev);
     } else {
       setState((prev) => ({
         ...prev,
@@ -439,8 +483,9 @@ export default function App() {
   };
 
   const handleDeleteEvent = async (id: string) => {
-    if (user) {
-      await deleteCollectionItem(user.uid, 'events', id);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await deleteCollectionItem(targetUid, 'events', id);
     } else {
       setState((prev) => ({
         ...prev,
@@ -451,8 +496,9 @@ export default function App() {
 
   // Design Hub Handlers
   const handleAddDesignProject = async (proj: any) => {
-    if (user) {
-      await addCollectionItem(user.uid, 'designProjects', proj);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await addCollectionItem(targetUid, 'designProjects', proj);
     } else {
       setState((prev) => ({
         ...prev,
@@ -462,8 +508,9 @@ export default function App() {
   };
 
   const handleUpdateDesignProject = async (id: string, data: any) => {
-    if (user) {
-      await updateCollectionItem(user.uid, 'designProjects', id, data);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await updateCollectionItem(targetUid, 'designProjects', id, data);
     } else {
       setState((prev) => ({
         ...prev,
@@ -475,8 +522,9 @@ export default function App() {
   };
 
   const handleDeleteDesignProject = async (id: string) => {
-    if (user) {
-      await deleteCollectionItem(user.uid, 'designProjects', id);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await deleteCollectionItem(targetUid, 'designProjects', id);
     } else {
       setState((prev) => ({
         ...prev,
@@ -486,8 +534,9 @@ export default function App() {
   };
 
   const handleAddDesignFolder = async (folder: any) => {
-    if (user) {
-      await addCollectionItem(user.uid, 'designFolders', folder);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await addCollectionItem(targetUid, 'designFolders', folder);
     } else {
       setState((prev) => ({
         ...prev,
@@ -497,8 +546,9 @@ export default function App() {
   };
 
   const handleAddDesignBriefing = async (briefing: any) => {
-    if (user) {
-      await addCollectionItem(user.uid, 'designBriefings', briefing);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await addCollectionItem(targetUid, 'designBriefings', briefing);
     } else {
       setState((prev) => ({
         ...prev,
@@ -508,8 +558,9 @@ export default function App() {
   };
 
   const handleUpdateDesignBriefing = async (id: string, data: any) => {
-    if (user) {
-      await updateCollectionItem(user.uid, 'designBriefings', id, data);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await updateCollectionItem(targetUid, 'designBriefings', id, data);
     } else {
       setState((prev) => ({
         ...prev,
@@ -521,8 +572,9 @@ export default function App() {
   };
 
   const handleAddDesignPackage = async (pkg: any) => {
-    if (user) {
-      await addCollectionItem(user.uid, 'designPackages', pkg);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await addCollectionItem(targetUid, 'designPackages', pkg);
     } else {
       setState((prev) => ({
         ...prev,
@@ -532,8 +584,9 @@ export default function App() {
   };
 
   const handleUpdateDesignPackage = async (id: string, data: any) => {
-    if (user) {
-      await updateCollectionItem(user.uid, 'designPackages', id, data);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await updateCollectionItem(targetUid, 'designPackages', id, data);
     } else {
       setState((prev) => ({
         ...prev,
@@ -545,8 +598,9 @@ export default function App() {
   };
 
   const handleAddDesignComment = async (comment: any) => {
-    if (user) {
-      await addCollectionItem(user.uid, 'designComments', comment);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await addCollectionItem(targetUid, 'designComments', comment);
     } else {
       setState((prev) => ({
         ...prev,
@@ -556,8 +610,9 @@ export default function App() {
   };
 
   const handleDeleteDesignFolder = async (id: string) => {
-    if (user) {
-      await deleteCollectionItem(user.uid, 'designFolders', id);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await deleteCollectionItem(targetUid, 'designFolders', id);
     } else {
       setState((prev) => ({
         ...prev,
@@ -567,8 +622,9 @@ export default function App() {
   };
 
   const handleDeleteDesignBriefing = async (id: string) => {
-    if (user) {
-      await deleteCollectionItem(user.uid, 'designBriefings', id);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await deleteCollectionItem(targetUid, 'designBriefings', id);
     } else {
       setState((prev) => ({
         ...prev,
@@ -578,8 +634,9 @@ export default function App() {
   };
 
   const handleDeleteDesignPackage = async (id: string) => {
-    if (user) {
-      await deleteCollectionItem(user.uid, 'designPackages', id);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await deleteCollectionItem(targetUid, 'designPackages', id);
     } else {
       setState((prev) => ({
         ...prev,
@@ -589,8 +646,9 @@ export default function App() {
   };
 
   const handleDeleteDesignComment = async (id: string) => {
-    if (user) {
-      await deleteCollectionItem(user.uid, 'designComments', id);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await deleteCollectionItem(targetUid, 'designComments', id);
     } else {
       setState((prev) => ({
         ...prev,
@@ -600,21 +658,22 @@ export default function App() {
   };
 
   const handleClearAllDesignData = async () => {
-    if (user) {
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
       for (const p of state.designProjects || []) {
-        await deleteCollectionItem(user.uid, 'designProjects', p.id);
+        await deleteCollectionItem(targetUid, 'designProjects', p.id);
       }
       for (const f of state.designFolders || []) {
-        await deleteCollectionItem(user.uid, 'designFolders', f.id);
+        await deleteCollectionItem(targetUid, 'designFolders', f.id);
       }
       for (const b of state.designBriefings || []) {
-        await deleteCollectionItem(user.uid, 'designBriefings', b.id);
+        await deleteCollectionItem(targetUid, 'designBriefings', b.id);
       }
       for (const pkg of state.designPackages || []) {
-        await deleteCollectionItem(user.uid, 'designPackages', pkg.id);
+        await deleteCollectionItem(targetUid, 'designPackages', pkg.id);
       }
       for (const c of state.designComments || []) {
-        await deleteCollectionItem(user.uid, 'designComments', c.id);
+        await deleteCollectionItem(targetUid, 'designComments', c.id);
       }
     }
     setState((prev) => ({
@@ -629,8 +688,9 @@ export default function App() {
 
   // Marketing Hub Handlers
   const handleAddMarketingCampaign = async (campaign: any) => {
-    if (user) {
-      await addCollectionItem(user.uid, 'marketingCampaigns', campaign);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await addCollectionItem(targetUid, 'marketingCampaigns', campaign);
     } else {
       setState((prev) => ({
         ...prev,
@@ -640,8 +700,9 @@ export default function App() {
   };
 
   const handleDeleteMarketingCampaign = async (id: string) => {
-    if (user) {
-      await deleteCollectionItem(user.uid, 'marketingCampaigns', id);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await deleteCollectionItem(targetUid, 'marketingCampaigns', id);
     } else {
       setState((prev) => ({
         ...prev,
@@ -651,8 +712,9 @@ export default function App() {
   };
 
   const handleAddMarketingEditorial = async (item: any) => {
-    if (user) {
-      await addCollectionItem(user.uid, 'marketingEditorials', item);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await addCollectionItem(targetUid, 'marketingEditorials', item);
     } else {
       setState((prev) => ({
         ...prev,
@@ -662,8 +724,9 @@ export default function App() {
   };
 
   const handleDeleteMarketingEditorial = async (id: string) => {
-    if (user) {
-      await deleteCollectionItem(user.uid, 'marketingEditorials', id);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await deleteCollectionItem(targetUid, 'marketingEditorials', id);
     } else {
       setState((prev) => ({
         ...prev,
@@ -673,8 +736,9 @@ export default function App() {
   };
 
   const handleAddMarketingFunnel = async (funnel: any) => {
-    if (user) {
-      await addCollectionItem(user.uid, 'marketingFunnels', funnel);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await addCollectionItem(targetUid, 'marketingFunnels', funnel);
     } else {
       setState((prev) => ({
         ...prev,
@@ -684,8 +748,9 @@ export default function App() {
   };
 
   const handleDeleteMarketingFunnel = async (id: string) => {
-    if (user) {
-      await deleteCollectionItem(user.uid, 'marketingFunnels', id);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await deleteCollectionItem(targetUid, 'marketingFunnels', id);
     } else {
       setState((prev) => ({
         ...prev,
@@ -695,8 +760,9 @@ export default function App() {
   };
 
   const handleAddMarketingEmailFlow = async (flow: any) => {
-    if (user) {
-      await addCollectionItem(user.uid, 'marketingEmailFlows', flow);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await addCollectionItem(targetUid, 'marketingEmailFlows', flow);
     } else {
       setState((prev) => ({
         ...prev,
@@ -706,8 +772,9 @@ export default function App() {
   };
 
   const handleDeleteMarketingEmailFlow = async (id: string) => {
-    if (user) {
-      await deleteCollectionItem(user.uid, 'marketingEmailFlows', id);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await deleteCollectionItem(targetUid, 'marketingEmailFlows', id);
     } else {
       setState((prev) => ({
         ...prev,
@@ -717,8 +784,9 @@ export default function App() {
   };
 
   const handleAddMarketingCopyScript = async (copy: any) => {
-    if (user) {
-      await addCollectionItem(user.uid, 'marketingCopies', copy);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await addCollectionItem(targetUid, 'marketingCopies', copy);
     } else {
       setState((prev) => ({
         ...prev,
@@ -728,8 +796,9 @@ export default function App() {
   };
 
   const handleDeleteMarketingCopyScript = async (id: string) => {
-    if (user) {
-      await deleteCollectionItem(user.uid, 'marketingCopies', id);
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await deleteCollectionItem(targetUid, 'marketingCopies', id);
     } else {
       setState((prev) => ({
         ...prev,
@@ -739,21 +808,22 @@ export default function App() {
   };
 
   const handleClearAllMarketingData = async () => {
-    if (user) {
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
       for (const c of state.marketingCampaigns || []) {
-        await deleteCollectionItem(user.uid, 'marketingCampaigns', c.id);
+        await deleteCollectionItem(targetUid, 'marketingCampaigns', c.id);
       }
       for (const e of state.marketingEditorials || []) {
-        await deleteCollectionItem(user.uid, 'marketingEditorials', e.id);
+        await deleteCollectionItem(targetUid, 'marketingEditorials', e.id);
       }
       for (const f of state.marketingFunnels || []) {
-        await deleteCollectionItem(user.uid, 'marketingFunnels', f.id);
+        await deleteCollectionItem(targetUid, 'marketingFunnels', f.id);
       }
       for (const ef of state.marketingEmailFlows || []) {
-        await deleteCollectionItem(user.uid, 'marketingEmailFlows', ef.id);
+        await deleteCollectionItem(targetUid, 'marketingEmailFlows', ef.id);
       }
       for (const cp of state.marketingCopies || []) {
-        await deleteCollectionItem(user.uid, 'marketingCopies', cp.id);
+        await deleteCollectionItem(targetUid, 'marketingCopies', cp.id);
       }
     }
     setState((prev) => ({

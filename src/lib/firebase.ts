@@ -54,13 +54,15 @@ export interface FirestoreUserProfile {
   email: string;
   agencyName: string;
   role?: string;
+  userType?: 'employee' | 'client';
+  agencyOwnerUid?: string;
   designRole?: 'admin' | 'lider' | 'designer' | 'funcionario' | 'cliente';
   canEditDesigns?: boolean;
   canCreateDesigns?: boolean;
   canApproveDesigns?: boolean;
   canPublishPosts?: boolean;
   canDeleteDesigns?: boolean;
-  plan: 'Trial Gratuito' | 'Starter' | 'Pro' | 'Agency';
+  plan: 'Gratuito / Equipe' | 'Trial Gratuito' | 'Starter' | 'Pro' | 'Agency';
   status: 'active' | 'Trial Expirado' | 'cancelled' | 'blocked';
   trialStartDate: number;
   trialEndsAt: number;
@@ -469,8 +471,16 @@ export async function createUserWithAuthAndPermissions(userData: {
   password?: string;
   name?: string;
   role?: string;
+  userType?: 'employee' | 'client';
+  agencyOwnerUid?: string;
+  designRole?: 'admin' | 'lider' | 'designer' | 'funcionario' | 'cliente';
+  canEditDesigns?: boolean;
+  canCreateDesigns?: boolean;
+  canApproveDesigns?: boolean;
+  canPublishPosts?: boolean;
+  canDeleteDesigns?: boolean;
   agencyName?: string;
-  plan?: 'Trial Gratuito' | 'Starter' | 'Pro' | 'Agency';
+  plan?: 'Gratuito / Equipe' | 'Trial Gratuito' | 'Starter' | 'Pro' | 'Agency';
   status?: 'active' | 'Trial Expirado' | 'cancelled' | 'blocked';
   allowedModules?: ViewType[];
   notes?: string;
@@ -533,14 +543,23 @@ export async function createUserWithAuthAndPermissions(userData: {
 
   const now = Date.now();
   const FOURTEEN_DAYS = 14 * 24 * 60 * 60 * 1000;
+  const isEmployee = userData.userType === 'employee';
 
   const fullProfile: FirestoreUserProfile = {
     uid: targetUid,
     name: userData.name?.trim() || normalizedEmail.split('@')[0],
     email: normalizedEmail,
     agencyName: userData.agencyName?.trim() || 'Agência Digital',
-    role: userData.role?.trim() || 'Gestor de Tráfego',
-    plan: userData.plan || 'Trial Gratuito',
+    role: userData.role?.trim() || (isEmployee ? 'Membro da Equipe' : 'Cliente AgencyOS'),
+    userType: userData.userType || (isEmployee ? 'employee' : 'client'),
+    agencyOwnerUid: userData.agencyOwnerUid || undefined,
+    designRole: userData.designRole || (isEmployee ? 'funcionario' : 'cliente'),
+    canEditDesigns: userData.canEditDesigns !== undefined ? userData.canEditDesigns : true,
+    canCreateDesigns: userData.canCreateDesigns !== undefined ? userData.canCreateDesigns : true,
+    canApproveDesigns: userData.canApproveDesigns !== undefined ? userData.canApproveDesigns : false,
+    canPublishPosts: userData.canPublishPosts !== undefined ? userData.canPublishPosts : true,
+    canDeleteDesigns: userData.canDeleteDesigns !== undefined ? userData.canDeleteDesigns : false,
+    plan: isEmployee ? 'Gratuito / Equipe' : (userData.plan || 'Trial Gratuito'),
     status: userData.status || 'active',
     trialStartDate: now,
     trialEndsAt: now + FOURTEEN_DAYS,
@@ -548,18 +567,20 @@ export async function createUserWithAuthAndPermissions(userData: {
     notes: userData.notes?.trim() || '',
     allowedModules: userData.allowedModules && userData.allowedModules.length > 0
       ? userData.allowedModules
-      : ['dashboard', 'campanhas', 'maps-scraper', 'social-hub', 'relatorios'],
+      : ['dashboard', 'designer', 'social-hub', 'kanban', 'agenda', 'relatorios'],
     tempPasswordHint: userData.password ? userData.password : undefined,
   };
 
   const userRef = doc(db, 'users', targetUid);
   await setDoc(userRef, fullProfile, { merge: true });
 
-  // Seed default data for the user so their workspace is functional immediately
-  try {
-    await seedInitialUserData(targetUid);
-  } catch (seedErr) {
-    console.warn('Erro ao inicializar subcoleções:', seedErr);
+  // Seed default data for the user if it is an independent client
+  if (!isEmployee) {
+    try {
+      await seedInitialUserData(targetUid);
+    } catch (seedErr) {
+      console.warn('Erro ao inicializar subcoleções:', seedErr);
+    }
   }
 
   return fullProfile;

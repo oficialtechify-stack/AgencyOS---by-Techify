@@ -25,7 +25,9 @@ export interface UserProfile {
   email: string;
   agencyName?: string;
   role?: string;
-  plan: 'Starter' | 'Pro' | 'Agency' | 'Trial Gratuito';
+  userType?: 'employee' | 'client';
+  agencyOwnerUid?: string;
+  plan: 'Starter' | 'Pro' | 'Agency' | 'Trial Gratuito' | 'Gratuito / Equipe';
   status: 'active' | 'Trial Expirado' | 'cancelled' | 'blocked';
   createdAt: string;
   allowedModules?: ViewType[];

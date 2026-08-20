@@ -1,52 +1,57 @@
 import React, { useState, useEffect } from 'react';
 import {
   Users,
+  Search,
+  UserPlus,
+  Shield,
+  Trash2,
+  Lock,
+  Unlock,
+  Key,
+  Copy,
+  Sparkles,
+  Briefcase,
+  AlertCircle,
+  Eye,
+  EyeOff,
+  Pencil,
+  Ban,
   CheckCircle2,
   Clock,
   Crown,
-  Zap,
-  Star,
-  TrendingUp,
-  Plus,
-  RefreshCw,
-  Search,
-  Pencil,
-  Trash2,
-  Ban,
-  ShieldCheck,
-  Shield,
-  X,
-  UserPlus,
-  Sliders,
-  Bell,
-  BarChart2,
-  Check,
-  Briefcase,
-  AlertCircle,
-  Key,
-  Lock,
-  Unlock,
-  Eye,
-  EyeOff,
-  Copy,
-  Sparkles,
-  Layers,
+  LayoutDashboard,
+  Megaphone,
   Palette,
+  Share2,
+  Kanban,
+  FileText,
+  Calendar,
+  Layers,
+  Check,
+  X,
+  RefreshCw,
+  Zap,
+  Building2,
+  DollarSign,
+  UserCheck,
+  SlidersHorizontal,
+  ArrowRightLeft,
+  ChevronRight,
+  TrendingUp,
 } from 'lucide-react';
+import { ViewType } from '../types';
 import {
   FirestoreUserProfile,
   subscribeAllUsers,
-  deleteUserFromFirestore,
   createUserWithAuthAndPermissions,
-  updateUserInFirestore,
   updateUserPermissionsInFirestore,
+  updateUserInFirestore,
+  deleteUserFromFirestore,
 } from '../lib/firebase';
-import { ViewType } from '../types';
 import {
   ALL_SYSTEM_MODULES,
   ALL_OPERATIONAL_MODULE_IDS,
   PERMISSION_PRESETS,
-  SystemModuleInfo,
   isUserMasterAdmin,
 } from '../lib/permissions';
 
@@ -54,62 +59,55 @@ interface AdminViewProps {
   currentUser?: FirestoreUserProfile | null;
 }
 
-const INITIAL_DEMO_USERS: Array<Omit<FirestoreUserProfile, 'uid'>> = [
+// Initial Demo Seed Data
+const INITIAL_DEMO_USERS: Partial<FirestoreUserProfile & { password?: string }>[] = [
   {
-    name: 'Aigera Kabane',
-    email: 'aigerakabane81983521523@gmail.com',
-    agencyName: 'Techify Agency 1',
-    role: 'Gestor de Tráfego',
-    plan: 'Trial Gratuito',
-    status: 'Trial Expirado',
-    trialStartDate: new Date('2026-07-13').getTime(),
-    trialEndsAt: new Date('2026-07-27').getTime(),
-    createdAt: '13/07/2026',
-    notes: '',
-    allowedModules: ['dashboard', 'campanhas', 'calculadora-roi', 'relatorios'],
-    tempPasswordHint: 'Aigera@2026!',
+    name: 'Vitória Designer',
+    email: 'vitoriajob02@gmail.com',
+    role: 'Líder de Design',
+    agencyName: 'Agência Digital',
+    userType: 'employee',
+    plan: 'Gratuito / Equipe',
+    status: 'active',
+    designRole: 'lider',
+    canEditDesigns: true,
+    canCreateDesigns: true,
+    canApproveDesigns: true,
+    canPublishPosts: true,
+    canDeleteDesigns: true,
+    notes: 'Líder da equipe criativa com acesso ao workspace compartilhado',
+    allowedModules: ['dashboard', 'designer', 'social-hub', 'kanban', 'agenda', 'relatorios'],
+    tempPasswordHint: 'Vitoria@2026',
   },
   {
-    name: 'Techify Master',
-    email: 'oficialtechify@gmail.com',
-    agencyName: 'Techify Brasil',
-    role: 'Admin Geral',
-    plan: 'Agency',
+    name: 'Marcos Roberto',
+    email: 'marcos.designer@agency.com',
+    role: 'Designer Gráfico',
+    agencyName: 'Agência Digital',
+    userType: 'employee',
+    plan: 'Gratuito / Equipe',
     status: 'active',
-    trialStartDate: new Date('2026-07-04').getTime(),
-    trialEndsAt: new Date('2026-07-18').getTime(),
-    createdAt: '04/07/2026',
-    notes: 'Conta Master com Acesso Total',
-    allowedModules: ALL_OPERATIONAL_MODULE_IDS,
-    tempPasswordHint: 'Techify@2026Master',
-  },
-  {
-    name: 'Carlos Oliveira',
-    email: 'carlos.mkt@midiadigital.com',
-    agencyName: 'Mídia Digital SP',
-    role: 'Estrategista de Growth',
-    plan: 'Agency',
-    status: 'active',
-    trialStartDate: new Date('2026-06-01').getTime(),
-    trialEndsAt: new Date('2026-06-15').getTime(),
-    createdAt: '01/06/2026',
-    notes: 'Plano anual fechado',
-    allowedModules: ALL_OPERATIONAL_MODULE_IDS,
-    tempPasswordHint: 'Mkt@Digital2026',
-  },
-  {
-    name: 'Líder Designer',
-    email: 'designer.lider@agencia.com',
-    agencyName: 'Techify Criativos',
-    role: 'Diretor de Arte / Designer',
-    plan: 'Pro',
-    status: 'active',
-    trialStartDate: new Date('2026-07-01').getTime(),
-    trialEndsAt: new Date('2026-07-15').getTime(),
-    createdAt: '01/07/2026',
-    notes: 'Acesso liberado aos módulos criativos',
+    designRole: 'designer',
+    canEditDesigns: true,
+    canCreateDesigns: true,
+    canApproveDesigns: false,
+    canPublishPosts: true,
+    canDeleteDesigns: false,
+    notes: 'Designer interno para criação de posts e demandas',
     allowedModules: ['dashboard', 'designer', 'social-hub', 'kanban', 'agenda', 'relatorios'],
     tempPasswordHint: 'Designer@2026',
+  },
+  {
+    name: 'Nexus Tech Brasil',
+    email: 'contato@nexustech.com.br',
+    role: 'Cliente AgencyOS',
+    agencyName: 'Nexus Tech Brasil',
+    userType: 'client',
+    plan: 'Pro',
+    status: 'active',
+    notes: 'Assinante SaaS do AgencyOS com workspace próprio e isolado',
+    allowedModules: ['dashboard', 'campanhas', 'marketing', 'social-hub', 'relatorios', 'kpis', 'fluxo-caixa'],
+    tempPasswordHint: 'NexusPro@2026',
   },
 ];
 
@@ -119,10 +117,13 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('Todos');
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState<'Assinaturas' | 'Planos' | 'Atualizações' | 'Estatísticas'>('Assinaturas');
+  
+  // Primary Tabs
+  const [activeTab, setActiveTab] = useState<'Equipe' | 'Clientes' | 'Planos' | 'Atualizações' | 'Estatísticas'>('Equipe');
 
   // Modals state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [addUserTypeSelection, setAddUserTypeSelection] = useState<'employee' | 'client'>('employee');
   const [editingUser, setEditingUser] = useState<FirestoreUserProfile | null>(null);
   const [permissionsModalUser, setPermissionsModalUser] = useState<FirestoreUserProfile | null>(null);
   const [deletingUser, setDeletingUser] = useState<FirestoreUserProfile | null>(null);
@@ -132,12 +133,19 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
     name: '',
     email: '',
     password: 'AgOS@' + Math.random().toString(36).slice(-5),
-    role: 'Gestor de Tráfego',
+    role: 'Designer Gráfico',
+    userType: 'employee' as 'employee' | 'client',
     agencyName: 'Agência Digital',
-    plan: 'Pro' as FirestoreUserProfile['plan'],
+    plan: 'Gratuito / Equipe' as FirestoreUserProfile['plan'],
     status: 'active' as FirestoreUserProfile['status'],
     notes: '',
-    allowedModules: [...ALL_OPERATIONAL_MODULE_IDS] as ViewType[],
+    designRole: 'funcionario' as 'admin' | 'lider' | 'designer' | 'funcionario' | 'cliente',
+    canEditDesigns: true,
+    canCreateDesigns: true,
+    canApproveDesigns: false,
+    canPublishPosts: true,
+    canDeleteDesigns: false,
+    allowedModules: ['dashboard', 'designer', 'social-hub', 'kanban', 'agenda', 'relatorios'] as ViewType[],
   });
 
   const [currentSelectedModules, setCurrentSelectedModules] = useState<ViewType[]>([
@@ -171,7 +179,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
             INITIAL_DEMO_USERS.map((u, i) => ({
               ...u,
               uid: `demo-user-${i}`,
-            }))
+            })) as FirestoreUserProfile[]
           );
         } else {
           setUsers(data);
@@ -184,7 +192,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
           INITIAL_DEMO_USERS.map((u, i) => ({
             ...u,
             uid: `demo-user-${i}`,
-          }))
+          })) as FirestoreUserProfile[]
         );
         setLoading(false);
       }
@@ -213,7 +221,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
   const handleSeedDemoData = async () => {
     try {
       for (const demoUser of INITIAL_DEMO_USERS) {
-        await createUserWithAuthAndPermissions(demoUser);
+        await createUserWithAuthAndPermissions(demoUser as any);
       }
       showToast('Dados de usuários inicializados com permissões no Firestore!');
     } catch (err) {
@@ -222,7 +230,41 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
     }
   };
 
-  const filteredUsers = users.filter((u) => {
+  // User Categorization Helper: Is Employee vs Is Client
+  const isEmployeeUser = (u: FirestoreUserProfile) => {
+    if (u.userType === 'employee') return true;
+    if (u.userType === 'client') return false;
+    
+    // Auto-detection fallback for older records
+    if (isUserMasterAdmin(u, u.email)) return true;
+    const roleLow = (u.role || '').toLowerCase();
+    if (
+      roleLow.includes('designer') ||
+      roleLow.includes('lider') ||
+      roleLow.includes('líder') ||
+      roleLow.includes('gestor') ||
+      roleLow.includes('editor') ||
+      roleLow.includes('diretor') ||
+      roleLow.includes('copy') ||
+      roleLow.includes('colaborador') ||
+      roleLow.includes('funcionario') ||
+      roleLow.includes('funcionário') ||
+      roleLow.includes('estagiário') ||
+      roleLow.includes('equipe')
+    ) {
+      return true;
+    }
+    if (u.plan === 'Gratuito / Equipe') return true;
+    return false;
+  };
+
+  const employeeUsers = users.filter(isEmployeeUser);
+  const clientUsers = users.filter((u) => !isEmployeeUser(u));
+
+  // Current List based on Active Tab
+  const currentTabUsers = activeTab === 'Equipe' ? employeeUsers : clientUsers;
+
+  const filteredUsers = currentTabUsers.filter((u) => {
     const matchesSearch =
       u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       u.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -237,21 +279,31 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
     if (filterCategory === 'Starter') return u.plan === 'Starter';
     if (filterCategory === 'Pro') return u.plan === 'Pro';
     if (filterCategory === 'Agency') return u.plan === 'Agency';
+    if (filterCategory === 'Gratuito / Equipe') return u.plan === 'Gratuito / Equipe';
+    if (filterCategory === 'lider') return u.designRole === 'lider' || u.role?.toLowerCase().includes('lider') || u.role?.toLowerCase().includes('líder');
+    if (filterCategory === 'designer') return u.designRole === 'designer' || u.role?.toLowerCase().includes('designer');
+    if (filterCategory === 'gestor') return u.role?.toLowerCase().includes('gestor') || u.role?.toLowerCase().includes('tráfego');
     if (filterCategory === 'cancelled') return u.status === 'cancelled';
     if (filterCategory === 'blocked') return u.status === 'blocked';
 
     return true;
   });
 
-  const totalUsersCount = users.length;
-  const activeCount = users.filter((u) => u.status === 'active').length;
-  const trialCount = users.filter((u) => u.plan === 'Trial Gratuito' || u.status === 'Trial Expirado').length;
-  const paidCount = users.filter((u) => u.plan === 'Starter' || u.plan === 'Pro' || u.plan === 'Agency').length;
-  const starterCount = users.filter((u) => u.plan === 'Starter').length;
-  const proCount = users.filter((u) => u.plan === 'Pro').length;
-  const agencyCount = users.filter((u) => u.plan === 'Agency').length;
+  // Metrics
+  const totalEmployeesCount = employeeUsers.length;
+  const activeEmployeesCount = employeeUsers.filter((u) => u.status === 'active').length;
 
-  const mrrEst = starterCount * 99 + proCount * 199 + agencyCount * 499 + 1293;
+  const totalClientsCount = clientUsers.length;
+  const activeClientsCount = clientUsers.filter((u) => u.status === 'active').length;
+  const clientTrialCount = clientUsers.filter((u) => u.plan === 'Trial Gratuito' || u.status === 'Trial Expirado').length;
+
+  const clientPaidStarter = clientUsers.filter((u) => u.plan === 'Starter' && u.status === 'active').length;
+  const clientPaidPro = clientUsers.filter((u) => u.plan === 'Pro' && u.status === 'active').length;
+  const clientPaidAgency = clientUsers.filter((u) => u.plan === 'Agency' && u.status === 'active').length;
+  const clientTotalPaid = clientPaidStarter + clientPaidPro + clientPaidAgency;
+
+  // Real MRR calculated STRICTLY on active paying clients
+  const mrrEst = clientPaidStarter * 99 + clientPaidPro * 199 + clientPaidAgency * 499;
 
   const handleDeleteConfirm = async () => {
     if (!deletingUser) return;
@@ -263,6 +315,50 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
       console.error('Erro ao excluir usuário:', err);
       showToast('Erro ao tentar excluir usuário.');
     }
+  };
+
+  const handleOpenAddModal = (type: 'employee' | 'client') => {
+    setAddUserTypeSelection(type);
+    if (type === 'employee') {
+      setNewUser({
+        name: '',
+        email: '',
+        password: generateRandomPassword(),
+        role: 'Designer Gráfico',
+        userType: 'employee',
+        agencyName: currentUser?.agencyName || 'Agência Digital',
+        plan: 'Gratuito / Equipe',
+        status: 'active',
+        notes: 'Membro da equipe com acesso compartilhado às demandas',
+        designRole: 'designer',
+        canEditDesigns: true,
+        canCreateDesigns: true,
+        canApproveDesigns: false,
+        canPublishPosts: true,
+        canDeleteDesigns: false,
+        allowedModules: ['dashboard', 'designer', 'social-hub', 'kanban', 'agenda', 'relatorios'],
+      });
+    } else {
+      setNewUser({
+        name: '',
+        email: '',
+        password: generateRandomPassword(),
+        role: 'Cliente AgencyOS',
+        userType: 'client',
+        agencyName: 'Cliente Digital',
+        plan: 'Pro',
+        status: 'active',
+        notes: 'Assinante SaaS com workspace independente',
+        designRole: 'cliente',
+        canEditDesigns: false,
+        canCreateDesigns: false,
+        canApproveDesigns: true,
+        canPublishPosts: false,
+        canDeleteDesigns: false,
+        allowedModules: ['dashboard', 'campanhas', 'marketing', 'social-hub', 'relatorios'],
+      });
+    }
+    setIsAddModalOpen(true);
   };
 
   const handleCreateUser = async (e: React.FormEvent) => {
@@ -292,27 +388,25 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
         name: newUser.name.trim() || cleanEmail.split('@')[0],
         email: cleanEmail,
         password: newUser.password.trim(),
-        agencyName: newUser.agencyName.trim() || 'Agência Digital',
-        role: newUser.role.trim() || 'Gestor de Tráfego',
-        plan: newUser.plan,
+        userType: newUser.userType,
+        agencyOwnerUid: newUser.userType === 'employee' ? (currentUser?.uid || 'agency-master-owner') : undefined,
+        agencyName: newUser.agencyName.trim() || (newUser.userType === 'employee' ? 'Agência Digital' : 'Cliente Digital'),
+        role: newUser.role.trim() || (newUser.userType === 'employee' ? 'Designer Gráfico' : 'Cliente AgencyOS'),
+        plan: newUser.userType === 'employee' ? 'Gratuito / Equipe' : newUser.plan,
         status: newUser.status,
+        designRole: newUser.designRole,
+        canEditDesigns: newUser.canEditDesigns,
+        canCreateDesigns: newUser.canCreateDesigns,
+        canApproveDesigns: newUser.canApproveDesigns,
+        canPublishPosts: newUser.canPublishPosts,
+        canDeleteDesigns: newUser.canDeleteDesigns,
         allowedModules: newUser.allowedModules,
         notes: newUser.notes.trim(),
       });
 
-      showToast(`Usuário ${cleanEmail} cadastrado e liberado com sucesso!`);
+      const label = newUser.userType === 'employee' ? 'Funcionário/Membro da Equipe' : 'Cliente do AgencyOS';
+      showToast(`${label} ${cleanEmail} cadastrado com sucesso!`);
       setIsAddModalOpen(false);
-      setNewUser({
-        name: '',
-        email: '',
-        password: generateRandomPassword(),
-        role: 'Gestor de Tráfego',
-        agencyName: 'Agência Digital',
-        plan: 'Pro',
-        status: 'active',
-        notes: '',
-        allowedModules: [...ALL_OPERATIONAL_MODULE_IDS],
-      });
     } catch (err: any) {
       console.error('Erro ao criar usuário:', err);
       showToast(err.message || 'Erro ao cadastrar usuário com credenciais.');
@@ -329,6 +423,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
       await updateUserInFirestore(editingUser.uid, {
         name: editingUser.name || '',
         email: editingUser.email || '',
+        userType: editingUser.userType,
         role: editingUser.role || 'Gestor de Tráfego',
         agencyName: editingUser.agencyName || '',
         plan: editingUser.plan,
@@ -343,6 +438,26 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
     } catch (err) {
       console.error('Erro ao atualizar usuário:', err);
       showToast('Erro ao salvar alterações.');
+    }
+  };
+
+  const handleToggleUserType = async (user: FirestoreUserProfile) => {
+    const isNowEmployee = isEmployeeUser(user);
+    const newType = isNowEmployee ? 'client' : 'employee';
+    const newPlan = newType === 'employee' ? 'Gratuito / Equipe' : 'Pro';
+    const newRole = newType === 'employee' ? 'Designer Gráfico' : 'Cliente AgencyOS';
+
+    try {
+      await updateUserInFirestore(user.uid, {
+        userType: newType,
+        plan: newPlan,
+        role: user.role === 'Cliente AgencyOS' ? 'Designer Gráfico' : user.role,
+        designRole: newType === 'employee' ? 'designer' : 'cliente',
+      });
+      showToast(`Usuário movido para ${newType === 'employee' ? '👥 Minha Equipe' : '💼 Clientes AgencyOS'}!`);
+    } catch (err) {
+      console.error('Erro ao alternar tipo de usuário:', err);
+      showToast('Erro ao alternar tipo de conta.');
     }
   };
 
@@ -375,48 +490,43 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
 
   const handleSavePermissions = async () => {
     if (!permissionsModalUser) return;
+
     try {
-      await updateUserPermissionsInFirestore(permissionsModalUser.uid, currentSelectedModules, {
-        designRole: permDesignRole,
-        canEditDesigns: permCanEditDesigns,
-        canCreateDesigns: permCanCreateDesigns,
-        canApproveDesigns: permCanApproveDesigns,
-        canPublishPosts: permCanPublishPosts,
-        canDeleteDesigns: permCanDeleteDesigns,
-      });
-      showToast(`Permissões de ${permissionsModalUser.email} salvas com sucesso!`);
+      await updateUserPermissionsInFirestore(
+        permissionsModalUser.uid,
+        currentSelectedModules,
+        {
+          designRole: permDesignRole,
+          canEditDesigns: permCanEditDesigns,
+          canCreateDesigns: permCanCreateDesigns,
+          canApproveDesigns: permCanApproveDesigns,
+          canPublishPosts: permCanPublishPosts,
+          canDeleteDesigns: permCanDeleteDesigns,
+        }
+      );
+      showToast(`Permissões e acessos de ${permissionsModalUser.email} atualizados com sucesso!`);
       setPermissionsModalUser(null);
     } catch (err) {
-      console.error('Erro ao salvar permissões:', err);
-      showToast('Erro ao salvar permissões no banco.');
-    }
-  };
-
-  const toggleModuleSelection = (moduleId: ViewType, currentList: ViewType[], setList: (l: ViewType[]) => void) => {
-    if (currentList.includes(moduleId)) {
-      setList(currentList.filter((id) => id !== moduleId));
-    } else {
-      setList([...currentList, moduleId]);
+      console.error('Erro ao atualizar permissões:', err);
+      showToast('Erro ao salvar permissões no banco de dados.');
     }
   };
 
   const handleToggleBlock = async (user: FirestoreUserProfile) => {
+    const newStatus = user.status === 'blocked' ? 'active' : 'blocked';
     try {
-      const newStatus = user.status === 'blocked' ? 'active' : 'blocked';
       await updateUserInFirestore(user.uid, { status: newStatus });
-      showToast(`Status de ${user.email} alterado para ${newStatus}`);
+      showToast(`Usuário ${user.email} foi ${newStatus === 'blocked' ? 'bloqueado' : 'desbloqueado'}.`);
     } catch (err) {
-      console.error(err);
-      showToast('Erro ao alterar status.');
+      console.error('Erro ao alterar status:', err);
+      showToast('Erro ao atualizar status do usuário.');
     }
   };
 
   const handleSelectRow = (uid: string) => {
-    if (selectedUserIds.includes(uid)) {
-      setSelectedUserIds(selectedUserIds.filter((id) => id !== uid));
-    } else {
-      setSelectedUserIds([...selectedUserIds, uid]);
-    }
+    setSelectedUserIds((prev) =>
+      prev.includes(uid) ? prev.filter((id) => id !== uid) : [...prev, uid]
+    );
   };
 
   const handleSelectAll = () => {
@@ -428,422 +538,979 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
   };
 
   return (
-    <div className="space-y-6 text-neutral-200 font-sans max-w-7xl mx-auto pb-16">
-      {/* Toast Notification */}
+    <div className="space-y-6 animate-fade-in text-neutral-200 pb-16">
+      {/* TOAST NOTIFICATION */}
       {toastMessage && (
-        <div className="fixed bottom-5 right-5 z-50 bg-neutral-900 border border-neutral-700 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 text-xs font-bold animate-fade-in">
-          <CheckCircle2 className="w-5 h-5 shrink-0" />
+        <div className="fixed bottom-6 right-6 z-50 bg-white text-black font-bold px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2 border border-neutral-200 animate-slide-up text-xs">
+          <Sparkles className="w-4 h-4 text-black" />
           <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* HEADER SECTION */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-neutral-800 pb-6">
+      {/* HEADER BAR */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-neutral-800/80 pb-6">
         <div>
-          <div className="flex items-center gap-2 mb-1.5">
-            <div className="p-1.5 rounded-lg bg-neutral-900 border border-neutral-700 text-white">
-              <ShieldCheck className="w-5 h-5" />
+          <div className="flex items-center gap-2.5 mb-1.5">
+            <div className="p-2 rounded-xl bg-white text-black">
+              <Shield className="w-5 h-5 stroke-[2.5]" />
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              Painel Administrativo & Controle de Acessos
+            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+              Gestão de Equipe & Clientes
             </h1>
+            <span className="text-[10px] bg-neutral-900 border border-neutral-700 px-2 py-0.5 rounded-full text-neutral-300 font-bold">
+              AgencyOS Master
+            </span>
           </div>
           <p className="text-xs sm:text-sm text-neutral-400">
-            Cadastre e-mail e senha para novos usuários e controle exatamente quais módulos cada usuário pode acessar.
+            Separe sua equipe interna (gratuita e colaborativa) dos clientes assinantes com workspaces independentes.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        {/* Quick Add Buttons */}
+        <div className="flex items-center gap-2.5 flex-wrap">
           <button
-            onClick={() => {
-              setNewUser((prev) => ({ ...prev, password: generateRandomPassword() }));
-              setIsAddModalOpen(true);
-            }}
-            className="px-4 py-2.5 rounded-xl bg-white hover:bg-neutral-200 text-black font-extrabold text-xs flex items-center gap-2 shadow-lg transition-all hover:scale-105 cursor-pointer"
+            onClick={() => handleOpenAddModal('employee')}
+            className="px-4 py-2.5 rounded-xl bg-white hover:bg-neutral-200 text-black font-black text-xs flex items-center gap-2 shadow-lg transition-all hover:scale-105 cursor-pointer"
           >
             <UserPlus className="w-4 h-4 stroke-[2.5]" />
-            Adicionar Usuário com Senha
+            Adicionar Funcionário (Equipe)
+          </button>
+          <button
+            onClick={() => handleOpenAddModal('client')}
+            className="px-4 py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-white font-bold text-xs flex items-center gap-2 border border-neutral-700 transition-all hover:scale-105 cursor-pointer"
+          >
+            <Building2 className="w-4 h-4" />
+            Cadastrar Cliente AgencyOS
           </button>
         </div>
       </div>
 
-      {/* 4 TOP METRIC CARDS */}
+      {/* 4 TOP METRIC CARDS - ACCURATELY SEPARATING TEAM VS PAID CLIENTS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Usuários */}
+        {/* Minha Equipe */}
         <div className="p-5 rounded-2xl bg-[#0e0e0e] border border-neutral-800 flex flex-col justify-between space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-neutral-400">Total Usuários</span>
+            <span className="text-xs font-bold text-neutral-400">Minha Equipe</span>
             <div className="p-2 rounded-xl bg-neutral-900 text-white border border-neutral-700">
               <Users className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-3xl font-black text-white tracking-tight">{totalUsersCount}</div>
+          <div className="text-3xl font-black text-white tracking-tight">{totalEmployeesCount}</div>
           <div className="text-[11px] text-neutral-400 font-medium flex items-center gap-1.5">
-            <span className="text-white font-bold">● {activeCount} ativos</span>
+            <span className="text-white font-bold">● {activeEmployeesCount} ativos</span>
             <span>•</span>
-            <span className="text-neutral-400 font-bold">{trialCount} em trial</span>
+            <span className="text-neutral-400">Sem cobrança (Equipe)</span>
           </div>
         </div>
 
-        {/* Assinaturas Ativas */}
+        {/* Clientes do AgencyOS */}
         <div className="p-5 rounded-2xl bg-[#0e0e0e] border border-neutral-800 flex flex-col justify-between space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-neutral-400">Assinaturas Ativas</span>
+            <span className="text-xs font-bold text-neutral-400">Clientes AgencyOS</span>
+            <div className="p-2 rounded-xl bg-neutral-900 text-white border border-neutral-700">
+              <Building2 className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="text-3xl font-black text-white tracking-tight">{totalClientsCount}</div>
+          <div className="text-[11px] text-neutral-400 font-medium flex items-center gap-1.5">
+            <span className="text-white font-bold">● {activeClientsCount} ativos</span>
+            <span>•</span>
+            <span className="text-neutral-400">{clientTrialCount} em trial</span>
+          </div>
+        </div>
+
+        {/* Assinaturas SaaS Ativas */}
+        <div className="p-5 rounded-2xl bg-[#0e0e0e] border border-neutral-800 flex flex-col justify-between space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-neutral-400">Assinaturas Clientes</span>
             <div className="p-2 rounded-xl bg-neutral-900 text-white border border-neutral-700">
               <CheckCircle2 className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-3xl font-black text-white tracking-tight">{activeCount}</div>
+          <div className="text-3xl font-black text-white tracking-tight">{clientTotalPaid}</div>
           <div className="text-[11px] text-neutral-400 font-medium">
-            {paidCount} planos pagos (Starter/Pro/Agency)
+            Starter: {clientPaidStarter} • Pro: {clientPaidPro} • Agency: {clientPaidAgency}
           </div>
         </div>
 
-        {/* Em Trial Gratuito */}
+        {/* MRR Real dos Clientes */}
         <div className="p-5 rounded-2xl bg-[#0e0e0e] border border-neutral-800 flex flex-col justify-between space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-neutral-400">Em Trial (14 dias)</span>
+            <span className="text-xs font-bold text-neutral-400">MRR Real (Clientes)</span>
             <div className="p-2 rounded-xl bg-neutral-900 text-white border border-neutral-700">
-              <Clock className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-3xl font-black text-white tracking-tight">{trialCount}</div>
-          <div className="text-[11px] text-neutral-400 font-medium">
-            Avaliações com permissões configuráveis
-          </div>
-        </div>
-
-        {/* MRR Estimado */}
-        <div className="p-5 rounded-2xl bg-[#0e0e0e] border border-neutral-800 flex flex-col justify-between space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-neutral-400">MRR Estimado</span>
-            <div className="p-2 rounded-xl bg-neutral-900 text-white border border-neutral-700">
-              <Crown className="w-4 h-4" />
+              <DollarSign className="w-4 h-4" />
             </div>
           </div>
           <div className="text-3xl font-black text-white tracking-tight">
             R$ {mrrEst.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </div>
           <div className="text-[11px] text-neutral-400 font-medium">
-            Pro: {proCount} • Agency: {agencyCount}
+            {clientTotalPaid > 0 ? 'Faturamento mensal de clientes ativos' : 'Cadastre clientes pagantes na aba Clientes'}
           </div>
         </div>
       </div>
 
-      {/* ACCESS CONTROL EXPLANATION BANNER */}
-      <div className="p-4 rounded-2xl bg-neutral-950 border border-neutral-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-neutral-900 border border-neutral-700 flex items-center justify-center text-white shrink-0">
-            <Lock className="w-5 h-5 stroke-[2.2]" />
+      {/* EXPLANATORY WORKSPACE SEPARATION BANNER */}
+      {activeTab === 'Equipe' ? (
+        <div className="p-4 rounded-2xl bg-neutral-950 border border-neutral-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-neutral-900 border border-neutral-700 flex items-center justify-center text-white shrink-0">
+              <Users className="w-5 h-5 stroke-[2.2]" />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                <span>Minha Equipe • Workspace Compartilhado da Agência</span>
+                <span className="text-[10px] bg-white text-black px-2 py-0.5 rounded-full font-black">
+                  Colaboração em Tempo Real
+                </span>
+              </h4>
+              <p className="text-xs text-neutral-400 leading-snug">
+                Seus funcionários <strong className="text-white">não pagam nada no sistema</strong>. Todas as demandas de design, criativos, briefings e tarefas postadas pela agência aparecem instantaneamente para eles trabalharem.
+              </p>
+            </div>
           </div>
-          <div>
-            <h4 className="text-sm font-bold text-white flex items-center gap-2">
-              <span>Como funciona o Controle de Acessos Granular</span>
-              <span className="text-[10px] bg-white text-black px-2 py-0.5 rounded-full font-black">
-                Ativo
-              </span>
-            </h4>
-            <p className="text-xs text-neutral-400 leading-snug">
-              Cadastre e-mail e senha para o usuário. Ele conseguirá logar normalmente, mas{' '}
-              <strong className="text-white">só poderá ver e clicar nos módulos liberados</strong>. O resto fica trancado com aviso de restrição.
-            </p>
-          </div>
+
+          <button
+            onClick={() => handleOpenAddModal('employee')}
+            className="px-4 py-2 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shrink-0 cursor-pointer"
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            <span>Adicionar Funcionário</span>
+          </button>
         </div>
+      ) : activeTab === 'Clientes' ? (
+        <div className="p-4 rounded-2xl bg-neutral-950 border border-neutral-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-neutral-900 border border-neutral-700 flex items-center justify-center text-white shrink-0">
+              <Building2 className="w-5 h-5 stroke-[2.2]" />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                <span>Clientes do AgencyOS • Workspaces 100% Independentes</span>
+                <span className="text-[10px] bg-white text-black px-2 py-0.5 rounded-full font-black">
+                  Assinantes SaaS
+                </span>
+              </h4>
+              <p className="text-xs text-neutral-400 leading-snug">
+                Clientes possuem planos faturados e <strong className="text-white">sistema único e isolado</strong>. Eles não têm acesso às demandas internas da sua agência nem aos seus funcionários.
+              </p>
+            </div>
+          </div>
 
-        <button
-          onClick={() => {
-            setNewUser((prev) => ({ ...prev, password: generateRandomPassword() }));
-            setIsAddModalOpen(true);
-          }}
-          className="px-4 py-2 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shrink-0 cursor-pointer"
-        >
-          <Key className="w-3.5 h-3.5" />
-          <span>Criar Usuário + Permissões</span>
-        </button>
-      </div>
+          <button
+            onClick={() => handleOpenAddModal('client')}
+            className="px-4 py-2 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shrink-0 cursor-pointer"
+          >
+            <Building2 className="w-3.5 h-3.5" />
+            <span>Novo Cliente AgencyOS</span>
+          </button>
+        </div>
+      ) : null}
 
-      {/* TABS & SEARCH BAR */}
+      {/* PRIMARY TAB SWITCHER & SEARCH BAR */}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          {/* Tabs */}
-          <div className="flex items-center gap-1 bg-neutral-950 p-1 rounded-xl border border-neutral-800">
-            {(['Assinaturas', 'Planos', 'Atualizações', 'Estatísticas'] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  activeTab === tab
-                    ? 'bg-white text-black shadow-sm'
-                    : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
+          {/* Main Tabs */}
+          <div className="flex items-center gap-1 bg-neutral-950 p-1.5 rounded-2xl border border-neutral-800 overflow-x-auto">
+            <button
+              onClick={() => {
+                setActiveTab('Equipe');
+                setFilterCategory('Todos');
+              }}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
+                activeTab === 'Equipe'
+                  ? 'bg-white text-black shadow-md'
+                  : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>Minha Equipe & Funcionários</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                activeTab === 'Equipe' ? 'bg-black text-white' : 'bg-neutral-900 text-neutral-400'
+              }`}>
+                {totalEmployeesCount}
+              </span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab('Clientes');
+                setFilterCategory('Todos');
+              }}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
+                activeTab === 'Clientes'
+                  ? 'bg-white text-black shadow-md'
+                  : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
+              }`}
+            >
+              <Building2 className="w-3.5 h-3.5" />
+              <span>Clientes do AgencyOS</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                activeTab === 'Clientes' ? 'bg-black text-white' : 'bg-neutral-900 text-neutral-400'
+              }`}>
+                {totalClientsCount}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('Planos')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                activeTab === 'Planos'
+                  ? 'bg-white text-black shadow-md'
+                  : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
+              }`}
+            >
+              Planos & Preços SaaS
+            </button>
+
+            <button
+              onClick={() => setActiveTab('Atualizações')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                activeTab === 'Atualizações'
+                  ? 'bg-white text-black shadow-md'
+                  : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
+              }`}
+            >
+              Atualizações
+            </button>
+
+            <button
+              onClick={() => setActiveTab('Estatísticas')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                activeTab === 'Estatísticas'
+                  ? 'bg-white text-black shadow-md'
+                  : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
+              }`}
+            >
+              Estatísticas
+            </button>
           </div>
 
           {/* Search Input */}
-          <div className="relative min-w-[260px]">
-            <Search className="w-4 h-4 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar por e-mail, nome ou cargo..."
-              className="w-full bg-neutral-950 border border-neutral-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-white"
-            />
+          {(activeTab === 'Equipe' || activeTab === 'Clientes') && (
+            <div className="relative min-w-[260px]">
+              <Search className="w-4 h-4 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={activeTab === 'Equipe' ? 'Buscar funcionário por nome, email ou cargo...' : 'Buscar cliente ou empresa...'}
+                className="w-full bg-neutral-950 border border-neutral-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-white"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Filter Pills based on active tab */}
+        {activeTab === 'Equipe' && (
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+            {[
+              { id: 'Todos', label: `Todos da Equipe (${totalEmployeesCount})` },
+              { id: 'active', label: `Ativos (${activeEmployeesCount})` },
+              { id: 'lider', label: `Líderes de Design` },
+              { id: 'designer', label: `Designers` },
+              { id: 'gestor', label: `Gestores de Tráfego` },
+              { id: 'blocked', label: 'Bloqueados' },
+            ].map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setFilterCategory(f.id)}
+                className={`px-3 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap cursor-pointer ${
+                  filterCategory === f.id
+                    ? 'bg-white text-black shadow-md'
+                    : 'bg-neutral-950 border border-neutral-800 text-neutral-400 hover:text-white hover:bg-neutral-900'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
           </div>
-        </div>
+        )}
 
-        {/* Filter Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-          {[
-            { id: 'Todos', label: `Todos (${totalUsersCount})` },
-            { id: 'active', label: `Ativos (${activeCount})` },
-            { id: 'Trial Gratuito', label: `Trial (14 dias) (${trialCount})` },
-            { id: 'Starter', label: `Starter (${starterCount})` },
-            { id: 'Pro', label: `Pro (${proCount})` },
-            { id: 'Agency', label: `Agency (${agencyCount})` },
-            { id: 'blocked', label: 'Bloqueados' },
-          ].map((f) => (
-            <button
-              key={f.id}
-              onClick={() => setFilterCategory(f.id)}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap cursor-pointer ${
-                filterCategory === f.id
-                  ? 'bg-white text-black shadow-md'
-                  : 'bg-neutral-950 border border-neutral-800 text-neutral-400 hover:text-white hover:bg-neutral-900'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* USERS & PERMISSIONS TABLE */}
-      <div className="bg-[#0e0e0e] border border-neutral-800 rounded-2xl overflow-hidden shadow-xl">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-neutral-800 text-neutral-400 text-[11px] uppercase tracking-wider font-bold bg-neutral-950">
-                <th className="p-3.5 text-center w-10">
-                  <input
-                    type="checkbox"
-                    checked={
-                      filteredUsers.length > 0 && selectedUserIds.length === filteredUsers.length
-                    }
-                    onChange={handleSelectAll}
-                    className="rounded bg-neutral-900 border-neutral-700 text-white focus:ring-0"
-                  />
-                </th>
-                <th className="p-3.5">Usuário / Credenciais</th>
-                <th className="p-3.5">Cargo</th>
-                <th className="p-3.5">Plano</th>
-                <th className="p-3.5">Status</th>
-                <th className="p-3.5">Módulos Liberados</th>
-                <th className="p-3.5">Cadastro</th>
-                <th className="p-3.5 text-right">Ações & Permissões</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-800/60 text-xs">
-              {loading ? (
-                <tr>
-                  <td colSpan={8} className="p-8 text-center text-neutral-400">
-                    <RefreshCw className="w-6 h-6 animate-spin mx-auto text-white mb-2" />
-                    Carregando usuários do Firestore...
-                  </td>
-                </tr>
-              ) : filteredUsers.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="p-8 text-center text-neutral-500 space-y-2">
-                    <Users className="w-8 h-8 mx-auto text-neutral-600 mb-2" />
-                    <p className="font-bold text-neutral-400">Nenhum usuário encontrado</p>
-                    <p className="text-xs text-neutral-500">
-                      Tente alterar os filtros de busca ou adicione um novo usuário com senha.
-                    </p>
-                    <button
-                      onClick={handleSeedDemoData}
-                      className="mt-3 px-4 py-2 bg-neutral-900 text-white font-bold text-xs rounded-xl hover:bg-neutral-800 border border-neutral-700 cursor-pointer"
-                    >
-                      Restaurar Usuários com Permissões de Demonstração
-                    </button>
-                  </td>
-                </tr>
-              ) : (
-                filteredUsers.map((user) => {
-                  const isSelected = selectedUserIds.includes(user.uid);
-                  const isMaster = isUserMasterAdmin(user);
-                  const allowedList = user.allowedModules || ALL_OPERATIONAL_MODULE_IDS;
-                  const allowedCount = isMaster ? ALL_OPERATIONAL_MODULE_IDS.length : allowedList.length;
-
-                  return (
-                    <tr
-                      key={user.uid}
-                      className={`hover:bg-neutral-900/40 transition-colors ${
-                        isSelected ? 'bg-neutral-900/60' : ''
-                      }`}
-                    >
-                      {/* Checkbox */}
-                      <td className="p-3.5 text-center">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => handleSelectRow(user.uid)}
-                          className="rounded bg-neutral-900 border-neutral-700 text-white focus:ring-0"
-                        />
-                      </td>
-
-                      {/* User Email + Password Hint + Copy */}
-                      <td className="p-3.5">
-                        <div className="font-bold text-neutral-100 flex items-center gap-1.5">
-                          <span className="truncate max-w-[220px]">{user.email}</span>
-                          {isMaster && (
-                            <span className="text-[9px] bg-white text-black px-1.5 py-0.5 rounded font-black">
-                              ADMIN
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-2 mt-0.5">
-                          {user.name && user.name !== user.email.split('@')[0] && (
-                            <span className="text-[11px] text-neutral-400">
-                              {user.name} • {user.agencyName}
-                            </span>
-                          )}
-
-                          {user.tempPasswordHint && (
-                            <div className="flex items-center gap-1">
-                              <span className="text-[10px] font-mono text-neutral-400 bg-neutral-950 px-1.5 py-0.5 rounded border border-neutral-800">
-                                Senha: {user.tempPasswordHint}
-                              </span>
-                              <button
-                                onClick={() => handleCopyCredentials(user.email, user.tempPasswordHint)}
-                                title="Copiar credenciais de login"
-                                className="p-0.5 text-neutral-400 hover:text-white cursor-pointer"
-                              >
-                                <Copy className="w-3 h-3" />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Cargo */}
-                      <td className="p-3.5">
-                        <span className="inline-flex items-center gap-1 text-neutral-300 bg-neutral-950 border border-neutral-800 px-2.5 py-1 rounded-lg text-[11px] font-bold">
-                          <Briefcase className="w-3 h-3 text-neutral-400" />
-                          {user.role || 'Gestor de Tráfego'}
-                        </span>
-                      </td>
-
-                      {/* Plano */}
-                      <td className="p-3.5">
-                        <span className="px-2.5 py-1 rounded-lg bg-neutral-950 text-neutral-200 font-bold text-[11px] border border-neutral-800">
-                          {user.plan}
-                        </span>
-                      </td>
-
-                      {/* Status */}
-                      <td className="p-3.5">
-                        {user.status === 'active' && (
-                          <span className="px-2.5 py-1 rounded-lg bg-neutral-900 text-white font-bold text-[11px] border border-neutral-700">
-                            Ativo
-                          </span>
-                        )}
-                        {user.status === 'Trial Expirado' && (
-                          <span className="px-2.5 py-1 rounded-lg bg-neutral-950 text-neutral-400 font-bold text-[11px] border border-neutral-800">
-                            Expirado
-                          </span>
-                        )}
-                        {user.status === 'blocked' && (
-                          <span className="px-2.5 py-1 rounded-lg bg-neutral-950 text-neutral-400 font-bold text-[11px] border border-neutral-800">
-                            Bloqueado
-                          </span>
-                        )}
-                        {user.status === 'cancelled' && (
-                          <span className="px-2.5 py-1 rounded-lg bg-neutral-950 text-neutral-500 font-bold text-[11px] border border-neutral-800">
-                            Cancelado
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Módulos Liberados / Permissões Badge */}
-                      <td className="p-3.5">
-                        <button
-                          onClick={() => handleOpenPermissionsModal(user)}
-                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-neutral-950 hover:bg-neutral-900 border border-neutral-800 text-neutral-200 text-[11px] font-bold transition-all cursor-pointer group"
-                        >
-                          <Lock className="w-3 h-3 text-white group-hover:scale-110 transition-transform" />
-                          <span>
-                            {isMaster
-                              ? 'Acesso Total (12/12)'
-                              : `${allowedCount}/${ALL_OPERATIONAL_MODULE_IDS.length} liberados`}
-                          </span>
-                        </button>
-                      </td>
-
-                      {/* Cadastro */}
-                      <td className="p-3.5 text-neutral-400 font-mono text-[11px]">
-                        {user.createdAt || '13/07/2026'}
-                      </td>
-
-                      {/* Actions Column */}
-                      <td className="p-3.5 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {/* Permissões Button */}
-                          <button
-                            onClick={() => handleOpenPermissionsModal(user)}
-                            title="Gerenciar Módulos e Permissões de Acesso"
-                            className="px-2.5 py-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-white font-bold text-[11px] border border-neutral-700 flex items-center gap-1 cursor-pointer transition-all"
-                          >
-                            <Shield className="w-3 h-3" />
-                            <span>Permissões</span>
-                          </button>
-
-                          {/* Edit User */}
-                          <button
-                            onClick={() => setEditingUser(user)}
-                            title="Editar Dados do Usuário"
-                            className="p-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white transition-all border border-neutral-700 cursor-pointer"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-
-                          {/* Block Button */}
-                          <button
-                            onClick={() => handleToggleBlock(user)}
-                            title={user.status === 'blocked' ? 'Desbloquear usuário' : 'Bloquear usuário'}
-                            className={`p-1.5 rounded-lg transition-all border cursor-pointer ${
-                              user.status === 'blocked'
-                                ? 'bg-neutral-800 text-white border-white'
-                                : 'bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white border-neutral-700'
-                            }`}
-                          >
-                            <Ban className="w-3.5 h-3.5" />
-                          </button>
-
-                          {/* Delete Button */}
-                          <button
-                            onClick={() => setDeletingUser(user)}
-                            title="Excluir usuário permanentemente"
-                            className="p-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white transition-all border border-neutral-700 cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+        {activeTab === 'Clientes' && (
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+            {[
+              { id: 'Todos', label: `Todos os Clientes (${totalClientsCount})` },
+              { id: 'active', label: `Ativos (${activeClientsCount})` },
+              { id: 'Trial Gratuito', label: `Trial (14 dias) (${clientTrialCount})` },
+              { id: 'Starter', label: `Starter (${clientPaidStarter})` },
+              { id: 'Pro', label: `Pro (${clientPaidPro})` },
+              { id: 'Agency', label: `Agency (${clientPaidAgency})` },
+              { id: 'cancelled', label: 'Cancelados' },
+              { id: 'blocked', label: 'Bloqueados' },
+            ].map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setFilterCategory(f.id)}
+                className={`px-3 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap cursor-pointer ${
+                  filterCategory === f.id
+                    ? 'bg-white text-black shadow-md'
+                    : 'bg-neutral-950 border border-neutral-800 text-neutral-400 hover:text-white hover:bg-neutral-900'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ========================================================================= */}
-      {/* 1. MODAL: ADICIONAR / CONVIDAR USUÁRIO COM SENHA E PERMISSÕES GRANULARES */}
+      {/* 1. ABA: MINHA EQUIPE & FUNCIONÁRIOS */}
+      {/* ========================================================================= */}
+      {activeTab === 'Equipe' && (
+        <div className="bg-[#0e0e0e] border border-neutral-800 rounded-2xl overflow-hidden shadow-xl">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-neutral-800 text-neutral-400 text-[11px] uppercase tracking-wider font-bold bg-neutral-950">
+                  <th className="p-3.5 text-center w-10">
+                    <input
+                      type="checkbox"
+                      checked={
+                        filteredUsers.length > 0 && selectedUserIds.length === filteredUsers.length
+                      }
+                      onChange={handleSelectAll}
+                      className="rounded bg-neutral-900 border-neutral-700 text-white focus:ring-0"
+                    />
+                  </th>
+                  <th className="p-3.5">Membro da Equipe / Acesso</th>
+                  <th className="p-3.5">Cargo Interno</th>
+                  <th className="p-3.5">Permissões Criativas</th>
+                  <th className="p-3.5">Módulos Liberados</th>
+                  <th className="p-3.5">Faturamento</th>
+                  <th className="p-3.5">Status</th>
+                  <th className="p-3.5 text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-800/60 text-xs">
+                {loading ? (
+                  <tr>
+                    <td colSpan={8} className="p-8 text-center text-neutral-400">
+                      <RefreshCw className="w-6 h-6 animate-spin mx-auto text-white mb-2" />
+                      Carregando equipe do Firestore...
+                    </td>
+                  </tr>
+                ) : filteredUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="p-8 text-center text-neutral-500 space-y-2">
+                      <Users className="w-8 h-8 mx-auto text-neutral-600 mb-2" />
+                      <p className="font-bold text-neutral-300">Nenhum funcionário encontrado nesta categoria</p>
+                      <p className="text-xs text-neutral-500">
+                        Adicione um novo membro para que ele possa acessar e colaborar nas demandas da agência.
+                      </p>
+                      <button
+                        onClick={() => handleOpenAddModal('employee')}
+                        className="mt-3 px-4 py-2 bg-white text-black font-bold text-xs rounded-xl hover:bg-neutral-200 cursor-pointer"
+                      >
+                        <UserPlus className="w-3.5 h-3.5 inline mr-1.5" />
+                        Adicionar Funcionário
+                      </button>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredUsers.map((user) => {
+                    const isSelected = selectedUserIds.includes(user.uid);
+                    const isMaster = isUserMasterAdmin(user);
+                    const allowedList = user.allowedModules || ALL_OPERATIONAL_MODULE_IDS;
+                    const allowedCount = isMaster ? ALL_OPERATIONAL_MODULE_IDS.length : allowedList.length;
+
+                    const isLeader = user.designRole === 'lider' || user.role?.toLowerCase().includes('lider') || user.role?.toLowerCase().includes('líder');
+
+                    return (
+                      <tr
+                        key={user.uid}
+                        className={`hover:bg-neutral-900/40 transition-colors ${
+                          isSelected ? 'bg-neutral-900/60' : ''
+                        }`}
+                      >
+                        {/* Checkbox */}
+                        <td className="p-3.5 text-center">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleSelectRow(user.uid)}
+                            className="rounded bg-neutral-900 border-neutral-700 text-white focus:ring-0"
+                          />
+                        </td>
+
+                        {/* User Email + Password Hint + Copy */}
+                        <td className="p-3.5">
+                          <div className="font-bold text-neutral-100 flex items-center gap-1.5">
+                            <span className="truncate max-w-[220px]">{user.name || user.email.split('@')[0]}</span>
+                            {isMaster && (
+                              <span className="text-[9px] bg-white text-black px-1.5 py-0.5 rounded font-black">
+                                ADMIN
+                              </span>
+                            )}
+                            {isLeader && !isMaster && (
+                              <span className="text-[9px] bg-amber-400 text-black px-1.5 py-0.5 rounded font-black">
+                                👑 LÍDER
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="text-[11px] text-neutral-400 font-mono mt-0.5 flex items-center gap-2">
+                            <span>{user.email}</span>
+                            {user.tempPasswordHint && (
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] font-mono text-neutral-300 bg-neutral-950 px-1.5 py-0.5 rounded border border-neutral-800">
+                                  {user.tempPasswordHint}
+                                </span>
+                                <button
+                                  onClick={() => handleCopyCredentials(user.email, user.tempPasswordHint)}
+                                  title="Copiar credenciais"
+                                  className="text-neutral-400 hover:text-white cursor-pointer"
+                                >
+                                  <Copy className="w-3 h-3" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Cargo Interno */}
+                        <td className="p-3.5">
+                          <span className="inline-flex items-center gap-1 text-neutral-300 bg-neutral-950 border border-neutral-800 px-2.5 py-1 rounded-lg text-[11px] font-bold">
+                            <Briefcase className="w-3 h-3 text-neutral-400" />
+                            {user.role || 'Membro da Equipe'}
+                          </span>
+                        </td>
+
+                        {/* Permissões Criativas (Edição, Criação, Aprovação, Postagem) */}
+                        <td className="p-3.5">
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              user.canEditDesigns !== false
+                                ? 'bg-neutral-900 text-white border border-neutral-700'
+                                : 'bg-neutral-950 text-neutral-600 border border-neutral-900 line-through'
+                            }`}>
+                              Editar
+                            </span>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              user.canCreateDesigns !== false
+                                ? 'bg-neutral-900 text-white border border-neutral-700'
+                                : 'bg-neutral-950 text-neutral-600 border border-neutral-900 line-through'
+                            }`}>
+                              Criar
+                            </span>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              user.canApproveDesigns
+                                ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
+                                : 'bg-neutral-950 text-neutral-600 border border-neutral-900'
+                            }`}>
+                              {user.canApproveDesigns ? 'Aprovar ✓' : 'Sem Aprovação'}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Módulos Liberados */}
+                        <td className="p-3.5">
+                          <button
+                            onClick={() => handleOpenPermissionsModal(user)}
+                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-neutral-950 hover:bg-neutral-900 border border-neutral-800 text-neutral-200 text-[11px] font-bold transition-all cursor-pointer group"
+                          >
+                            <Lock className="w-3 h-3 text-white group-hover:scale-110 transition-transform" />
+                            <span>
+                              {isMaster
+                                ? 'Acesso Total (12/12)'
+                                : `${allowedCount}/${ALL_OPERATIONAL_MODULE_IDS.length} liberados`}
+                            </span>
+                          </button>
+                        </td>
+
+                        {/* Faturamento */}
+                        <td className="p-3.5">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-neutral-950 text-neutral-400 border border-neutral-800 text-[10px] font-bold">
+                            R$ 0,00 • Gratuito (Equipe)
+                          </span>
+                        </td>
+
+                        {/* Status */}
+                        <td className="p-3.5">
+                          {user.status === 'active' ? (
+                            <span className="px-2.5 py-1 rounded-lg bg-neutral-900 text-white font-bold text-[11px] border border-neutral-700">
+                              Ativo
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-1 rounded-lg bg-neutral-950 text-neutral-400 font-bold text-[11px] border border-neutral-800">
+                              Bloqueado
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Actions */}
+                        <td className="p-3.5 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {/* Permissões Button */}
+                            <button
+                              onClick={() => handleOpenPermissionsModal(user)}
+                              title="Gerenciar Permissões e Módulos"
+                              className="px-2.5 py-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-white font-bold text-[11px] border border-neutral-700 flex items-center gap-1 cursor-pointer transition-all"
+                            >
+                              <Shield className="w-3 h-3" />
+                              <span>Permissões</span>
+                            </button>
+
+                            {/* Move to Client Toggle */}
+                            <button
+                              onClick={() => handleToggleUserType(user)}
+                              title="Mudar para Cliente AgencyOS"
+                              className="p-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white transition-all border border-neutral-700 cursor-pointer"
+                            >
+                              <ArrowRightLeft className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Edit */}
+                            <button
+                              onClick={() => setEditingUser(user)}
+                              title="Editar Dados"
+                              className="p-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white transition-all border border-neutral-700 cursor-pointer"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Block Toggle */}
+                            <button
+                              onClick={() => handleToggleBlock(user)}
+                              title={user.status === 'blocked' ? 'Desbloquear' : 'Bloquear'}
+                              className="p-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white border border-neutral-700 cursor-pointer"
+                            >
+                              <Ban className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Delete */}
+                            <button
+                              onClick={() => setDeletingUser(user)}
+                              title="Excluir"
+                              className="p-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white border border-neutral-700 cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 2. ABA: CLIENTES DO AGENCYOS (ASSINANTES SAAS) */}
+      {/* ========================================================================= */}
+      {activeTab === 'Clientes' && (
+        <div className="bg-[#0e0e0e] border border-neutral-800 rounded-2xl overflow-hidden shadow-xl">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-neutral-800 text-neutral-400 text-[11px] uppercase tracking-wider font-bold bg-neutral-950">
+                  <th className="p-3.5 text-center w-10">
+                    <input
+                      type="checkbox"
+                      checked={
+                        filteredUsers.length > 0 && selectedUserIds.length === filteredUsers.length
+                      }
+                      onChange={handleSelectAll}
+                      className="rounded bg-neutral-900 border-neutral-700 text-white focus:ring-0"
+                    />
+                  </th>
+                  <th className="p-3.5">Cliente / Empresa</th>
+                  <th className="p-3.5">Plano Contratado</th>
+                  <th className="p-3.5">Valor Mensal</th>
+                  <th className="p-3.5">Status Assinatura</th>
+                  <th className="p-3.5">Workspace</th>
+                  <th className="p-3.5">Cadastro</th>
+                  <th className="p-3.5 text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-800/60 text-xs">
+                {loading ? (
+                  <tr>
+                    <td colSpan={8} className="p-8 text-center text-neutral-400">
+                      <RefreshCw className="w-6 h-6 animate-spin mx-auto text-white mb-2" />
+                      Carregando clientes do Firestore...
+                    </td>
+                  </tr>
+                ) : filteredUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="p-8 text-center text-neutral-500 space-y-2">
+                      <Building2 className="w-8 h-8 mx-auto text-neutral-600 mb-2" />
+                      <p className="font-bold text-neutral-300">Nenhum cliente cadastrado nesta categoria</p>
+                      <p className="text-xs text-neutral-500">
+                        Cadastre clientes do seu SaaS AgencyOS com planos ativos e sistema 100% independente do seu.
+                      </p>
+                      <button
+                        onClick={() => handleOpenAddModal('client')}
+                        className="mt-3 px-4 py-2 bg-white text-black font-bold text-xs rounded-xl hover:bg-neutral-200 cursor-pointer"
+                      >
+                        <Building2 className="w-3.5 h-3.5 inline mr-1.5" />
+                        Cadastrar Novo Cliente
+                      </button>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredUsers.map((user) => {
+                    const isSelected = selectedUserIds.includes(user.uid);
+                    
+                    let planPrice = 0;
+                    if (user.plan === 'Starter') planPrice = 99;
+                    if (user.plan === 'Pro') planPrice = 199;
+                    if (user.plan === 'Agency') planPrice = 499;
+
+                    return (
+                      <tr
+                        key={user.uid}
+                        className={`hover:bg-neutral-900/40 transition-colors ${
+                          isSelected ? 'bg-neutral-900/60' : ''
+                        }`}
+                      >
+                        {/* Checkbox */}
+                        <td className="p-3.5 text-center">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleSelectRow(user.uid)}
+                            className="rounded bg-neutral-900 border-neutral-700 text-white focus:ring-0"
+                          />
+                        </td>
+
+                        {/* Cliente / Empresa */}
+                        <td className="p-3.5">
+                          <div className="font-bold text-neutral-100 flex items-center gap-1.5">
+                            <span className="truncate max-w-[220px]">{user.agencyName || user.name || 'Cliente'}</span>
+                            <span className="text-[9px] bg-neutral-900 text-neutral-300 border border-neutral-700 px-1.5 py-0.5 rounded font-bold">
+                              CLIENTE SAAS
+                            </span>
+                          </div>
+
+                          <div className="text-[11px] text-neutral-400 font-mono mt-0.5 flex items-center gap-2">
+                            <span>{user.email}</span>
+                            {user.tempPasswordHint && (
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] font-mono text-neutral-300 bg-neutral-950 px-1.5 py-0.5 rounded border border-neutral-800">
+                                  {user.tempPasswordHint}
+                                </span>
+                                <button
+                                  onClick={() => handleCopyCredentials(user.email, user.tempPasswordHint)}
+                                  title="Copiar credenciais"
+                                  className="text-neutral-400 hover:text-white cursor-pointer"
+                                >
+                                  <Copy className="w-3 h-3" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Plano Contratado */}
+                        <td className="p-3.5">
+                          <span className={`px-2.5 py-1 rounded-lg font-black text-[11px] border ${
+                            user.plan === 'Agency'
+                              ? 'bg-amber-400/10 text-amber-300 border-amber-500/30'
+                              : user.plan === 'Pro'
+                              ? 'bg-white text-black border-white'
+                              : 'bg-neutral-950 text-neutral-200 border-neutral-800'
+                          }`}>
+                            {user.plan}
+                          </span>
+                        </td>
+
+                        {/* Valor Mensal */}
+                        <td className="p-3.5 font-bold text-neutral-200">
+                          {planPrice > 0 ? (
+                            <span>R$ {planPrice},00 / mês</span>
+                          ) : (
+                            <span className="text-neutral-400">Trial Gratuito (14d)</span>
+                          )}
+                        </td>
+
+                        {/* Status */}
+                        <td className="p-3.5">
+                          {user.status === 'active' && (
+                            <span className="px-2.5 py-1 rounded-lg bg-neutral-900 text-white font-bold text-[11px] border border-neutral-700">
+                              Ativo
+                            </span>
+                          )}
+                          {user.status === 'Trial Expirado' && (
+                            <span className="px-2.5 py-1 rounded-lg bg-neutral-950 text-neutral-400 font-bold text-[11px] border border-neutral-800">
+                              Trial Expirado
+                            </span>
+                          )}
+                          {user.status === 'cancelled' && (
+                            <span className="px-2.5 py-1 rounded-lg bg-neutral-950 text-neutral-500 font-bold text-[11px] border border-neutral-800">
+                              Cancelado
+                            </span>
+                          )}
+                          {user.status === 'blocked' && (
+                            <span className="px-2.5 py-1 rounded-lg bg-neutral-950 text-neutral-400 font-bold text-[11px] border border-neutral-800">
+                              Bloqueado
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Workspace Isolado */}
+                        <td className="p-3.5">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-neutral-950 border border-neutral-800 text-neutral-300 text-[11px] font-bold">
+                            <Lock className="w-3 h-3 text-emerald-400" />
+                            Independente & Único
+                          </span>
+                        </td>
+
+                        {/* Cadastro */}
+                        <td className="p-3.5 text-neutral-400 font-mono text-[11px]">
+                          {user.createdAt || '13/07/2026'}
+                        </td>
+
+                        {/* Actions */}
+                        <td className="p-3.5 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {/* Move to Employee */}
+                            <button
+                              onClick={() => handleToggleUserType(user)}
+                              title="Mudar para Membro da Equipe"
+                              className="p-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white transition-all border border-neutral-700 cursor-pointer"
+                            >
+                              <ArrowRightLeft className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Edit */}
+                            <button
+                              onClick={() => setEditingUser(user)}
+                              title="Editar Dados e Plano"
+                              className="p-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white transition-all border border-neutral-700 cursor-pointer"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Block Toggle */}
+                            <button
+                              onClick={() => handleToggleBlock(user)}
+                              title={user.status === 'blocked' ? 'Desbloquear' : 'Bloquear'}
+                              className="p-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white border border-neutral-700 cursor-pointer"
+                            >
+                              <Ban className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Delete */}
+                            <button
+                              onClick={() => setDeletingUser(user)}
+                              title="Excluir Cliente"
+                              className="p-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white border border-neutral-700 cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 3. ABA: PLANOS & PREÇOS SAAS */}
+      {/* ========================================================================= */}
+      {activeTab === 'Planos' && (
+        <div className="space-y-6">
+          <div className="text-center max-w-xl mx-auto py-2">
+            <h3 className="text-lg font-black text-white">Planos Comerciais para Clientes do AgencyOS</h3>
+            <p className="text-xs text-neutral-400 mt-1">
+              Estes são os planos e limites aplicados para clientes externos cadastrados no sistema.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Starter */}
+            <div className="p-6 rounded-3xl bg-[#0e0e0e] border border-neutral-800 flex flex-col justify-between space-y-6">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-neutral-400">Starter</span>
+                  <span className="px-2 py-0.5 rounded-full bg-neutral-900 text-neutral-300 text-[10px] font-bold border border-neutral-800">
+                    Autônomos
+                  </span>
+                </div>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-3xl font-black text-white">R$ 99</span>
+                  <span className="text-xs text-neutral-500">/mês</span>
+                </div>
+                <p className="text-xs text-neutral-400">Para profissionais autônomos e pequenas agências iniciando no mercado.</p>
+                <ul className="space-y-2 text-xs text-neutral-300 pt-2 border-t border-neutral-800/80">
+                  <li className="flex items-center gap-2">✓ 1 Workspace Exclusivo</li>
+                  <li className="flex items-center gap-2">✓ Dashboard Geral & Relatórios</li>
+                  <li className="flex items-center gap-2">✓ Gestão de Tráfego & Campanhas</li>
+                  <li className="flex items-center gap-2">✓ Suporte via E-mail</li>
+                </ul>
+              </div>
+              <div className="text-xs font-bold text-neutral-400 text-center bg-neutral-950 py-2.5 rounded-xl border border-neutral-800">
+                {clientPaidStarter} Clientes Ativos
+              </div>
+            </div>
+
+            {/* Pro */}
+            <div className="p-6 rounded-3xl bg-[#0e0e0e] border border-white flex flex-col justify-between space-y-6 relative shadow-2xl">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white text-black font-black text-[10px] px-3 py-0.5 rounded-full tracking-wider uppercase">
+                Mais Popular
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-neutral-300">Pro</span>
+                  <span className="px-2 py-0.5 rounded-full bg-neutral-900 text-white text-[10px] font-bold border border-neutral-700">
+                    Agências em Alta
+                  </span>
+                </div>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-3xl font-black text-white">R$ 199</span>
+                  <span className="text-xs text-neutral-500">/mês</span>
+                </div>
+                <p className="text-xs text-neutral-400">Para agências completas com alta demanda de tráfego, social media e design.</p>
+                <ul className="space-y-2 text-xs text-neutral-300 pt-2 border-t border-neutral-800/80">
+                  <li className="flex items-center gap-2">✓ Todos os Módulos Operacionais</li>
+                  <li className="flex items-center gap-2">✓ Social Media Hub & IA Integrada</li>
+                  <li className="flex items-center gap-2">✓ Maps Scraper & CRM Pro</li>
+                  <li className="flex items-center gap-2">✓ Suporte Prioritário WhatsApp</li>
+                </ul>
+              </div>
+              <div className="text-xs font-bold text-white text-center bg-neutral-900 py-2.5 rounded-xl border border-neutral-700">
+                {clientPaidPro} Clientes Ativos
+              </div>
+            </div>
+
+            {/* Agency */}
+            <div className="p-6 rounded-3xl bg-[#0e0e0e] border border-neutral-800 flex flex-col justify-between space-y-6">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-neutral-400">Agency</span>
+                  <span className="px-2 py-0.5 rounded-full bg-amber-400/10 text-amber-300 text-[10px] font-bold border border-amber-500/30">
+                    Enterprise
+                  </span>
+                </div>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-3xl font-black text-white">R$ 499</span>
+                  <span className="text-xs text-neutral-500">/mês</span>
+                </div>
+                <p className="text-xs text-neutral-400">Para grandes operações com múltiplos sub-workspaces e suporte dedicado 24/7.</p>
+                <ul className="space-y-2 text-xs text-neutral-300 pt-2 border-t border-neutral-800/80">
+                  <li className="flex items-center gap-2">✓ Tudo do plano Pro ilimitado</li>
+                  <li className="flex items-center gap-2">✓ Exportação de Dados em Alta Escala</li>
+                  <li className="flex items-center gap-2">✓ Gestor de Contas Dedicado</li>
+                  <li className="flex items-center gap-2">✓ SLA 99.9% Garantido</li>
+                </ul>
+              </div>
+              <div className="text-xs font-bold text-neutral-400 text-center bg-neutral-950 py-2.5 rounded-xl border border-neutral-800">
+                {clientPaidAgency} Clientes Ativos
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 4. ABA: ATUALIZAÇÕES */}
+      {/* ========================================================================= */}
+      {activeTab === 'Atualizações' && (
+        <div className="space-y-4 max-w-3xl mx-auto">
+          <div className="p-6 rounded-3xl bg-[#0e0e0e] border border-neutral-800 space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold bg-white text-black px-2.5 py-1 rounded-full font-black">
+                v2.6.0 • Recente
+              </span>
+              <span className="text-xs text-neutral-500 font-mono">Agosto 2026</span>
+            </div>
+            <h3 className="text-base font-black text-white">Divisão Completa: Minha Equipe vs Clientes AgencyOS</h3>
+            <p className="text-xs text-neutral-400 leading-relaxed">
+              Implementada a separação total entre os membros internos da equipe e os clientes assinantes do SaaS.
+              Os funcionários não geram faturamento ($0) e compartilham o workspace da agência em tempo real para visualizar e executar as demandas postadas. Os clientes contam com sistemas 100% independentes e planos ativos faturados.
+            </p>
+          </div>
+
+          <div className="p-6 rounded-3xl bg-[#0e0e0e] border border-neutral-800 space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold bg-neutral-900 text-neutral-300 px-2.5 py-1 rounded-full border border-neutral-700">
+                v2.5.0
+              </span>
+              <span className="text-xs text-neutral-500 font-mono">Agosto 2026</span>
+            </div>
+            <h3 className="text-base font-black text-white">Carrossel Multi-Imagens & Permissões Criativas Granulares</h3>
+            <p className="text-xs text-neutral-400 leading-relaxed">
+              Suporte a uploads de múltiplas imagens por criativo, publicação com legendas, fluxo de aprovação com status e permissões para Líderes, Designers e Gestores.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 5. ABA: ESTATÍSTICAS */}
+      {/* ========================================================================= */}
+      {activeTab === 'Estatísticas' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="p-6 rounded-3xl bg-[#0e0e0e] border border-neutral-800 space-y-4">
+              <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                <Users className="w-4 h-4" /> Distribuição da Equipe Interna
+              </h4>
+              <div className="space-y-3 pt-2 text-xs">
+                <div className="flex justify-between items-center py-2 border-b border-neutral-800">
+                  <span className="text-neutral-400">Total de Membros da Equipe</span>
+                  <span className="font-bold text-white">{totalEmployeesCount}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-neutral-800">
+                  <span className="text-neutral-400">Líderes & Gestores</span>
+                  <span className="font-bold text-white">
+                    {employeeUsers.filter((u) => u.designRole === 'lider' || u.role?.toLowerCase().includes('lider')).length}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-neutral-800">
+                  <span className="text-neutral-400">Designers & Operacionais</span>
+                  <span className="font-bold text-white">
+                    {employeeUsers.filter((u) => u.designRole === 'designer' || u.role?.toLowerCase().includes('designer')).length}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-neutral-400">Custo Total de Usuários de Equipe</span>
+                  <span className="font-bold text-emerald-400">R$ 0,00 (Gratuito)</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 rounded-3xl bg-[#0e0e0e] border border-neutral-800 space-y-4">
+              <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                <Building2 className="w-4 h-4" /> Distribuição de Clientes SaaS
+              </h4>
+              <div className="space-y-3 pt-2 text-xs">
+                <div className="flex justify-between items-center py-2 border-b border-neutral-800">
+                  <span className="text-neutral-400">Total de Clientes Cadastrados</span>
+                  <span className="font-bold text-white">{totalClientsCount}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-neutral-800">
+                  <span className="text-neutral-400">Assinaturas Ativas Pagas</span>
+                  <span className="font-bold text-white">{clientTotalPaid}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-neutral-800">
+                  <span className="text-neutral-400">Clientes em Período de Teste</span>
+                  <span className="font-bold text-white">{clientTrialCount}</span>
+                </div>
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-neutral-400">MRR Total dos Clientes</span>
+                  <span className="font-bold text-white">
+                    R$ {mrrEst.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: ADICIONAR USUÁRIO (EQUIPE OU CLIENTE) */}
       {/* ========================================================================= */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
@@ -855,23 +1522,91 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
               <X className="w-5 h-5" />
             </button>
 
-            {/* Modal Title */}
+            {/* User Type Switcher */}
+            <div className="flex items-center gap-2 p-1.5 bg-neutral-950 border border-neutral-800 rounded-2xl mb-6">
+              <button
+                type="button"
+                onClick={() => handleOpenAddModal('employee')}
+                className={`flex-1 py-2.5 rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                  newUser.userType === 'employee'
+                    ? 'bg-white text-black shadow-md'
+                    : 'text-neutral-400 hover:text-white'
+                }`}
+              >
+                <Users className="w-4 h-4" />
+                <span>Membro da Equipe (Funcionário)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleOpenAddModal('client')}
+                className={`flex-1 py-2.5 rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                  newUser.userType === 'client'
+                    ? 'bg-white text-black shadow-md'
+                    : 'text-neutral-400 hover:text-white'
+                }`}
+              >
+                <Building2 className="w-4 h-4" />
+                <span>Cliente do AgencyOS (Assinante SaaS)</span>
+              </button>
+            </div>
+
+            {/* Modal Title & Note */}
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-11 h-11 rounded-2xl bg-neutral-900 border border-neutral-700 flex items-center justify-center text-white">
-                <UserPlus className="w-6 h-6 stroke-[2.2]" />
+              <div className="w-11 h-11 rounded-2xl bg-neutral-900 border border-neutral-700 flex items-center justify-center text-white shrink-0">
+                {newUser.userType === 'employee' ? (
+                  <Users className="w-6 h-6 stroke-[2.2]" />
+                ) : (
+                  <Building2 className="w-6 h-6 stroke-[2.2]" />
+                )}
               </div>
               <div>
-                <h3 className="text-lg font-black text-white">Cadastrar Usuário com Senha & Permissões</h3>
+                <h3 className="text-lg font-black text-white">
+                  {newUser.userType === 'employee'
+                    ? 'Cadastrar Funcionário / Membro da Equipe'
+                    : 'Cadastrar Novo Cliente do AgencyOS'}
+                </h3>
                 <p className="text-xs text-neutral-400">
-                  Crie o login com e-mail e senha e defina exatamente quais módulos o usuário poderá acessar.
+                  {newUser.userType === 'employee'
+                    ? 'Acesso gratuito ao workspace compartilhado para visualizar e executar as demandas da agência.'
+                    : 'Workspace independente e isolado com plano faturado para este cliente.'}
                 </p>
               </div>
             </div>
 
             <form onSubmit={handleCreateUser} className="space-y-4 text-xs">
+              {/* Name & Agency/Company */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="block text-neutral-300 font-bold mb-1.5">
+                    {newUser.userType === 'employee' ? 'Nome do Funcionário *' : 'Nome do Responsável *'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newUser.name}
+                    onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                    placeholder={newUser.userType === 'employee' ? 'ex: Vitória Designer' : 'ex: Lucas Silva'}
+                    className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-white placeholder-neutral-500 focus:outline-none focus:border-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-neutral-300 font-bold mb-1.5">
+                    {newUser.userType === 'employee' ? 'Nome da Agência' : 'Empresa / Agência do Cliente *'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newUser.agencyName}
+                    onChange={(e) => setNewUser({ ...newUser, agencyName: e.target.value })}
+                    placeholder="ex: Agência Digital"
+                    className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-white placeholder-neutral-500 focus:outline-none focus:border-white"
+                  />
+                </div>
+              </div>
+
               {/* Email & Password */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 p-4 rounded-2xl bg-neutral-950 border border-neutral-800">
-                {/* Email */}
                 <div>
                   <label className="block text-neutral-300 font-bold mb-1.5">E-mail de Login *</label>
                   <input
@@ -879,12 +1614,11 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
                     required
                     value={newUser.email}
                     onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                    placeholder="ex: gestor@suaagencia.com.br"
+                    placeholder="ex: colaborador@empresa.com"
                     className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-3.5 py-2.5 text-white placeholder-neutral-500 focus:outline-none focus:border-white"
                   />
                 </div>
 
-                {/* Password */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="text-neutral-300 font-bold">Senha de Acesso *</label>
@@ -901,11 +1635,10 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
                     <input
                       type={showAddPassword ? 'text' : 'password'}
                       required
-                      minLength={6}
                       value={newUser.password}
                       onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                      placeholder="Mínimo 6 caracteres"
-                      className="w-full bg-neutral-900 border border-neutral-700 rounded-xl pl-3.5 pr-10 py-2.5 text-white font-mono placeholder-neutral-500 focus:outline-none focus:border-white"
+                      placeholder="Mínimo 6 dígitos"
+                      className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-3.5 py-2.5 text-white font-mono placeholder-neutral-500 focus:outline-none focus:border-white"
                     />
                     <button
                       type="button"
@@ -918,150 +1651,131 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
                 </div>
               </div>
 
-              {/* Name, Role & Agency */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-neutral-300 font-bold mb-1">Nome Completo</label>
-                  <input
-                    type="text"
-                    value={newUser.name}
-                    onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-                    placeholder="ex: Ricardo Silva"
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-white placeholder-neutral-500 focus:outline-none focus:border-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-neutral-300 font-bold mb-1">Cargo / Função *</label>
-                  <input
-                    type="text"
-                    required
-                    value={newUser.role}
-                    onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-                    placeholder="ex: Gestor de Tráfego"
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-white placeholder-neutral-500 focus:outline-none focus:border-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-neutral-300 font-bold mb-1">Agência</label>
-                  <input
-                    type="text"
-                    value={newUser.agencyName}
-                    onChange={(e) => setNewUser({ ...newUser, agencyName: e.target.value })}
-                    placeholder="ex: Techify Agência"
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-white placeholder-neutral-500 focus:outline-none focus:border-white"
-                  />
-                </div>
-              </div>
-
-              {/* Plan & Status */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-neutral-300 font-bold mb-1">Plano Atribuído *</label>
-                  <select
-                    value={newUser.plan}
-                    onChange={(e) => setNewUser({ ...newUser, plan: e.target.value as any })}
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-white"
-                  >
-                    <option value="Trial Gratuito">Trial Gratuito (14 dias)</option>
-                    <option value="Starter">Starter</option>
-                    <option value="Pro">Pro</option>
-                    <option value="Agency">Agency</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-neutral-300 font-bold mb-1">Status da Conta *</label>
-                  <select
-                    value={newUser.status}
-                    onChange={(e) => setNewUser({ ...newUser, status: e.target.value as any })}
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-white"
-                  >
-                    <option value="active">Ativo (Permite Login)</option>
-                    <option value="blocked">Bloqueado</option>
-                    <option value="Trial Expirado">Trial Expirado</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* GRANULAR PERMISSIONS SECTION */}
-              <div className="p-4 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              {/* Role & Plan Fields */}
+              {newUser.userType === 'employee' ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div>
-                    <h4 className="font-black text-white text-xs flex items-center gap-1.5">
-                      <Lock className="w-4 h-4 text-white" />
-                      <span>Módulos Liberados para este Usuário</span>
-                    </h4>
-                    <p className="text-[11px] text-neutral-400">
-                      Os módulos não marcados ficarão totalmente trancados para este login.
-                    </p>
-                  </div>
-                  <span className="text-xs font-extrabold text-white bg-neutral-900 px-2.5 py-1 rounded-lg border border-neutral-700 self-start sm:self-auto">
-                    {newUser.allowedModules.length} de {ALL_OPERATIONAL_MODULE_IDS.length} liberados
-                  </span>
-                </div>
-
-                {/* Presets */}
-                <div className="flex items-center gap-1.5 flex-wrap pt-1">
-                  <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mr-1">
-                    Presets rápidos:
-                  </span>
-                  {PERMISSION_PRESETS.map((preset) => (
-                    <button
-                      key={preset.name}
-                      type="button"
-                      onClick={() => setNewUser({ ...newUser, allowedModules: [...preset.modules] })}
-                      className="px-2.5 py-1 rounded-lg text-[11px] font-bold border border-neutral-700 bg-neutral-900 text-neutral-200 hover:bg-neutral-800 hover:text-white transition-all cursor-pointer"
+                    <label className="block text-neutral-300 font-bold mb-1.5">Cargo Interno</label>
+                    <select
+                      value={newUser.role}
+                      onChange={(e) => {
+                        const r = e.target.value;
+                        const isLider = r.includes('Líder');
+                        setNewUser({
+                          ...newUser,
+                          role: r,
+                          designRole: isLider ? 'lider' : 'designer',
+                          canApproveDesigns: isLider,
+                        });
+                      }}
+                      className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-white"
                     >
-                      {preset.name}
+                      <option value="Líder de Design">👑 Líder de Design (Aprova e Edita)</option>
+                      <option value="Designer Gráfico">🎨 Designer Gráfico</option>
+                      <option value="Gestor de Tráfego">🚀 Gestor de Tráfego</option>
+                      <option value="Editor de Vídeo">🎬 Editor de Vídeo</option>
+                      <option value="Copywriter / Redator">✍️ Copywriter / Redator</option>
+                      <option value="Social Media Manager">📱 Social Media Manager</option>
+                      <option value="Colaborador">👔 Colaborador Geral</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-neutral-300 font-bold mb-1.5">Tipo de Faturamento</label>
+                    <div className="p-2.5 rounded-xl bg-neutral-950 border border-neutral-800 text-neutral-300 font-bold flex items-center justify-between">
+                      <span>Gratuito (Equipe)</span>
+                      <span className="text-[10px] bg-neutral-900 px-2 py-0.5 rounded text-white border border-neutral-700 font-bold">
+                        R$ 0,00
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div>
+                    <label className="block text-neutral-300 font-bold mb-1.5">Plano Contratado</label>
+                    <select
+                      value={newUser.plan}
+                      onChange={(e) => setNewUser({ ...newUser, plan: e.target.value as any })}
+                      className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-white"
+                    >
+                      <option value="Starter">Starter (R$ 99/mês)</option>
+                      <option value="Pro">Pro (R$ 199/mês)</option>
+                      <option value="Agency">Agency (R$ 499/mês)</option>
+                      <option value="Trial Gratuito">Trial Gratuito (14 dias)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-neutral-300 font-bold mb-1.5">Status da Assinatura</label>
+                    <select
+                      value={newUser.status}
+                      onChange={(e) => setNewUser({ ...newUser, status: e.target.value as any })}
+                      className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-white"
+                    >
+                      <option value="active">Ativo (Liberado)</option>
+                      <option value="Trial Gratuito">Em Teste</option>
+                      <option value="blocked">Bloqueado</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {/* Module Permissions */}
+              <div className="space-y-2 pt-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-neutral-300 font-bold">Módulos Liberados para este Usuário</label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setNewUser({ ...newUser, allowedModules: [...ALL_OPERATIONAL_MODULE_IDS] })}
+                      className="text-[10px] text-neutral-300 hover:text-white font-bold underline cursor-pointer"
+                    >
+                      Marcar Todos
                     </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => setNewUser({ ...newUser, allowedModules: [] })}
-                    className="px-2.5 py-1 rounded-lg text-[11px] font-bold border border-neutral-800 text-neutral-400 bg-neutral-950 hover:bg-neutral-900 hover:text-white cursor-pointer"
-                  >
-                    Desmarcar Todos
-                  </button>
+                    <span>•</span>
+                    <button
+                      type="button"
+                      onClick={() => setNewUser({ ...newUser, allowedModules: ['dashboard', 'designer', 'social-hub'] })}
+                      className="text-[10px] text-neutral-300 hover:text-white font-bold underline cursor-pointer"
+                    >
+                      Apenas Criação
+                    </button>
+                  </div>
                 </div>
 
-                {/* Grid of Checkboxes */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 max-h-52 overflow-y-auto pr-1">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-44 overflow-y-auto p-2.5 rounded-2xl bg-neutral-950 border border-neutral-800">
                   {ALL_SYSTEM_MODULES.filter((m) => m.id !== 'admin').map((mod) => {
                     const isChecked = newUser.allowedModules.includes(mod.id);
                     return (
-                      <div
+                      <label
                         key={mod.id}
-                        onClick={() =>
-                          toggleModuleSelection(mod.id, newUser.allowedModules, (l) =>
-                            setNewUser({ ...newUser, allowedModules: l })
-                          )
-                        }
-                        className={`flex items-start gap-2.5 p-2.5 rounded-xl border transition-all cursor-pointer select-none ${
+                        className={`flex items-center gap-2 p-2 rounded-xl border text-[11px] font-bold cursor-pointer transition-all ${
                           isChecked
-                            ? 'bg-neutral-900 border-white text-white shadow-sm'
-                            : 'bg-neutral-950 border-neutral-800 text-neutral-400 hover:border-neutral-700 hover:bg-neutral-900'
+                            ? 'bg-neutral-900 border-white text-white'
+                            : 'bg-neutral-950 border-neutral-800 text-neutral-500 hover:text-neutral-300'
                         }`}
                       >
-                        <div
-                          className={`mt-0.5 w-4 h-4 rounded flex items-center justify-center border transition-all shrink-0 ${
-                            isChecked
-                              ? 'bg-white border-white text-black'
-                              : 'bg-neutral-900 border-neutral-700 text-transparent'
-                          }`}
-                        >
-                          <Check className="w-3 h-3 stroke-[3]" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="font-bold text-xs flex items-center justify-between">
-                            <span className={isChecked ? 'text-white' : 'text-neutral-300'}>
-                              {mod.name}
-                            </span>
-                          </div>
-                          <p className="text-[10px] text-neutral-400 truncate">{mod.description}</p>
-                        </div>
-                      </div>
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => {
+                            if (isChecked) {
+                              setNewUser({
+                                ...newUser,
+                                allowedModules: newUser.allowedModules.filter((id) => id !== mod.id),
+                              });
+                            } else {
+                              setNewUser({
+                                ...newUser,
+                                allowedModules: [...newUser.allowedModules, mod.id],
+                              });
+                            }
+                          }}
+                          className="rounded bg-neutral-900 border-neutral-700 text-white focus:ring-0"
+                        />
+                        <span className="truncate">{mod.name}</span>
+                      </label>
                     );
                   })}
                 </div>
@@ -1079,15 +1793,17 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
                 <button
                   type="submit"
                   disabled={isCreatingUser}
-                  className="px-6 py-2.5 rounded-xl bg-white hover:bg-neutral-200 text-black font-black flex items-center gap-2 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  className="px-5 py-2.5 rounded-xl bg-white hover:bg-neutral-200 text-black font-black flex items-center gap-2 shadow-lg cursor-pointer disabled:opacity-50"
                 >
                   {isCreatingUser ? (
                     <>
-                      <RefreshCw className="w-4 h-4 animate-spin" /> Cadastrando no Banco...
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      Cadastrando...
                     </>
                   ) : (
                     <>
-                      <UserPlus className="w-4 h-4 stroke-[2.5]" /> Criar Login & Liberar Acessos
+                      <Check className="w-4 h-4 stroke-[3]" />
+                      Salvar e Liberar Acesso
                     </>
                   )}
                 </button>
@@ -1098,11 +1814,11 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
       )}
 
       {/* ========================================================================= */}
-      {/* 2. MODAL DEDICADO: GERENCIAR PERMISSÕES DE UM USUÁRIO ESPECÍFICO */}
+      {/* MODAL: GERENCIAR PERMISSÕES GRANULARES */}
       {/* ========================================================================= */}
       {permissionsModalUser && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#0e0e0e] border border-neutral-800 rounded-3xl p-6 sm:p-7 w-full max-w-xl shadow-2xl text-neutral-200 relative animate-scale-up space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-[#0e0e0e] border border-neutral-800 rounded-3xl p-6 sm:p-7 w-full max-w-2xl shadow-2xl text-neutral-200 relative my-8 animate-scale-up">
             <button
               onClick={() => setPermissionsModalUser(null)}
               className="absolute top-5 right-5 text-neutral-400 hover:text-white cursor-pointer"
@@ -1110,195 +1826,140 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
               <X className="w-5 h-5" />
             </button>
 
-            {/* Header */}
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-neutral-900 border border-neutral-700 flex items-center justify-center text-white">
-                <ShieldCheck className="w-6 h-6 stroke-[2.2]" />
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-11 h-11 rounded-2xl bg-neutral-900 border border-neutral-700 flex items-center justify-center text-white shrink-0">
+                <Shield className="w-6 h-6 stroke-[2.2]" />
               </div>
               <div>
-                <h3 className="text-lg font-black text-white">Permissões de Módulos</h3>
-                <p className="text-xs text-neutral-400 font-mono">{permissionsModalUser.email}</p>
+                <h3 className="text-lg font-black text-white">Controle de Permissões & Módulos</h3>
+                <p className="text-xs text-neutral-400 font-mono">
+                  {permissionsModalUser.email} ({permissionsModalUser.name})
+                </p>
               </div>
             </div>
 
-            {/* Preset Buttons */}
-            <div className="space-y-1.5 pt-1">
-              <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
-                Atalhos de perfil:
-              </div>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {PERMISSION_PRESETS.map((preset) => (
-                  <button
-                    key={preset.name}
-                    type="button"
-                    onClick={() => setCurrentSelectedModules([...preset.modules])}
-                    className="px-2.5 py-1 rounded-lg text-[11px] font-bold border border-neutral-700 bg-neutral-900 text-neutral-200 hover:bg-neutral-800 hover:text-white transition-all cursor-pointer"
-                  >
-                    {preset.name}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <div className="space-y-5 text-xs">
+              {/* Creative Permissions Section */}
+              <div className="p-4 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-3">
+                <h4 className="font-bold text-white flex items-center gap-2">
+                  <Palette className="w-4 h-4 text-white" />
+                  <span>Permissões na Área de Design & Criação</span>
+                </h4>
 
-            {/* Creative & Post Permissions (Líder / Funcionário / Editor) */}
-            <div className="p-3.5 bg-neutral-950 rounded-2xl border border-neutral-800 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                  <Palette className="w-3.5 h-3.5" />
-                  Cargo Criativo & Permissões do Hub de Design / Posts:
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-neutral-300 font-bold mb-1 text-[11px]">
-                    Perfil do Funcionário:
-                  </label>
-                  <select
-                    value={permDesignRole}
-                    onChange={(e) => {
-                      const val = e.target.value as any;
-                      setPermDesignRole(val);
-                      if (val === 'lider' || val === 'admin') {
-                        setPermCanEditDesigns(true);
-                        setPermCanCreateDesigns(true);
-                        setPermCanApproveDesigns(true);
-                        setPermCanPublishPosts(true);
-                        setPermCanDeleteDesigns(true);
-                      } else if (val === 'funcionario' || val === 'designer') {
-                        setPermCanEditDesigns(true);
-                        setPermCanCreateDesigns(true);
-                        setPermCanApproveDesigns(false);
-                        setPermCanPublishPosts(true);
-                        setPermCanDeleteDesigns(false);
-                      } else if (val === 'cliente') {
-                        setPermCanEditDesigns(false);
-                        setPermCanCreateDesigns(false);
-                        setPermCanApproveDesigns(false);
-                        setPermCanPublishPosts(false);
-                        setPermCanDeleteDesigns(false);
-                      }
-                    }}
-                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-white"
-                  >
-                    <option value="lider">👑 Líder de Criação (Acesso Total & Aprovação)</option>
-                    <option value="funcionario">🎨 Funcionário / Designer (Criar, Editar & Postar)</option>
-                    <option value="designer">🖌️ Designer / Editor</option>
-                    <option value="cliente">👁️ Cliente / Convidado (Apenas Visualização)</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1.5 pt-1">
-                  <label className="flex items-center gap-2 cursor-pointer text-[11px] text-neutral-300">
-                    <input
-                      type="checkbox"
-                      checked={permCanEditDesigns}
-                      onChange={(e) => setPermCanEditDesigns(e.target.checked)}
-                      className="rounded bg-neutral-900 border-neutral-700 text-white focus:ring-0"
-                    />
-                    <span>Pode Editar Criativos & Imagens</span>
-                  </label>
-
-                  <label className="flex items-center gap-2 cursor-pointer text-[11px] text-neutral-300">
-                    <input
-                      type="checkbox"
-                      checked={permCanPublishPosts}
-                      onChange={(e) => setPermCanPublishPosts(e.target.checked)}
-                      className="rounded bg-neutral-900 border-neutral-700 text-white focus:ring-0"
-                    />
-                    <span>Pode Postar / Publicar nas Redes</span>
-                  </label>
-
-                  <label className="flex items-center gap-2 cursor-pointer text-[11px] text-neutral-300">
-                    <input
-                      type="checkbox"
-                      checked={permCanApproveDesigns}
-                      onChange={(e) => setPermCanApproveDesigns(e.target.checked)}
-                      className="rounded bg-neutral-900 border-neutral-700 text-white focus:ring-0"
-                    />
-                    <span>Pode Aprovar / Reprovar (Líder)</span>
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            {/* Modules Checkbox Grid */}
-            <div className="space-y-2 pt-1">
-              <div className="flex items-center justify-between text-xs font-bold text-neutral-300">
-                <span>Módulos do Sistema:</span>
-                <span className="text-white font-black">
-                  {currentSelectedModules.length} de {ALL_OPERATIONAL_MODULE_IDS.length} liberados
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
-                {ALL_SYSTEM_MODULES.filter((m) => m.id !== 'admin').map((mod) => {
-                  const isChecked = currentSelectedModules.includes(mod.id);
-                  return (
-                    <div
-                      key={mod.id}
-                      onClick={() =>
-                        toggleModuleSelection(mod.id, currentSelectedModules, setCurrentSelectedModules)
-                      }
-                      className={`flex items-start gap-2.5 p-2.5 rounded-xl border transition-all cursor-pointer select-none ${
-                        isChecked
-                          ? 'bg-neutral-900 border-white text-white shadow-sm'
-                          : 'bg-neutral-950 border-neutral-800 text-neutral-400 hover:border-neutral-700 hover:bg-neutral-900'
-                      }`}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-neutral-400 font-bold mb-1">Papel na Equipe Criativa</label>
+                    <select
+                      value={permDesignRole}
+                      onChange={(e) => {
+                        const val = e.target.value as any;
+                        setPermDesignRole(val);
+                        if (val === 'lider' || val === 'admin') {
+                          setPermCanEditDesigns(true);
+                          setPermCanCreateDesigns(true);
+                          setPermCanApproveDesigns(true);
+                          setPermCanPublishPosts(true);
+                          setPermCanDeleteDesigns(true);
+                        } else if (val === 'cliente') {
+                          setPermCanEditDesigns(false);
+                          setPermCanCreateDesigns(false);
+                          setPermCanApproveDesigns(true);
+                          setPermCanPublishPosts(false);
+                          setPermCanDeleteDesigns(false);
+                        }
+                      }}
+                      className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-white font-bold focus:outline-none"
                     >
-                      <div
-                        className={`mt-0.5 w-4 h-4 rounded flex items-center justify-center border transition-all shrink-0 ${
+                      <option value="lider">👑 Líder / Gerente Criativo (Poder Total)</option>
+                      <option value="designer">🎨 Designer / Criador (Cria e Edita)</option>
+                      <option value="funcionario">👔 Funcionário Geral</option>
+                      <option value="cliente">💼 Cliente (Apenas Aprovação)</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-2 pt-1">
+                    <label className="flex items-center gap-2 font-bold text-neutral-300 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={permCanEditDesigns}
+                        onChange={(e) => setPermCanEditDesigns(e.target.checked)}
+                        className="rounded bg-neutral-900 border-neutral-700 text-white focus:ring-0"
+                      />
+                      <span>Pode Editar e Alterar Criativos</span>
+                    </label>
+
+                    <label className="flex items-center gap-2 font-bold text-neutral-300 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={permCanApproveDesigns}
+                        onChange={(e) => setPermCanApproveDesigns(e.target.checked)}
+                        className="rounded bg-neutral-900 border-neutral-700 text-white focus:ring-0"
+                      />
+                      <span>Pode Aprovar / Reprovar Artes</span>
+                    </label>
+
+                    <label className="flex items-center gap-2 font-bold text-neutral-300 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={permCanPublishPosts}
+                        onChange={(e) => setPermCanPublishPosts(e.target.checked)}
+                        className="rounded bg-neutral-900 border-neutral-700 text-white focus:ring-0"
+                      />
+                      <span>Pode Postar / Agendar no Social Hub</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Module Access Checkboxes */}
+              <div className="space-y-2">
+                <label className="text-neutral-300 font-bold block">Acesso aos Módulos do Sistema</label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-56 overflow-y-auto p-3 rounded-2xl bg-neutral-950 border border-neutral-800">
+                  {ALL_SYSTEM_MODULES.filter((m) => m.id !== 'admin').map((mod) => {
+                    const isChecked = currentSelectedModules.includes(mod.id);
+                    return (
+                      <label
+                        key={mod.id}
+                        className={`flex items-center gap-2.5 p-2.5 rounded-xl border font-bold cursor-pointer transition-all ${
                           isChecked
-                            ? 'bg-white border-white text-black'
-                            : 'bg-neutral-900 border-neutral-700 text-transparent'
+                            ? 'bg-neutral-900 border-white text-white'
+                            : 'bg-neutral-950 border-neutral-800 text-neutral-500 hover:text-neutral-300'
                         }`}
                       >
-                        <Check className="w-3 h-3 stroke-[3]" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="font-bold text-xs flex items-center justify-between">
-                          <span className={isChecked ? 'text-white' : 'text-neutral-300'}>
-                            {mod.name}
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-neutral-400 truncate">{mod.description}</p>
-                      </div>
-                    </div>
-                  );
-                })}
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => {
+                            if (isChecked) {
+                              setCurrentSelectedModules(currentSelectedModules.filter((id) => id !== mod.id));
+                            } else {
+                              setCurrentSelectedModules([...currentSelectedModules, mod.id]);
+                            }
+                          }}
+                          className="rounded bg-neutral-900 border-neutral-700 text-white focus:ring-0"
+                        />
+                        <span className="truncate">{mod.name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
 
-            {/* Actions */}
-            <div className="flex items-center justify-between pt-4 border-t border-neutral-800">
-              <button
-                type="button"
-                onClick={() =>
-                  handleCopyCredentials(
-                    permissionsModalUser.email,
-                    permissionsModalUser.tempPasswordHint
-                  )
-                }
-                className="px-3 py-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-neutral-300 font-bold text-xs flex items-center gap-1.5 cursor-pointer"
-              >
-                <Copy className="w-3.5 h-3.5 text-white" />
-                Copiar Dados de Acesso
-              </button>
-
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-neutral-800">
                 <button
                   type="button"
                   onClick={() => setPermissionsModalUser(null)}
-                  className="px-4 py-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-neutral-300 font-bold text-xs cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-neutral-300 font-bold cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="button"
                   onClick={handleSavePermissions}
-                  className="px-5 py-2 rounded-xl bg-white hover:bg-neutral-200 text-black font-black text-xs flex items-center gap-1.5 shadow-md cursor-pointer"
+                  className="px-5 py-2 rounded-xl bg-white hover:bg-neutral-200 text-black font-black flex items-center gap-2 shadow-md cursor-pointer"
                 >
-                  <Check className="w-4 h-4 stroke-[3]" /> Salvar Permissões
+                  <Check className="w-4 h-4 stroke-[3]" />
+                  Salvar Permissões
                 </button>
               </div>
             </div>
@@ -1307,11 +1968,11 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
       )}
 
       {/* ========================================================================= */}
-      {/* 3. MODAL: EDITAR USUÁRIO */}
+      {/* MODAL: EDITAR USUÁRIO */}
       {/* ========================================================================= */}
       {editingUser && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-[#0e0e0e] border border-neutral-800 rounded-3xl p-6 sm:p-7 w-full max-w-xl shadow-2xl text-neutral-200 relative my-8 animate-scale-up space-y-4">
+          <div className="bg-[#0e0e0e] border border-neutral-800 rounded-3xl p-6 w-full max-w-md shadow-2xl text-neutral-200 relative my-8 animate-scale-up">
             <button
               onClick={() => setEditingUser(null)}
               className="absolute top-5 right-5 text-neutral-400 hover:text-white cursor-pointer"
@@ -1319,30 +1980,51 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
               <X className="w-5 h-5" />
             </button>
 
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-11 h-11 rounded-2xl bg-neutral-900 border border-neutral-700 flex items-center justify-center text-white">
-                <Pencil className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-lg font-black text-white">Editar Dados & Acessos</h3>
-                <p className="text-xs text-neutral-400 font-mono">{editingUser.email}</p>
-              </div>
-            </div>
+            <h3 className="text-lg font-black text-white mb-4">Editar Dados do Usuário</h3>
 
             <form onSubmit={handleUpdateUser} className="space-y-3.5 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-neutral-300 font-bold mb-1">Nome Completo</label>
+                <input
+                  type="text"
+                  value={editingUser.name || ''}
+                  onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })}
+                  className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-neutral-300 font-bold mb-1">E-mail</label>
+                <input
+                  type="email"
+                  value={editingUser.email || ''}
+                  onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
+                  className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-neutral-300 font-bold mb-1">Nome Completo</label>
-                  <input
-                    type="text"
-                    value={editingUser.name || ''}
-                    onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })}
+                  <label className="block text-neutral-300 font-bold mb-1">Tipo de Usuário</label>
+                  <select
+                    value={editingUser.userType || (isEmployeeUser(editingUser) ? 'employee' : 'client')}
+                    onChange={(e) => {
+                      const t = e.target.value as 'employee' | 'client';
+                      setEditingUser({
+                        ...editingUser,
+                        userType: t,
+                        plan: t === 'employee' ? 'Gratuito / Equipe' : (editingUser.plan === 'Gratuito / Equipe' ? 'Pro' : editingUser.plan),
+                      });
+                    }}
                     className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-white"
-                  />
+                  >
+                    <option value="employee">👥 Equipe (Gratuito)</option>
+                    <option value="client">💼 Cliente (SaaS)</option>
+                  </select>
                 </div>
 
                 <div>
-                  <label className="block text-neutral-300 font-bold mb-1">Cargo / Função</label>
+                  <label className="block text-neutral-300 font-bold mb-1">Cargo / Posição</label>
                   <input
                     type="text"
                     value={editingUser.role || ''}
@@ -1352,7 +2034,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-neutral-300 font-bold mb-1">Plano</label>
                   <select
@@ -1360,6 +2042,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
                     onChange={(e) => setEditingUser({ ...editingUser, plan: e.target.value as any })}
                     className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-white"
                   >
+                    <option value="Gratuito / Equipe">Gratuito / Equipe</option>
                     <option value="Trial Gratuito">Trial Gratuito</option>
                     <option value="Starter">Starter</option>
                     <option value="Pro">Pro</option>
@@ -1382,19 +2065,14 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
                 </div>
               </div>
 
-              {/* Password Hint / Update */}
               <div>
-                <label className="block text-neutral-300 font-bold mb-1">
-                  Senha / Credencial de Login
-                </label>
+                <label className="block text-neutral-300 font-bold mb-1">Senha de Acesso</label>
                 <div className="relative">
                   <input
                     type={showEditPassword ? 'text' : 'password'}
                     value={editingUser.tempPasswordHint || ''}
-                    onChange={(e) =>
-                      setEditingUser({ ...editingUser, tempPasswordHint: e.target.value })
-                    }
-                    placeholder="Digite nova senha para o usuário..."
+                    onChange={(e) => setEditingUser({ ...editingUser, tempPasswordHint: e.target.value })}
+                    placeholder="Digite nova senha..."
                     className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-white"
                   />
                   <button
@@ -1405,16 +2083,6 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
                     {showEditPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-neutral-300 font-bold mb-1">Notas / Observações</label>
-                <textarea
-                  rows={2}
-                  value={editingUser.notes || ''}
-                  onChange={(e) => setEditingUser({ ...editingUser, notes: e.target.value })}
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-white"
-                />
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-neutral-800">
@@ -1429,7 +2097,8 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
                   type="submit"
                   className="px-5 py-2 rounded-xl bg-white hover:bg-neutral-200 text-black font-black flex items-center gap-2 shadow-md cursor-pointer"
                 >
-                  <Check className="w-4 h-4 stroke-[3]" /> Salvar Alterações
+                  <Check className="w-4 h-4 stroke-[3]" />
+                  Salvar
                 </button>
               </div>
             </form>
@@ -1438,7 +2107,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
       )}
 
       {/* ========================================================================= */}
-      {/* 4. MODAL: EXCLUIR USUÁRIO */}
+      {/* MODAL: EXCLUIR USUÁRIO */}
       {/* ========================================================================= */}
       {deletingUser && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
@@ -1465,7 +2134,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
               <strong className="text-white bg-neutral-900 px-2 py-0.5 rounded border border-neutral-700 font-mono">
                 {deletingUser.email}
               </strong>{' '}
-              do sistema? O perfil e as permissões serão removidos.
+              do sistema?
             </p>
 
             <div className="flex items-center justify-end gap-3">
