@@ -14,6 +14,8 @@ import {
   Link as LinkIcon,
   Maximize2,
   X,
+  Edit3,
+  User,
 } from 'lucide-react';
 import { DesignBriefingDemand } from '../../types';
 import { FirestoreUserProfile } from '../../lib/firebase';
@@ -22,6 +24,7 @@ interface BriefingsTabProps {
   userProfile: FirestoreUserProfile | null;
   designBriefings: DesignBriefingDemand[];
   onOpenNewBriefingModal: () => void;
+  onEditBriefing?: (briefing: DesignBriefingDemand) => void;
   onClaimBriefing: (briefing: DesignBriefingDemand) => void;
   onDeleteBriefing?: (id: string) => Promise<void>;
   showToast: (msg: string) => void;
@@ -31,6 +34,7 @@ export const BriefingsTab: React.FC<BriefingsTabProps> = ({
   userProfile,
   designBriefings,
   onOpenNewBriefingModal,
+  onEditBriefing,
   onClaimBriefing,
   onDeleteBriefing,
   showToast,
@@ -146,6 +150,16 @@ export const BriefingsTab: React.FC<BriefingsTabProps> = ({
                       {briefing.status}
                     </span>
 
+                    {onEditBriefing && (
+                      <button
+                        onClick={() => onEditBriefing(briefing)}
+                        className="p-1 rounded-lg bg-blue-950/40 hover:bg-blue-900/60 text-blue-400 border border-blue-800/40 cursor-pointer ml-1"
+                        title="Editar Demanda e Responsável"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+
                     {onDeleteBriefing && (
                       <button
                         onClick={async () => {
@@ -164,7 +178,15 @@ export const BriefingsTab: React.FC<BriefingsTabProps> = ({
                 </div>
 
                 <div>
-                  <span className="text-xs font-bold text-amber-400">🏢 {briefing.clientName}</span>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-amber-400">🏢 {briefing.clientName}</span>
+                    {briefing.assignedTo && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-950/60 border border-purple-600/40 text-purple-300 text-[10px] font-bold">
+                        <User className="w-3 h-3 text-purple-400" />
+                        Designado para: <span className="text-white">{briefing.assignedTo}</span>
+                      </span>
+                    )}
+                  </div>
                   <h4 className="text-sm font-black text-white mt-0.5">{briefing.title}</h4>
                 </div>
 

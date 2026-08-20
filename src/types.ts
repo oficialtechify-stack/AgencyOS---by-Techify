@@ -270,6 +270,8 @@ export interface DesignBriefingDemand {
   clientName: string;
   executiveName: string;
   executiveEmail: string;
+  assignedTo?: string; // Nome da pessoa responsável por pegar/executar a demanda
+  assignedEmail?: string;
   priority: 'Baixa' | 'Média' | 'Alta' | 'Urgente';
   channel: DesignChannel;
   description: string;

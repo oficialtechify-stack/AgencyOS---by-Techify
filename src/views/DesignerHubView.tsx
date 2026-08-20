@@ -99,6 +99,7 @@ export const DesignerHubView: React.FC<DesignerHubViewProps> = ({
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   const [projectToEdit, setProjectToEdit] = useState<DesignProject | null>(null);
   const [projectToPost, setProjectToPost] = useState<DesignProject | null>(null);
+  const [briefingToEdit, setBriefingToEdit] = useState<DesignBriefingDemand | null>(null);
   const [isNewBriefingModalOpen, setIsNewBriefingModalOpen] = useState(false);
   const [isNewFolderModalOpen, setIsNewFolderModalOpen] = useState(false);
   const [isNewPackageModalOpen, setIsNewPackageModalOpen] = useState(false);
@@ -130,7 +131,8 @@ export const DesignerHubView: React.FC<DesignerHubViewProps> = ({
   }, [designProjects, designBriefings]);
 
   const handleClaimBriefing = async (briefing: DesignBriefingDemand) => {
-    const designerName = userProfile?.name || 'Designer Responsável';
+    const designerName = briefing.assignedTo || userProfile?.name || 'Designer Responsável';
+    const designerEmail = briefing.assignedEmail || userProfile?.email || '';
     try {
       if (onUpdateBriefing) {
         await onUpdateBriefing(briefing.id, {
@@ -161,7 +163,7 @@ export const DesignerHubView: React.FC<DesignerHubViewProps> = ({
           channel: briefing.channel,
           status: 'producao',
           assignedTo: designerName,
-          assignedEmail: userProfile?.email || '',
+          assignedEmail: designerEmail,
           createdBy: briefing.executiveName,
           createdEmail: briefing.executiveEmail,
           briefing: enrichedBriefingText,
@@ -251,7 +253,14 @@ export const DesignerHubView: React.FC<DesignerHubViewProps> = ({
         <BriefingsTab
           userProfile={userProfile}
           designBriefings={designBriefings}
-          onOpenNewBriefingModal={() => setIsNewBriefingModalOpen(true)}
+          onOpenNewBriefingModal={() => {
+            setBriefingToEdit(null);
+            setIsNewBriefingModalOpen(true);
+          }}
+          onEditBriefing={(briefing) => {
+            setBriefingToEdit(briefing);
+            setIsNewBriefingModalOpen(true);
+          }}
           onClaimBriefing={handleClaimBriefing}
           onDeleteBriefing={onDeleteBriefing}
           showToast={showToast}
@@ -303,6 +312,8 @@ export const DesignerHubView: React.FC<DesignerHubViewProps> = ({
         setProjectToEdit={setProjectToEdit}
         projectToPost={projectToPost}
         setProjectToPost={setProjectToPost}
+        briefingToEdit={briefingToEdit}
+        setBriefingToEdit={setBriefingToEdit}
         isNewBriefingModalOpen={isNewBriefingModalOpen}
         setIsNewBriefingModalOpen={setIsNewBriefingModalOpen}
         isNewFolderModalOpen={isNewFolderModalOpen}
@@ -322,6 +333,7 @@ export const DesignerHubView: React.FC<DesignerHubViewProps> = ({
         onAddFolder={onAddFolder}
         onDeleteFolder={onDeleteFolder}
         onAddBriefing={onAddBriefing}
+        onUpdateBriefing={onUpdateBriefing}
         onAddPackage={onAddPackage}
         onAddComment={onAddComment}
         onClearAllData={onClearAllData}

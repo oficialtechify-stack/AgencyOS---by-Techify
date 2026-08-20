@@ -29,6 +29,7 @@ import {
   Check,
   Instagram,
   Link as LinkIcon,
+  User,
 } from 'lucide-react';
 import {
   DesignProject,
@@ -60,6 +61,8 @@ interface DesignerModalsProps {
   setProjectToEdit: (p: DesignProject | null) => void;
   projectToPost: DesignProject | null;
   setProjectToPost: (p: DesignProject | null) => void;
+  briefingToEdit?: DesignBriefingDemand | null;
+  setBriefingToEdit?: (b: DesignBriefingDemand | null) => void;
   isNewBriefingModalOpen: boolean;
   setIsNewBriefingModalOpen: (open: boolean) => void;
   isNewFolderModalOpen: boolean;
@@ -81,6 +84,7 @@ interface DesignerModalsProps {
   onAddFolder?: (folder: Omit<DesignFolder, 'id'>) => Promise<void>;
   onDeleteFolder?: (id: string) => Promise<void>;
   onAddBriefing?: (briefing: Omit<DesignBriefingDemand, 'id'>) => Promise<void>;
+  onUpdateBriefing?: (id: string, data: Partial<DesignBriefingDemand>) => Promise<void>;
   onAddPackage?: (pkg: Omit<DesignPackage, 'id'>) => Promise<void>;
   onAddComment?: (comment: any) => Promise<void>;
   onClearAllData?: () => Promise<void>;
@@ -99,6 +103,8 @@ export const DesignerModals: React.FC<DesignerModalsProps> = ({
   setProjectToEdit,
   projectToPost,
   setProjectToPost,
+  briefingToEdit,
+  setBriefingToEdit,
   isNewBriefingModalOpen,
   setIsNewBriefingModalOpen,
   isNewFolderModalOpen,
@@ -118,6 +124,7 @@ export const DesignerModals: React.FC<DesignerModalsProps> = ({
   onAddFolder,
   onDeleteFolder,
   onAddBriefing,
+  onUpdateBriefing,
   onAddPackage,
   onAddComment,
   onClearAllData,
@@ -224,12 +231,14 @@ export const DesignerModals: React.FC<DesignerModalsProps> = ({
     setActiveSlideIndex(0);
   }, [selectedProjectForDetail]);
 
-  // Form State: New Briefing (Executive / Leaders / Team)
+  // Form State: New / Edit Briefing (Executive / Leaders / Team)
   const [newBriefing, setNewBriefing] = useState({
     title: '',
     clientName: '',
     executiveName: userProfile?.name || 'Executivo de Contas',
     executiveEmail: userProfile?.email || '',
+    assignedTo: '',
+    assignedEmail: '',
     priority: 'Alta' as 'Baixa' | 'Média' | 'Alta' | 'Urgente',
     channel: 'Instagram Feed' as DesignChannel,
     description: '',
@@ -244,6 +253,33 @@ export const DesignerModals: React.FC<DesignerModalsProps> = ({
     newInstagramPostInput: '',
     deadline: new Date(Date.now() + 4 * 86400000).toISOString().split('T')[0],
   });
+
+  // When briefingToEdit changes, prefill newBriefing form
+  useEffect(() => {
+    if (briefingToEdit) {
+      setNewBriefing({
+        title: briefingToEdit.title || '',
+        clientName: briefingToEdit.clientName || '',
+        executiveName: briefingToEdit.executiveName || userProfile?.name || 'Executivo de Contas',
+        executiveEmail: briefingToEdit.executiveEmail || userProfile?.email || '',
+        assignedTo: briefingToEdit.assignedTo || '',
+        assignedEmail: briefingToEdit.assignedEmail || '',
+        priority: briefingToEdit.priority || 'Alta',
+        channel: briefingToEdit.channel || 'Instagram Feed',
+        description: briefingToEdit.description || '',
+        referencesUrl: briefingToEdit.referencesUrl || '',
+        referenceLinks: briefingToEdit.referenceLinks || [],
+        referenceImages: briefingToEdit.referenceImages || [],
+        instagramProfiles: briefingToEdit.instagramProfiles || [],
+        instagramPosts: briefingToEdit.instagramPosts || [],
+        newLinkInput: '',
+        newImageUrlInput: '',
+        newInstagramProfileInput: '',
+        newInstagramPostInput: '',
+        deadline: briefingToEdit.deadline || new Date().toISOString().split('T')[0],
+      });
+    }
+  }, [briefingToEdit, userProfile]);
 
   // Form State: New Folder
   const [newFolder, setNewFolder] = useState({
@@ -802,32 +838,59 @@ export const DesignerModals: React.FC<DesignerModalsProps> = ({
     }
 
     try {
-      if (onAddBriefing) {
+      if (briefingToEdit && onUpdateBriefing) {
+        // Edit mode
+        await onUpdateBriefing(briefingToEdit.id, {
+          title: newBriefing.title.trim(),
+          clientName: newBriefing.clientName.trim(),
+          executiveName: newBriefing.executiveName.trim(),
+          executiveEmail: newBriefing.executiveEmail.trim(),
+          assignedTo: newBriefing.assignedTo.trim() || '',
+          assignedEmail: newBriefing.assignedEmail.trim() || '',
+          priority: newBriefing.priority,
+          channel: newBriefing.channel,
+          description: newBriefing.description.trim(),
+          referencesUrl: newBriefing.referencesUrl.trim() || (newBriefing.referenceLinks[0] || ''),
+          referenceLinks: newBriefing.referenceLinks || [],
+          referenceImages: newBriefing.referenceImages || [],
+          instagramProfiles: newBriefing.instagramProfiles || [],
+          instagramPosts: newBriefing.instagramPosts || [],
+          deadline: newBriefing.deadline,
+        });
+        showToast(`Demanda "${newBriefing.title}" atualizada com sucesso!`);
+        if (setBriefingToEdit) setBriefingToEdit(null);
+      } else if (onAddBriefing) {
+        // Create mode
         await onAddBriefing({
           title: newBriefing.title.trim(),
           clientName: newBriefing.clientName.trim(),
           executiveName: newBriefing.executiveName.trim(),
           executiveEmail: newBriefing.executiveEmail.trim(),
+          assignedTo: newBriefing.assignedTo.trim() || '',
+          assignedEmail: newBriefing.assignedEmail.trim() || '',
           priority: newBriefing.priority,
           channel: newBriefing.channel,
           description: newBriefing.description.trim(),
-          referencesUrl: newBriefing.referencesUrl.trim() || (newBriefing.referenceLinks[0] || undefined),
-          referenceLinks: newBriefing.referenceLinks,
-          referenceImages: newBriefing.referenceImages,
-          instagramProfiles: newBriefing.instagramProfiles,
-          instagramPosts: newBriefing.instagramPosts,
+          referencesUrl: newBriefing.referencesUrl.trim() || (newBriefing.referenceLinks[0] || ''),
+          referenceLinks: newBriefing.referenceLinks || [],
+          referenceImages: newBriefing.referenceImages || [],
+          instagramProfiles: newBriefing.instagramProfiles || [],
+          instagramPosts: newBriefing.instagramPosts || [],
           deadline: newBriefing.deadline,
           status: 'Pendente',
           createdAt: new Date().toISOString(),
         });
+        showToast('Demanda e referências cadastradas para a equipe!');
       }
-      showToast('Demanda e referências cadastradas para a equipe!');
+
       setIsNewBriefingModalOpen(false);
       setNewBriefing({
         title: '',
         clientName: '',
         executiveName: userProfile?.name || 'Executivo de Contas',
         executiveEmail: userProfile?.email || '',
+        assignedTo: '',
+        assignedEmail: '',
         priority: 'Alta',
         channel: 'Instagram Feed',
         description: '',
@@ -844,7 +907,7 @@ export const DesignerModals: React.FC<DesignerModalsProps> = ({
       });
     } catch (err) {
       console.error(err);
-      showToast('Erro ao cadastrar briefing.');
+      showToast('Erro ao salvar briefing.');
     }
   };
 
@@ -2053,13 +2116,16 @@ export const DesignerModals: React.FC<DesignerModalsProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL 6: NOVO BRIEFING */}
+      {/* MODAL 6: NOVO / EDITAR BRIEFING */}
       {/* ========================================================================= */}
       {isNewBriefingModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-[#0e0e0e] border border-neutral-800 rounded-3xl p-6 sm:p-7 w-full max-w-xl shadow-2xl text-neutral-200 relative my-8">
             <button
-              onClick={() => setIsNewBriefingModalOpen(false)}
+              onClick={() => {
+                setIsNewBriefingModalOpen(false);
+                if (setBriefingToEdit) setBriefingToEdit(null);
+              }}
               className="absolute top-5 right-5 text-neutral-400 hover:text-white cursor-pointer"
             >
               <X className="w-5 h-5" />
@@ -2070,9 +2136,13 @@ export const DesignerModals: React.FC<DesignerModalsProps> = ({
                 <FileText className="w-6 h-6 stroke-[2.2]" />
               </div>
               <div>
-                <h3 className="text-lg font-black text-white">Cadastrar Demanda / Briefing</h3>
+                <h3 className="text-lg font-black text-white">
+                  {briefingToEdit ? 'Editar Demanda / Briefing' : 'Cadastrar Demanda / Briefing'}
+                </h3>
                 <p className="text-xs text-neutral-400">
-                  Descreva o que o cliente solicitou para que os funcionários possam assumir a arte.
+                  {briefingToEdit
+                    ? 'Edite as informações da demanda, altere ou defina a pessoa responsável por executar a arte.'
+                    : 'Descreva o que o cliente solicitou e opcionalmente defina qual pessoa da equipe deve pegar a demanda.'}
                 </p>
               </div>
             </div>
@@ -2112,6 +2182,38 @@ export const DesignerModals: React.FC<DesignerModalsProps> = ({
                     onChange={(e) => setNewBriefing({ ...newBriefing, executiveName: e.target.value })}
                     className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2 text-white placeholder-neutral-500 focus:outline-none focus:border-white"
                   />
+                </div>
+              </div>
+
+              {/* Atribuição de Pessoa / Designer Responsável */}
+              <div className="bg-[#12141c] border border-neutral-800 p-3.5 rounded-2xl space-y-2">
+                <label className="block text-neutral-200 font-bold text-xs flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-purple-300">
+                    <User className="w-3.5 h-3.5 text-purple-400" /> Pessoa Designada para Pegar a Demanda (Opcional)
+                  </span>
+                  <span className="text-[10px] text-neutral-400 font-normal">
+                    Designer ou funcionário
+                  </span>
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <input
+                      type="text"
+                      value={newBriefing.assignedTo}
+                      onChange={(e) => setNewBriefing({ ...newBriefing, assignedTo: e.target.value })}
+                      placeholder="Nome da pessoa (ex: Sarah Designer, Marcos...)"
+                      className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2 text-white placeholder-neutral-500 focus:outline-none focus:border-purple-400"
+                    />
+                  </div>
+                  <div>
+                    <input
+                      type="email"
+                      value={newBriefing.assignedEmail}
+                      onChange={(e) => setNewBriefing({ ...newBriefing, assignedEmail: e.target.value })}
+                      placeholder="E-mail da pessoa (opcional)"
+                      className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2 text-white placeholder-neutral-500 focus:outline-none focus:border-purple-400"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -2399,7 +2501,10 @@ export const DesignerModals: React.FC<DesignerModalsProps> = ({
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-neutral-800">
                 <button
                   type="button"
-                  onClick={() => setIsNewBriefingModalOpen(false)}
+                  onClick={() => {
+                    setIsNewBriefingModalOpen(false);
+                    if (setBriefingToEdit) setBriefingToEdit(null);
+                  }}
                   className="px-4 py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-neutral-300 font-bold cursor-pointer"
                 >
                   Cancelar
@@ -2408,7 +2513,7 @@ export const DesignerModals: React.FC<DesignerModalsProps> = ({
                   type="submit"
                   className="px-6 py-2.5 rounded-xl bg-white hover:bg-neutral-200 text-black font-black cursor-pointer shadow-lg transition-colors"
                 >
-                  Enviar Demanda
+                  {briefingToEdit ? 'Salvar Alterações' : 'Enviar Demanda'}
                 </button>
               </div>
             </form>

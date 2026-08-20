@@ -344,7 +344,8 @@ export async function getOrCreateUserProfile(user: User, customAgencyName?: stri
 
 export async function updateUserProfile(uid: string, data: Partial<FirestoreUserProfile>) {
   const userRef = doc(db, 'users', uid);
-  await updateDoc(userRef, data);
+  const cleanData = sanitizeFirestorePayload(data);
+  await updateDoc(userRef, cleanData);
 }
 
 // Seed user subcollections
@@ -407,16 +408,38 @@ export function subscribeToUserProfile(uid: string, onData: (profile: FirestoreU
   });
 }
 
+// Helper to recursively strip undefined properties before sending to Firestore
+export function sanitizeFirestorePayload<T = any>(obj: T): T {
+  if (obj === null || obj === undefined) return null as unknown as T;
+  if (Array.isArray(obj)) {
+    return obj
+      .filter((item) => item !== undefined)
+      .map((item) => (typeof item === 'object' && item !== null ? sanitizeFirestorePayload(item) : item)) as unknown as T;
+  }
+  if (typeof obj === 'object') {
+    const cleaned: Record<string, any> = {};
+    for (const [key, value] of Object.entries(obj as Record<string, any>)) {
+      if (value !== undefined) {
+        cleaned[key] = typeof value === 'object' && value !== null ? sanitizeFirestorePayload(value) : value;
+      }
+    }
+    return cleaned as T;
+  }
+  return obj;
+}
+
 // Firestore collection Item operations
 export async function addCollectionItem(uid: string, collectionName: string, itemData: any) {
   const colRef = collection(db, 'users', uid, collectionName);
-  const docRef = await addDoc(colRef, itemData);
+  const cleanData = sanitizeFirestorePayload(itemData);
+  const docRef = await addDoc(colRef, cleanData);
   return docRef.id;
 }
 
 export async function updateCollectionItem(uid: string, collectionName: string, itemId: string, itemData: any) {
   const itemRef = doc(db, 'users', uid, collectionName, itemId);
-  await updateDoc(itemRef, itemData);
+  const cleanData = sanitizeFirestorePayload(itemData);
+  await updateDoc(itemRef, cleanData);
 }
 
 export async function deleteCollectionItem(uid: string, collectionName: string, itemId: string) {
