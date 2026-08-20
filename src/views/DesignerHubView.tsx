@@ -229,76 +229,78 @@ export const DesignerHubView: React.FC<DesignerHubViewProps> = ({
         onOpenClearAllModal={() => setIsClearAllModalOpen(true)}
       />
 
-      {/* Tab Content */}
-      {activeTab === 'criativos' && (
-        <CreativesTab
-          userProfile={userProfile}
-          designProjects={designProjects}
-          designFolders={designFolders}
-          channels={CHANNELS}
-          folderFilter={folderFilter}
-          setFolderFilter={setFolderFilter}
-          onOpenNewProjectModal={() => setIsNewProjectModalOpen(true)}
-          onSelectProjectForDetail={(p) => setSelectedProjectForDetail(p)}
-          onSelectProjectForApproval={(p) => setSelectedProjectForApproval(p)}
-          onEditProject={(p) => setProjectToEdit(p)}
-          onPostProject={(p) => setProjectToPost(p)}
-          onOpenChatForProject={handleOpenChatForProject}
-          onDeleteProject={onDeleteProject}
-          showToast={showToast}
-        />
-      )}
+      {/* Tab Content (Independent Render & Scroll Container) */}
+      <div className="relative w-full min-h-[450px]">
+        {activeTab === 'criativos' && (
+          <CreativesTab
+            userProfile={userProfile}
+            designProjects={designProjects}
+            designFolders={designFolders}
+            channels={CHANNELS}
+            folderFilter={folderFilter}
+            setFolderFilter={setFolderFilter}
+            onOpenNewProjectModal={() => setIsNewProjectModalOpen(true)}
+            onSelectProjectForDetail={(p) => setSelectedProjectForDetail(p)}
+            onSelectProjectForApproval={(p) => setSelectedProjectForApproval(p)}
+            onEditProject={(p) => setProjectToEdit(p)}
+            onPostProject={(p) => setProjectToPost(p)}
+            onOpenChatForProject={handleOpenChatForProject}
+            onDeleteProject={onDeleteProject}
+            showToast={showToast}
+          />
+        )}
 
-      {activeTab === 'briefings' && (
-        <BriefingsTab
-          userProfile={userProfile}
-          designBriefings={designBriefings}
-          onOpenNewBriefingModal={() => {
-            setBriefingToEdit(null);
-            setIsNewBriefingModalOpen(true);
-          }}
-          onEditBriefing={(briefing) => {
-            setBriefingToEdit(briefing);
-            setIsNewBriefingModalOpen(true);
-          }}
-          onClaimBriefing={handleClaimBriefing}
-          onDeleteBriefing={onDeleteBriefing}
-          showToast={showToast}
-        />
-      )}
+        {activeTab === 'briefings' && (
+          <BriefingsTab
+            userProfile={userProfile}
+            designBriefings={designBriefings}
+            onOpenNewBriefingModal={() => {
+              setBriefingToEdit(null);
+              setIsNewBriefingModalOpen(true);
+            }}
+            onEditBriefing={(briefing) => {
+              setBriefingToEdit(briefing);
+              setIsNewBriefingModalOpen(true);
+            }}
+            onClaimBriefing={handleClaimBriefing}
+            onDeleteBriefing={onDeleteBriefing}
+            showToast={showToast}
+          />
+        )}
 
-      {activeTab === 'pastas' && (
-        <FoldersTab
-          designFolders={designFolders}
-          designProjects={designProjects}
-          onOpenNewFolderModal={() => setIsNewFolderModalOpen(true)}
-          onSelectFolder={handleSelectFolder}
-          onRequestDeleteFolder={(folder) => setFolderToDelete(folder)}
-        />
-      )}
+        {activeTab === 'pastas' && (
+          <FoldersTab
+            designFolders={designFolders}
+            designProjects={designProjects}
+            onOpenNewFolderModal={() => setIsNewFolderModalOpen(true)}
+            onSelectFolder={handleSelectFolder}
+            onRequestDeleteFolder={(folder) => setFolderToDelete(folder)}
+          />
+        )}
 
-      {activeTab === 'pacotes' && (
-        <PackagesTab
-          designPackages={designPackages}
-          onOpenNewPackageModal={() => setIsNewPackageModalOpen(true)}
-          onUpdatePackage={onUpdatePackage}
-          onDeletePackage={onDeletePackage}
-          showToast={showToast}
-        />
-      )}
+        {activeTab === 'pacotes' && (
+          <PackagesTab
+            designPackages={designPackages}
+            onOpenNewPackageModal={() => setIsNewPackageModalOpen(true)}
+            onUpdatePackage={onUpdatePackage}
+            onDeletePackage={onDeletePackage}
+            showToast={showToast}
+          />
+        )}
 
-      {activeTab === 'mensagens' && (
-        <ChatTab
-          userProfile={userProfile}
-          designProjects={designProjects}
-          designComments={designComments}
-          activeChatProjectId={activeChatProjectId}
-          setActiveChatProjectId={setActiveChatProjectId}
-          onAddComment={onAddComment}
-          onDeleteComment={onDeleteComment}
-          showToast={showToast}
-        />
-      )}
+        {activeTab === 'mensagens' && (
+          <ChatTab
+            userProfile={userProfile}
+            designProjects={designProjects}
+            designComments={designComments}
+            activeChatProjectId={activeChatProjectId}
+            setActiveChatProjectId={setActiveChatProjectId}
+            onAddComment={onAddComment}
+            onDeleteComment={onDeleteComment}
+            showToast={showToast}
+          />
+        )}
+      </div>
 
       {/* All Modals */}
       <DesignerModals

@@ -917,7 +917,7 @@ export default function App() {
 
   // Render Internal App Workspace
   return (
-    <div className="min-h-screen bg-[#06070a] text-gray-100 flex flex-col font-sans selection:bg-[#22c55e] selection:text-black">
+    <div className="h-screen bg-[#06070a] text-gray-100 flex flex-col font-sans overflow-hidden selection:bg-[#22c55e] selection:text-black">
       {/* Top Header */}
       <HeaderNav
         agencyName={userProfile?.agencyName || state.organization.agencyName}
@@ -929,7 +929,7 @@ export default function App() {
         onOpenAuthModal={() => handleOpenAuth('login')}
       />
 
-      <div className="flex flex-1 relative overflow-hidden">
+      <div className="flex flex-1 relative overflow-hidden min-h-0">
         {/* Sidebar */}
         <Sidebar
           activeView={state.activeView}
@@ -944,7 +944,7 @@ export default function App() {
         />
 
         {/* Main Content View Area */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+        <main className="flex-1 h-full overflow-y-auto min-h-0 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
           {!hasModuleAccess(state.activeView, userProfile) ? (
             <LockedModuleView
               moduleId={state.activeView}

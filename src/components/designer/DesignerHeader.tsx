@@ -138,72 +138,76 @@ export const DesignerHeader: React.FC<DesignerHeaderProps> = ({
         </div>
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-neutral-800 pb-2 overflow-x-auto">
-        <button
-          onClick={() => setActiveTab('criativos')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === 'criativos'
-              ? 'bg-white text-black'
-              : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
-          }`}
-        >
-          <Palette className="w-4 h-4" />
-          <span>Mural de Criativos & Artes ({designProjectsCount})</span>
-        </button>
+      {/* Navigation Tabs (Sticky & Isolated Scrolling) */}
+      <div className="sticky top-0 z-20 bg-[#0a0a0a]/95 backdrop-blur-md py-2.5 -mx-1 px-1 border-b border-neutral-800/80">
+        <div className="flex items-center gap-2 overflow-x-auto overscroll-x-contain scrollbar-none py-0.5">
+          <button
+            onClick={() => setActiveTab('criativos')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+              activeTab === 'criativos'
+                ? 'bg-white text-black shadow-md'
+                : 'text-neutral-400 hover:text-white hover:bg-neutral-900 border border-transparent hover:border-neutral-800'
+            }`}
+          >
+            <Palette className="w-4 h-4" />
+            <span>Mural de Criativos & Artes ({designProjectsCount})</span>
+          </button>
 
-        <button
-          onClick={() => setActiveTab('briefings')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === 'briefings'
-              ? 'bg-white text-black'
-              : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
-          }`}
-        >
-          <FileText className="w-4 h-4" />
-          <span>Demandas do Executivo ({designBriefingsCount})</span>
-          {stats.briefingsPendentes > 0 && (
-            <span className="w-5 h-5 rounded-full bg-neutral-700 text-white text-[10px] flex items-center justify-center font-bold">
-              {stats.briefingsPendentes}
-            </span>
-          )}
-        </button>
+          <button
+            onClick={() => setActiveTab('briefings')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+              activeTab === 'briefings'
+                ? 'bg-white text-black shadow-md'
+                : 'text-neutral-400 hover:text-white hover:bg-neutral-900 border border-transparent hover:border-neutral-800'
+            }`}
+          >
+            <FileText className="w-4 h-4" />
+            <span>Demandas do Executivo ({designBriefingsCount})</span>
+            {stats.briefingsPendentes > 0 && (
+              <span className={`w-5 h-5 rounded-full text-[10px] flex items-center justify-center font-bold ${
+                activeTab === 'briefings' ? 'bg-black text-white' : 'bg-neutral-800 text-white'
+              }`}>
+                {stats.briefingsPendentes}
+              </span>
+            )}
+          </button>
 
-        <button
-          onClick={() => setActiveTab('pastas')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === 'pastas'
-              ? 'bg-white text-black'
-              : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
-          }`}
-        >
-          <Folder className="w-4 h-4" />
-          <span>Pastas por Empresa ({designFoldersCount})</span>
-        </button>
+          <button
+            onClick={() => setActiveTab('pastas')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+              activeTab === 'pastas'
+                ? 'bg-white text-black shadow-md'
+                : 'text-neutral-400 hover:text-white hover:bg-neutral-900 border border-transparent hover:border-neutral-800'
+            }`}
+          >
+            <Folder className="w-4 h-4" />
+            <span>Pastas por Empresa ({designFoldersCount})</span>
+          </button>
 
-        <button
-          onClick={() => setActiveTab('pacotes')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === 'pacotes'
-              ? 'bg-white text-black'
-              : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
-          }`}
-        >
-          <Package className="w-4 h-4" />
-          <span>Entrega de Pacotes ({designPackagesCount})</span>
-        </button>
+          <button
+            onClick={() => setActiveTab('pacotes')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+              activeTab === 'pacotes'
+                ? 'bg-white text-black shadow-md'
+                : 'text-neutral-400 hover:text-white hover:bg-neutral-900 border border-transparent hover:border-neutral-800'
+            }`}
+          >
+            <Package className="w-4 h-4" />
+            <span>Entrega de Pacotes ({designPackagesCount})</span>
+          </button>
 
-        <button
-          onClick={() => setActiveTab('mensagens')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === 'mensagens'
-              ? 'bg-white text-black'
-              : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
-          }`}
-        >
-          <MessageSquare className="w-4 h-4" />
-          <span>Chat & Ajustes ({designCommentsCount})</span>
-        </button>
+          <button
+            onClick={() => setActiveTab('mensagens')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+              activeTab === 'mensagens'
+                ? 'bg-white text-black shadow-md'
+                : 'text-neutral-400 hover:text-white hover:bg-neutral-900 border border-transparent hover:border-neutral-800'
+            }`}
+          >
+            <MessageSquare className="w-4 h-4" />
+            <span>Chat & Ajustes ({designCommentsCount})</span>
+          </button>
+        </div>
       </div>
     </div>
   );

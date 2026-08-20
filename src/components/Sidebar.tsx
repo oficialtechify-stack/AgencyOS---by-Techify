@@ -130,12 +130,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       )}
 
       <aside
-        className={`w-64 bg-[#0a0a0a] border-r border-neutral-800 flex flex-col h-screen sticky top-0 shrink-0 text-neutral-300 font-sans select-none transition-all duration-200 ${
-          isOpen ? 'fixed inset-y-0 left-0 z-50 shadow-2xl block' : 'hidden md:flex z-30'
+        className={`w-64 bg-[#0a0a0a] border-r border-neutral-800 flex flex-col h-full shrink-0 text-neutral-300 font-sans select-none transition-all duration-200 ${
+          isOpen ? 'fixed inset-y-0 left-0 z-50 shadow-2xl block' : 'hidden md:flex z-20'
         }`}
       >
         {/* Brand Header */}
-        <div className="p-4 px-5 flex items-center justify-between border-b border-neutral-800">
+        <div className="p-4 px-5 flex items-center justify-between border-b border-neutral-800 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-black shrink-0 font-black">
               <Zap className="w-4 h-4 fill-black text-black" />

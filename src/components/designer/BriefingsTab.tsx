@@ -63,11 +63,29 @@ export const BriefingsTab: React.FC<BriefingsTabProps> = ({
   };
 
   const formatInstagramUrl = (handleOrUrl: string) => {
-    if (handleOrUrl.startsWith('http://') || handleOrUrl.startsWith('https://')) {
-      return handleOrUrl;
+    if (!handleOrUrl) return '#';
+    const trimmed = handleOrUrl.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
     }
-    const clean = handleOrUrl.replace(/^@/, '').trim();
+    if (trimmed.startsWith('instagram.com') || trimmed.startsWith('www.instagram.com')) {
+      return `https://${trimmed}`;
+    }
+    const clean = trimmed.replace(/^@/, '').trim();
     return `https://instagram.com/${clean}`;
+  };
+
+  const getInstagramHandleDisplay = (handleOrUrl: string) => {
+    if (!handleOrUrl) return '';
+    const trimmed = handleOrUrl.trim();
+    if (trimmed.startsWith('@')) return trimmed;
+    if (trimmed.includes('instagram.com/')) {
+      const seg = trimmed.split('instagram.com/')[1]?.split('/')[0]?.split('?')[0];
+      if (seg && seg !== 'p' && seg !== 'reel' && seg !== 'stories') {
+        return `@${seg}`;
+      }
+    }
+    return trimmed.startsWith('http') ? trimmed : `@${trimmed}`;
   };
 
   return (
@@ -237,24 +255,25 @@ export const BriefingsTab: React.FC<BriefingsTabProps> = ({
                           href={formatInstagramUrl(handle)}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-pink-950/60 border border-pink-600/40 text-pink-300 hover:bg-pink-900 text-[10px] font-bold transition-colors"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-pink-950/60 border border-pink-600/40 text-pink-300 hover:bg-pink-900 text-[10px] font-bold transition-colors shadow-sm"
                         >
-                          <Instagram className="w-3 h-3 text-pink-400" />
-                          <span>{handle}</span>
-                          <ExternalLink className="w-2.5 h-2.5 ml-0.5 opacity-70" />
+                          <Instagram className="w-3 h-3 text-pink-400 shrink-0" />
+                          <span>{getInstagramHandleDisplay(handle)}</span>
+                          <ExternalLink className="w-2.5 h-2.5 ml-0.5 opacity-70 shrink-0" />
                         </a>
                       ))}
 
                       {briefing.instagramPosts?.map((postUrl, idx) => (
                         <a
                           key={`post-${idx}`}
-                          href={postUrl}
+                          href={formatInstagramUrl(postUrl)}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-pink-950/40 border border-pink-800/40 text-pink-200 hover:bg-pink-900 text-[10px] transition-colors"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-pink-950/40 border border-pink-800/40 text-pink-200 hover:bg-pink-900 text-[10px] transition-colors shadow-sm"
                         >
-                          <ExternalLink className="w-2.5 h-2.5 text-pink-400" />
-                          <span>Post Instagram {idx + 1}</span>
+                          <Instagram className="w-2.5 h-2.5 text-pink-400 shrink-0" />
+                          <span>Post de Referência {idx + 1}</span>
+                          <ExternalLink className="w-2.5 h-2.5 ml-0.5 opacity-70 shrink-0" />
                         </a>
                       ))}
                     </div>
@@ -270,7 +289,7 @@ export const BriefingsTab: React.FC<BriefingsTabProps> = ({
                     <div className="flex flex-wrap gap-1.5">
                       {briefing.referencesUrl && !briefing.referenceLinks?.includes(briefing.referencesUrl) && (
                         <a
-                          href={briefing.referencesUrl}
+                          href={briefing.referencesUrl.startsWith('http') ? briefing.referencesUrl : `https://${briefing.referencesUrl}`}
                           target="_blank"
                           rel="noreferrer"
                           className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-950/60 border border-blue-600/40 text-blue-300 hover:bg-blue-900 text-[10px] font-bold transition-colors truncate max-w-full"
@@ -283,7 +302,7 @@ export const BriefingsTab: React.FC<BriefingsTabProps> = ({
                       {briefing.referenceLinks?.map((link, idx) => (
                         <a
                           key={idx}
-                          href={link}
+                          href={link.startsWith('http') ? link : `https://${link}`}
                           target="_blank"
                           rel="noreferrer"
                           className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-950/60 border border-blue-600/40 text-blue-300 hover:bg-blue-900 text-[10px] font-bold transition-colors truncate max-w-full"

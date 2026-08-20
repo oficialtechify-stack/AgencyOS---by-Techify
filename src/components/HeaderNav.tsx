@@ -59,7 +59,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   const displaySubtitle = subtitle || currentModule?.description || 'Visão 360° da sua agência';
 
   return (
-    <header className="h-16 border-b border-neutral-800 bg-[#0a0a0a] px-4 sm:px-6 flex items-center justify-between sticky top-0 z-20 font-sans backdrop-blur-md">
+    <header className="h-16 border-b border-neutral-800 bg-[#0a0a0a] px-4 sm:px-6 flex items-center justify-between z-30 shrink-0 font-sans backdrop-blur-md">
       <div className="flex items-center gap-3 min-w-0">
         {onToggleSidebar && (
           <button

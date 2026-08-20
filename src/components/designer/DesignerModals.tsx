@@ -790,16 +790,19 @@ export const DesignerModals: React.FC<DesignerModalsProps> = ({
   const handleAddBriefingInstagramProfile = () => {
     if (!newBriefing.newInstagramProfileInput.trim()) return;
     let profile = newBriefing.newInstagramProfileInput.trim();
-    // Normalize handle or url
     if (!profile.startsWith('@') && !profile.includes('instagram.com')) {
       profile = `@${profile}`;
     }
-    setNewBriefing((prev) => ({
-      ...prev,
-      instagramProfiles: [...prev.instagramProfiles, profile],
-      newInstagramProfileInput: '',
-    }));
-    showToast('Perfil do Instagram adicionado!');
+    if (!newBriefing.instagramProfiles.includes(profile)) {
+      setNewBriefing((prev) => ({
+        ...prev,
+        instagramProfiles: [...prev.instagramProfiles, profile],
+        newInstagramProfileInput: '',
+      }));
+      showToast('Perfil do Instagram adicionado!');
+    } else {
+      setNewBriefing((prev) => ({ ...prev, newInstagramProfileInput: '' }));
+    }
   };
 
   const handleRemoveBriefingInstagramProfile = (index: number) => {
@@ -815,12 +818,16 @@ export const DesignerModals: React.FC<DesignerModalsProps> = ({
     if (!/^https?:\/\//i.test(url)) {
       url = `https://${url}`;
     }
-    setNewBriefing((prev) => ({
-      ...prev,
-      instagramPosts: [...prev.instagramPosts, url],
-      newInstagramPostInput: '',
-    }));
-    showToast('Post de referência do Instagram adicionado!');
+    if (!newBriefing.instagramPosts.includes(url)) {
+      setNewBriefing((prev) => ({
+        ...prev,
+        instagramPosts: [...prev.instagramPosts, url],
+        newInstagramPostInput: '',
+      }));
+      showToast('Post de referência do Instagram adicionado!');
+    } else {
+      setNewBriefing((prev) => ({ ...prev, newInstagramPostInput: '' }));
+    }
   };
 
   const handleRemoveBriefingInstagramPost = (index: number) => {
@@ -837,6 +844,36 @@ export const DesignerModals: React.FC<DesignerModalsProps> = ({
       return;
     }
 
+    // Auto-capture any text typed in pending inputs before submit
+    const finalProfiles = [...newBriefing.instagramProfiles];
+    if (newBriefing.newInstagramProfileInput.trim()) {
+      let prof = newBriefing.newInstagramProfileInput.trim();
+      if (!prof.startsWith('@') && !prof.includes('instagram.com')) {
+        prof = `@${prof}`;
+      }
+      if (!finalProfiles.includes(prof)) finalProfiles.push(prof);
+    }
+
+    const finalPosts = [...newBriefing.instagramPosts];
+    if (newBriefing.newInstagramPostInput.trim()) {
+      let post = newBriefing.newInstagramPostInput.trim();
+      if (!/^https?:\/\//i.test(post)) post = `https://${post}`;
+      if (!finalPosts.includes(post)) finalPosts.push(post);
+    }
+
+    const finalImages = [...newBriefing.referenceImages];
+    if (newBriefing.newImageUrlInput.trim()) {
+      const img = newBriefing.newImageUrlInput.trim();
+      if (!finalImages.includes(img)) finalImages.push(img);
+    }
+
+    const finalLinks = [...newBriefing.referenceLinks];
+    if (newBriefing.newLinkInput.trim()) {
+      let link = newBriefing.newLinkInput.trim();
+      if (!/^https?:\/\//i.test(link)) link = `https://${link}`;
+      if (!finalLinks.includes(link)) finalLinks.push(link);
+    }
+
     try {
       if (briefingToEdit && onUpdateBriefing) {
         // Edit mode
@@ -850,11 +887,11 @@ export const DesignerModals: React.FC<DesignerModalsProps> = ({
           priority: newBriefing.priority,
           channel: newBriefing.channel,
           description: newBriefing.description.trim(),
-          referencesUrl: newBriefing.referencesUrl.trim() || (newBriefing.referenceLinks[0] || ''),
-          referenceLinks: newBriefing.referenceLinks || [],
-          referenceImages: newBriefing.referenceImages || [],
-          instagramProfiles: newBriefing.instagramProfiles || [],
-          instagramPosts: newBriefing.instagramPosts || [],
+          referencesUrl: newBriefing.referencesUrl.trim() || (finalLinks[0] || ''),
+          referenceLinks: finalLinks,
+          referenceImages: finalImages,
+          instagramProfiles: finalProfiles,
+          instagramPosts: finalPosts,
           deadline: newBriefing.deadline,
         });
         showToast(`Demanda "${newBriefing.title}" atualizada com sucesso!`);
@@ -871,11 +908,11 @@ export const DesignerModals: React.FC<DesignerModalsProps> = ({
           priority: newBriefing.priority,
           channel: newBriefing.channel,
           description: newBriefing.description.trim(),
-          referencesUrl: newBriefing.referencesUrl.trim() || (newBriefing.referenceLinks[0] || ''),
-          referenceLinks: newBriefing.referenceLinks || [],
-          referenceImages: newBriefing.referenceImages || [],
-          instagramProfiles: newBriefing.instagramProfiles || [],
-          instagramPosts: newBriefing.instagramPosts || [],
+          referencesUrl: newBriefing.referencesUrl.trim() || (finalLinks[0] || ''),
+          referenceLinks: finalLinks,
+          referenceImages: finalImages,
+          instagramProfiles: finalProfiles,
+          instagramPosts: finalPosts,
           deadline: newBriefing.deadline,
           status: 'Pendente',
           createdAt: new Date().toISOString(),
