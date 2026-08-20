@@ -11,6 +11,8 @@ import {
   addCollectionItem,
   deleteCollectionItem,
   updateCollectionItem,
+  updateUserInFirestore,
+  resolvePrimaryAgencyOwnerUid,
   getStoredSession,
   logoutUser,
 } from './lib/firebase';
@@ -190,10 +192,34 @@ export default function App() {
         let lastSubscribedDataUid = '';
 
         // Realtime subscription to User Profile
-        const unsubProfile = subscribeToUserProfile(activeUid, (p) => {
+        const unsubProfile = subscribeToUserProfile(activeUid, async (p) => {
           if (p) {
             setUserProfile(p);
-            const targetWorkspace = (p.userType === 'employee' && p.agencyOwnerUid) ? p.agencyOwnerUid : activeUid!;
+            
+            // Check if user is an employee
+            const isEmployee =
+              p.userType === 'employee' ||
+              p.plan === 'Gratuito / Equipe' ||
+              Boolean(p.designRole && p.designRole !== 'cliente');
+
+            let targetWorkspace = activeUid!;
+
+            if (isEmployee) {
+              if (p.agencyOwnerUid && p.agencyOwnerUid !== 'agency-master-owner') {
+                targetWorkspace = p.agencyOwnerUid;
+              } else {
+                // Proactively resolve and bind the agency owner's UID
+                const ownerUid = await resolvePrimaryAgencyOwnerUid();
+                if (ownerUid && ownerUid !== activeUid) {
+                  targetWorkspace = ownerUid;
+                  await updateUserInFirestore(activeUid!, {
+                    agencyOwnerUid: ownerUid,
+                    userType: 'employee',
+                  });
+                }
+              }
+            }
+
             if (targetWorkspace !== lastSubscribedDataUid) {
               lastSubscribedDataUid = targetWorkspace;
               initDataSubscriptions(targetWorkspace);
@@ -271,7 +297,22 @@ export default function App() {
 
   // Helper to resolve workspace UID (shared for agency staff, isolated for SaaS clients)
   const getWorkspaceTargetUid = () => {
-    if (userProfile?.userType === 'employee' && userProfile?.agencyOwnerUid) {
+    const isEmployee =
+      userProfile?.userType === 'employee' ||
+      userProfile?.plan === 'Gratuito / Equipe' ||
+      Boolean(
+        userProfile?.role &&
+          (userProfile.role.toLowerCase().includes('designer') ||
+            userProfile.role.toLowerCase().includes('lider') ||
+            userProfile.role.toLowerCase().includes('líder') ||
+            userProfile.role.toLowerCase().includes('gestor') ||
+            userProfile.role.toLowerCase().includes('equipe') ||
+            userProfile.role.toLowerCase().includes('funcionario') ||
+            userProfile.role.toLowerCase().includes('funcionário')) &&
+          userProfile?.userType !== 'client'
+      );
+
+    if (isEmployee && userProfile?.agencyOwnerUid && userProfile.agencyOwnerUid !== 'agency-master-owner') {
       return userProfile.agencyOwnerUid;
     }
     return user?.uid || null;

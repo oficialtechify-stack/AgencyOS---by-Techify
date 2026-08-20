@@ -27,6 +27,8 @@ import {
   Layers,
   Maximize2,
   Check,
+  Instagram,
+  Link as LinkIcon,
 } from 'lucide-react';
 import {
   DesignProject,
@@ -222,7 +224,7 @@ export const DesignerModals: React.FC<DesignerModalsProps> = ({
     setActiveSlideIndex(0);
   }, [selectedProjectForDetail]);
 
-  // Form State: New Briefing (Executive Only)
+  // Form State: New Briefing (Executive / Leaders / Team)
   const [newBriefing, setNewBriefing] = useState({
     title: '',
     clientName: '',
@@ -232,6 +234,14 @@ export const DesignerModals: React.FC<DesignerModalsProps> = ({
     channel: 'Instagram Feed' as DesignChannel,
     description: '',
     referencesUrl: '',
+    referenceLinks: [] as string[],
+    referenceImages: [] as string[],
+    instagramProfiles: [] as string[],
+    instagramPosts: [] as string[],
+    newLinkInput: '',
+    newImageUrlInput: '',
+    newInstagramProfileInput: '',
+    newInstagramPostInput: '',
     deadline: new Date(Date.now() + 4 * 86400000).toISOString().split('T')[0],
   });
 
@@ -673,6 +683,117 @@ export const DesignerModals: React.FC<DesignerModalsProps> = ({
     }
   };
 
+  // ==========================================
+  // Briefing Example & Reference Handlers
+  // ==========================================
+  const handleBriefingFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const fileList: File[] = Array.from(files);
+    let loadedCount = 0;
+    const newImages: string[] = [];
+
+    fileList.forEach((file: File) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        newImages.push(result);
+        loadedCount++;
+
+        if (loadedCount === fileList.length) {
+          setNewBriefing((prev) => ({
+            ...prev,
+            referenceImages: [...prev.referenceImages, ...newImages],
+          }));
+          showToast(`${fileList.length} imagem(ns) de exemplo anexada(s)!`);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleAddBriefingImageUrl = () => {
+    if (!newBriefing.newImageUrlInput.trim()) return;
+    setNewBriefing((prev) => ({
+      ...prev,
+      referenceImages: [...prev.referenceImages, prev.newImageUrlInput.trim()],
+      newImageUrlInput: '',
+    }));
+    showToast('Imagem de exemplo adicionada via URL!');
+  };
+
+  const handleRemoveBriefingImage = (index: number) => {
+    setNewBriefing((prev) => ({
+      ...prev,
+      referenceImages: prev.referenceImages.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleAddBriefingLink = () => {
+    if (!newBriefing.newLinkInput.trim()) return;
+    let url = newBriefing.newLinkInput.trim();
+    if (!/^https?:\/\//i.test(url)) {
+      url = `https://${url}`;
+    }
+    setNewBriefing((prev) => ({
+      ...prev,
+      referenceLinks: [...prev.referenceLinks, url],
+      newLinkInput: '',
+    }));
+    showToast('Link de referência adicionado!');
+  };
+
+  const handleRemoveBriefingLink = (index: number) => {
+    setNewBriefing((prev) => ({
+      ...prev,
+      referenceLinks: prev.referenceLinks.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleAddBriefingInstagramProfile = () => {
+    if (!newBriefing.newInstagramProfileInput.trim()) return;
+    let profile = newBriefing.newInstagramProfileInput.trim();
+    // Normalize handle or url
+    if (!profile.startsWith('@') && !profile.includes('instagram.com')) {
+      profile = `@${profile}`;
+    }
+    setNewBriefing((prev) => ({
+      ...prev,
+      instagramProfiles: [...prev.instagramProfiles, profile],
+      newInstagramProfileInput: '',
+    }));
+    showToast('Perfil do Instagram adicionado!');
+  };
+
+  const handleRemoveBriefingInstagramProfile = (index: number) => {
+    setNewBriefing((prev) => ({
+      ...prev,
+      instagramProfiles: prev.instagramProfiles.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleAddBriefingInstagramPost = () => {
+    if (!newBriefing.newInstagramPostInput.trim()) return;
+    let url = newBriefing.newInstagramPostInput.trim();
+    if (!/^https?:\/\//i.test(url)) {
+      url = `https://${url}`;
+    }
+    setNewBriefing((prev) => ({
+      ...prev,
+      instagramPosts: [...prev.instagramPosts, url],
+      newInstagramPostInput: '',
+    }));
+    showToast('Post de referência do Instagram adicionado!');
+  };
+
+  const handleRemoveBriefingInstagramPost = (index: number) => {
+    setNewBriefing((prev) => ({
+      ...prev,
+      instagramPosts: prev.instagramPosts.filter((_, i) => i !== index),
+    }));
+  };
+
   const handleCreateBriefing = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBriefing.title.trim() || !newBriefing.clientName.trim()) {
@@ -690,13 +811,17 @@ export const DesignerModals: React.FC<DesignerModalsProps> = ({
           priority: newBriefing.priority,
           channel: newBriefing.channel,
           description: newBriefing.description.trim(),
-          referencesUrl: newBriefing.referencesUrl.trim(),
+          referencesUrl: newBriefing.referencesUrl.trim() || (newBriefing.referenceLinks[0] || undefined),
+          referenceLinks: newBriefing.referenceLinks,
+          referenceImages: newBriefing.referenceImages,
+          instagramProfiles: newBriefing.instagramProfiles,
+          instagramPosts: newBriefing.instagramPosts,
           deadline: newBriefing.deadline,
           status: 'Pendente',
           createdAt: new Date().toISOString(),
         });
       }
-      showToast('Briefing cadastrado pelo Executivo!');
+      showToast('Demanda e referências cadastradas para a equipe!');
       setIsNewBriefingModalOpen(false);
       setNewBriefing({
         title: '',
@@ -707,6 +832,14 @@ export const DesignerModals: React.FC<DesignerModalsProps> = ({
         channel: 'Instagram Feed',
         description: '',
         referencesUrl: '',
+        referenceLinks: [],
+        referenceImages: [],
+        instagramProfiles: [],
+        instagramPosts: [],
+        newLinkInput: '',
+        newImageUrlInput: '',
+        newInstagramProfileInput: '',
+        newInstagramPostInput: '',
         deadline: new Date(Date.now() + 4 * 86400000).toISOString().split('T')[0],
       });
     } catch (err) {
@@ -1971,7 +2104,7 @@ export const DesignerModals: React.FC<DesignerModalsProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-neutral-300 font-bold mb-1">Solicitante *</label>
+                  <label className="block text-neutral-300 font-bold mb-1">Solicitante / Executivo *</label>
                   <input
                     type="text"
                     required
@@ -1982,16 +2115,285 @@ export const DesignerModals: React.FC<DesignerModalsProps> = ({
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-neutral-300 font-bold mb-1">Canal / Formato</label>
+                  <select
+                    value={newBriefing.channel}
+                    onChange={(e) => setNewBriefing({ ...newBriefing, channel: e.target.value as DesignChannel })}
+                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-white"
+                  >
+                    {channels.map((ch) => (
+                      <option key={ch} value={ch}>
+                        {ch}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-neutral-300 font-bold mb-1">Prioridade</label>
+                  <select
+                    value={newBriefing.priority}
+                    onChange={(e) =>
+                      setNewBriefing({
+                        ...newBriefing,
+                        priority: e.target.value as 'Baixa' | 'Média' | 'Alta' | 'Urgente',
+                      })
+                    }
+                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-white"
+                  >
+                    <option value="Baixa">Baixa</option>
+                    <option value="Média">Média</option>
+                    <option value="Alta">Alta</option>
+                    <option value="Urgente">🚨 Urgente</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-neutral-300 font-bold mb-1">Prazo de Entrega</label>
+                  <input
+                    type="date"
+                    value={newBriefing.deadline}
+                    onChange={(e) => setNewBriefing({ ...newBriefing, deadline: e.target.value })}
+                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-white"
+                  />
+                </div>
+              </div>
+
               <div>
                 <label className="block text-neutral-300 font-bold mb-1">Descrição do Briefing *</label>
                 <textarea
-                  rows={4}
+                  rows={3}
                   required
                   value={newBriefing.description}
                   onChange={(e) => setNewBriefing({ ...newBriefing, description: e.target.value })}
-                  placeholder="Explique o objetivo do cliente, textos essenciais, etc..."
+                  placeholder="Explique o objetivo do cliente, textos essenciais, mensagem principal, etc..."
                   className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-white placeholder-neutral-500 focus:outline-none focus:border-white"
                 />
+              </div>
+
+              {/* ========================================================= */}
+              {/* SEÇÃO: EXEMPLOS & REFERÊNCIAS VISUAIS (IMAGENS, LINKS, INSTAGRAM) */}
+              {/* ========================================================= */}
+              <div className="bg-[#12141c] border border-neutral-800/90 rounded-2xl p-4 space-y-4">
+                <div className="flex items-center gap-2 text-white font-bold text-xs border-b border-neutral-800 pb-2">
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  <span>Exemplos & Inspirações para o Designer (Imagens, Links e Instagram)</span>
+                </div>
+
+                {/* 1. Imagens de Exemplo */}
+                <div className="space-y-2">
+                  <label className="block text-neutral-300 font-bold text-[11px] flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <ImageIcon className="w-3.5 h-3.5 text-emerald-400" /> Imagens de Referência / Exemplos
+                    </span>
+                    <span className="text-[10px] text-neutral-400 font-normal">
+                      {newBriefing.referenceImages.length} anexo(s)
+                    </span>
+                  </label>
+
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <label className="flex-1 border-2 border-dashed border-neutral-700 hover:border-white bg-neutral-900/60 rounded-xl p-2.5 text-center cursor-pointer transition-colors flex items-center justify-center gap-2 text-neutral-300 hover:text-white">
+                      <UploadCloud className="w-4 h-4 text-emerald-400" />
+                      <span className="text-[11px] font-bold">Carregar Imagens do Computador</span>
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={handleBriefingFileUpload}
+                        className="hidden"
+                      />
+                    </label>
+
+                    <div className="flex items-center gap-1 sm:w-1/2">
+                      <input
+                        type="url"
+                        value={newBriefing.newImageUrlInput}
+                        onChange={(e) => setNewBriefing({ ...newBriefing, newImageUrlInput: e.target.value })}
+                        placeholder="Ou colar URL da imagem..."
+                        className="flex-1 bg-neutral-900 border border-neutral-800 rounded-xl px-2.5 py-2 text-[11px] text-white placeholder-neutral-500 focus:outline-none focus:border-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddBriefingImageUrl}
+                        className="px-2.5 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-[11px] cursor-pointer"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  {newBriefing.referenceImages.length > 0 && (
+                    <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 pt-1">
+                      {newBriefing.referenceImages.map((imgUrl, idx) => (
+                        <div key={idx} className="relative group rounded-lg overflow-hidden border border-neutral-700 bg-neutral-900 aspect-square">
+                          <img
+                            src={imgUrl}
+                            alt={`Exemplo ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveBriefingImage(idx)}
+                            className="absolute top-1 right-1 p-1 rounded-full bg-red-600 text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                            title="Remover imagem"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. Instagram de Referência (Perfis & Posts) */}
+                <div className="space-y-2 pt-2 border-t border-neutral-800/60">
+                  <label className="block text-neutral-300 font-bold text-[11px] flex items-center gap-1.5">
+                    <Instagram className="w-3.5 h-3.5 text-pink-400" /> Referências do Instagram (Perfis e Posts)
+                  </label>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {/* Perfil Instagram */}
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="text"
+                        value={newBriefing.newInstagramProfileInput}
+                        onChange={(e) => setNewBriefing({ ...newBriefing, newInstagramProfileInput: e.target.value })}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddBriefingInstagramProfile();
+                          }
+                        }}
+                        placeholder="Perfil ex: @nomedamarca"
+                        className="flex-1 bg-neutral-900 border border-neutral-800 rounded-xl px-2.5 py-1.5 text-[11px] text-white placeholder-neutral-500 focus:outline-none focus:border-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddBriefingInstagramProfile}
+                        className="px-2.5 py-1.5 rounded-xl bg-pink-950/80 hover:bg-pink-900 border border-pink-700/60 text-pink-300 font-bold text-[11px] cursor-pointer shrink-0"
+                      >
+                        + Perfil
+                      </button>
+                    </div>
+
+                    {/* Post Instagram */}
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="url"
+                        value={newBriefing.newInstagramPostInput}
+                        onChange={(e) => setNewBriefing({ ...newBriefing, newInstagramPostInput: e.target.value })}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddBriefingInstagramPost();
+                          }
+                        }}
+                        placeholder="Link post: instagram.com/p/..."
+                        className="flex-1 bg-neutral-900 border border-neutral-800 rounded-xl px-2.5 py-1.5 text-[11px] text-white placeholder-neutral-500 focus:outline-none focus:border-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddBriefingInstagramPost}
+                        className="px-2.5 py-1.5 rounded-xl bg-pink-950/80 hover:bg-pink-900 border border-pink-700/60 text-pink-300 font-bold text-[11px] cursor-pointer shrink-0"
+                      >
+                        + Post
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* List of added Instagram references */}
+                  {(newBriefing.instagramProfiles.length > 0 || newBriefing.instagramPosts.length > 0) && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {newBriefing.instagramProfiles.map((prof, idx) => (
+                        <span
+                          key={`prof-${idx}`}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-pink-950/60 border border-pink-600/40 text-pink-300 text-[10px] font-bold"
+                        >
+                          <Instagram className="w-3 h-3" />
+                          {prof}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveBriefingInstagramProfile(idx)}
+                            className="text-pink-400 hover:text-white cursor-pointer ml-0.5"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+
+                      {newBriefing.instagramPosts.map((postUrl, idx) => (
+                        <span
+                          key={`post-${idx}`}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-pink-950/40 border border-pink-800/40 text-pink-200 text-[10px]"
+                        >
+                          <ExternalLink className="w-2.5 h-2.5" />
+                          Post {idx + 1}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveBriefingInstagramPost(idx)}
+                            className="text-pink-400 hover:text-white cursor-pointer ml-0.5"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 3. Links Gerais de Referência (Pinterest, Behance, Drive, Canva, Web) */}
+                <div className="space-y-2 pt-2 border-t border-neutral-800/60">
+                  <label className="block text-neutral-300 font-bold text-[11px] flex items-center gap-1.5">
+                    <LinkIcon className="w-3.5 h-3.5 text-blue-400" /> Links de Inspiração (Pinterest, Behance, Drive, Canva, etc.)
+                  </label>
+
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="url"
+                      value={newBriefing.newLinkInput}
+                      onChange={(e) => setNewBriefing({ ...newBriefing, newLinkInput: e.target.value })}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddBriefingLink();
+                        }
+                      }}
+                      placeholder="https://pinterest.com/... ou behance.net/... ou drive.google.com/..."
+                      className="flex-1 bg-neutral-900 border border-neutral-800 rounded-xl px-2.5 py-1.5 text-[11px] text-white placeholder-neutral-500 focus:outline-none focus:border-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddBriefingLink}
+                      className="px-3 py-1.5 rounded-xl bg-blue-950/80 hover:bg-blue-900 border border-blue-600/50 text-blue-300 font-bold text-[11px] cursor-pointer shrink-0"
+                    >
+                      + Adicionar Link
+                    </button>
+                  </div>
+
+                  {newBriefing.referenceLinks.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {newBriefing.referenceLinks.map((link, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-950/50 border border-blue-700/40 text-blue-300 text-[10px] max-w-[280px] truncate"
+                        >
+                          <ExternalLink className="w-2.5 h-2.5 shrink-0" />
+                          <span className="truncate">{link}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveBriefingLink(idx)}
+                            className="text-blue-400 hover:text-white cursor-pointer ml-1"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-neutral-800">

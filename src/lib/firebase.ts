@@ -446,6 +446,49 @@ export function subscribeAllUsers(
   );
 }
 
+// Helper to resolve the primary Agency Owner UID for employees
+export async function resolvePrimaryAgencyOwnerUid(): Promise<string | null> {
+  try {
+    const usersRef = collection(db, 'users');
+    
+    // First, search for the primary agency owner by email
+    const qOwner = query(usersRef, where('email', '==', 'rickmarketing81@gmail.com'));
+    const snapOwner = await getDocs(qOwner);
+    if (!snapOwner.empty) {
+      return snapOwner.docs[0].id;
+    }
+
+    // Next, check for users with role 'Master Admin' or 'Administrador'
+    const qAdmin = query(usersRef, where('role', 'in', ['Master Admin', 'Administrador', 'Executivo']));
+    const snapAdmin = await getDocs(qAdmin);
+    if (!snapAdmin.empty) {
+      // Return the first master admin that is NOT an employee
+      for (const d of snapAdmin.docs) {
+        const udata = d.data();
+        if (udata.userType !== 'employee') {
+          return d.id;
+        }
+      }
+      return snapAdmin.docs[0].id;
+    }
+
+    // Fallback: search all users for the first non-employee with an active agency
+    const allUsers = await getDocs(usersRef);
+    for (const d of allUsers.docs) {
+      const data = d.data();
+      if (data.email?.toLowerCase().includes('rick') || data.email?.toLowerCase().includes('admin')) {
+        return d.id;
+      }
+      if (data.userType !== 'employee' && (data.plan === 'Pro' || data.plan === 'Agency' || data.plan === 'Trial Gratuito')) {
+        return d.id;
+      }
+    }
+  } catch (err) {
+    console.error('Erro ao resolver UID do proprietário da agência:', err);
+  }
+  return null;
+}
+
 // Delete user profile document from Firestore
 export async function deleteUserFromFirestore(uid: string) {
   const userRef = doc(db, 'users', uid);

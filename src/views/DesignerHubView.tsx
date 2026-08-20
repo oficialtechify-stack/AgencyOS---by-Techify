@@ -140,6 +140,19 @@ export const DesignerHubView: React.FC<DesignerHubViewProps> = ({
         });
       }
 
+      let enrichedBriefingText = briefing.description;
+      if (briefing.instagramProfiles && briefing.instagramProfiles.length > 0) {
+        enrichedBriefingText += `\n\n📱 Instagram de Referência: ${briefing.instagramProfiles.join(', ')}`;
+      }
+      if (briefing.instagramPosts && briefing.instagramPosts.length > 0) {
+        enrichedBriefingText += `\n\n📸 Posts do Instagram de Inspiração:\n${briefing.instagramPosts.join('\n')}`;
+      }
+      if (briefing.referenceLinks && briefing.referenceLinks.length > 0) {
+        enrichedBriefingText += `\n\n🔗 Links de Referência Web:\n${briefing.referenceLinks.join('\n')}`;
+      } else if (briefing.referencesUrl) {
+        enrichedBriefingText += `\n\n🔗 Link de Referência: ${briefing.referencesUrl}`;
+      }
+
       if (onAddProject) {
         await onAddProject({
           title: `Arte: ${briefing.title}`,
@@ -151,10 +164,10 @@ export const DesignerHubView: React.FC<DesignerHubViewProps> = ({
           assignedEmail: userProfile?.email || '',
           createdBy: briefing.executiveName,
           createdEmail: briefing.executiveEmail,
-          briefing: briefing.description,
+          briefing: enrichedBriefingText,
           copyText: '',
-          imageUrl: '',
-          images: [],
+          imageUrl: (briefing.referenceImages && briefing.referenceImages[0]) || '',
+          images: briefing.referenceImages || [],
           version: 1,
           deadline: briefing.deadline,
           dimensions:

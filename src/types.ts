@@ -274,6 +274,10 @@ export interface DesignBriefingDemand {
   channel: DesignChannel;
   description: string;
   referencesUrl?: string;
+  referenceLinks?: string[]; // Links (Behance, Pinterest, Drive, Figma, Canva, Web)
+  referenceImages?: string[]; // Exemplos de imagens anexadas (URLs ou Base64)
+  instagramProfiles?: string[]; // Perfis do Instagram (ex: @empresa ou URL)
+  instagramPosts?: string[]; // Links de posts específicos do Instagram para referência
   deadline: string;
   status: 'Pendente' | 'Assumido' | 'Concluído';
   claimedBy?: string;
