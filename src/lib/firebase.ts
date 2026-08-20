@@ -23,6 +23,7 @@ import {
   query,
   where,
   getDocs,
+  writeBatch,
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 import {
@@ -348,29 +349,43 @@ export async function updateUserProfile(uid: string, data: Partial<FirestoreUser
   await updateDoc(userRef, cleanData);
 }
 
-// Seed user subcollections
-async function seedInitialUserData(uid: string) {
-  const collectionsMap = [
-    { name: 'kpiPeriods', items: DEFAULT_INITIAL_DATA.kpiPeriods },
-    { name: 'transactions', items: DEFAULT_INITIAL_DATA.transactions },
-    { name: 'campaigns', items: DEFAULT_INITIAL_DATA.campaigns },
-    { name: 'leads', items: DEFAULT_INITIAL_DATA.leads },
-    { name: 'tasks', items: DEFAULT_INITIAL_DATA.tasks },
-    { name: 'stockItems', items: DEFAULT_INITIAL_DATA.stockItems },
-    { name: 'events', items: DEFAULT_INITIAL_DATA.events },
-    { name: 'socialPosts', items: DEFAULT_INITIAL_DATA.socialPosts },
-    { name: 'designProjects', items: DEFAULT_INITIAL_DATA.designProjects },
-    { name: 'designFolders', items: DEFAULT_INITIAL_DATA.designFolders },
-    { name: 'designBriefings', items: DEFAULT_INITIAL_DATA.designBriefings },
-    { name: 'designPackages', items: DEFAULT_INITIAL_DATA.designPackages },
-    { name: 'designComments', items: DEFAULT_INITIAL_DATA.designComments },
-  ];
-
-  for (const { name, items } of collectionsMap) {
-    for (const item of items) {
-      const itemRef = doc(db, 'users', uid, name, item.id);
-      await setDoc(itemRef, item);
+// Seed user subcollections with atomic writeBatch and idempotency check
+export async function seedInitialUserData(uid: string) {
+  try {
+    // Check if the user workspace is already initialized to avoid exhausting write streams
+    const markerDoc = await getDoc(doc(db, 'users', uid, 'kpiPeriods', 'kpi-1'));
+    if (markerDoc.exists()) {
+      return; // Already seeded, skip cleanly
     }
+
+    const batch = writeBatch(db);
+    const collectionsMap = [
+      { name: 'kpiPeriods', items: DEFAULT_INITIAL_DATA.kpiPeriods },
+      { name: 'transactions', items: DEFAULT_INITIAL_DATA.transactions },
+      { name: 'campaigns', items: DEFAULT_INITIAL_DATA.campaigns },
+      { name: 'leads', items: DEFAULT_INITIAL_DATA.leads },
+      { name: 'tasks', items: DEFAULT_INITIAL_DATA.tasks },
+      { name: 'stockItems', items: DEFAULT_INITIAL_DATA.stockItems },
+      { name: 'events', items: DEFAULT_INITIAL_DATA.events },
+      { name: 'socialPosts', items: DEFAULT_INITIAL_DATA.socialPosts },
+    ];
+
+    let count = 0;
+    for (const { name, items } of collectionsMap) {
+      for (const item of items) {
+        if (item && item.id) {
+          const itemRef = doc(db, 'users', uid, name, item.id);
+          batch.set(itemRef, sanitizeFirestorePayload(item));
+          count++;
+        }
+      }
+    }
+
+    if (count > 0) {
+      await batch.commit();
+    }
+  } catch (seedErr) {
+    console.warn('Erro controlado ao popular dados iniciais:', seedErr);
   }
 }
 
@@ -399,13 +414,19 @@ export function subscribeToUserCollection<T>(
 // Subscribe to User Profile
 export function subscribeToUserProfile(uid: string, onData: (profile: FirestoreUserProfile | null) => void) {
   const userRef = doc(db, 'users', uid);
-  return onSnapshot(userRef, (snap) => {
-    if (snap.exists()) {
-      onData(snap.data() as FirestoreUserProfile);
-    } else {
-      onData(null);
+  return onSnapshot(
+    userRef,
+    (snap) => {
+      if (snap.exists()) {
+        onData(snap.data() as FirestoreUserProfile);
+      } else {
+        onData(null);
+      }
+    },
+    (err) => {
+      console.warn('Error subscribing to user profile:', err);
     }
-  });
+  );
 }
 
 // Helper to recursively strip undefined properties before sending to Firestore
@@ -445,6 +466,17 @@ export async function updateCollectionItem(uid: string, collectionName: string, 
 export async function deleteCollectionItem(uid: string, collectionName: string, itemId: string) {
   const itemRef = doc(db, 'users', uid, collectionName, itemId);
   await deleteDoc(itemRef);
+}
+
+// Batch delete items to prevent exhausting write streams on bulk actions
+export async function batchDeleteCollectionItems(uid: string, collectionName: string, itemIds: string[]) {
+  if (!itemIds || itemIds.length === 0) return;
+  const batch = writeBatch(db);
+  for (const id of itemIds) {
+    const itemRef = doc(db, 'users', uid, collectionName, id);
+    batch.delete(itemRef);
+  }
+  await batch.commit();
 }
 
 // Subscribe to ALL Users across the platform for Admin Panel

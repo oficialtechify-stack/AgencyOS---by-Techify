@@ -12,6 +12,7 @@ import {
   deleteCollectionItem,
   updateCollectionItem,
   updateUserInFirestore,
+  batchDeleteCollectionItems,
   resolvePrimaryAgencyOwnerUid,
   getStoredSession,
   logoutUser,
@@ -191,7 +192,8 @@ export default function App() {
       if (activeUid) {
         let lastSubscribedDataUid = '';
 
-        // Realtime subscription to User Profile
+        // Realtime subscription to User Profile with loop guard
+        let hasResolvedOwner = false;
         const unsubProfile = subscribeToUserProfile(activeUid, async (p) => {
           if (p) {
             setUserProfile(p);
@@ -207,15 +209,18 @@ export default function App() {
             if (isEmployee) {
               if (p.agencyOwnerUid && p.agencyOwnerUid !== 'agency-master-owner') {
                 targetWorkspace = p.agencyOwnerUid;
-              } else {
-                // Proactively resolve and bind the agency owner's UID
+              } else if (!hasResolvedOwner) {
+                hasResolvedOwner = true;
+                // Proactively resolve and bind the agency owner's UID once
                 const ownerUid = await resolvePrimaryAgencyOwnerUid();
                 if (ownerUid && ownerUid !== activeUid) {
                   targetWorkspace = ownerUid;
-                  await updateUserInFirestore(activeUid!, {
-                    agencyOwnerUid: ownerUid,
-                    userType: 'employee',
-                  });
+                  if (p.agencyOwnerUid !== ownerUid) {
+                    await updateUserInFirestore(activeUid!, {
+                      agencyOwnerUid: ownerUid,
+                      userType: 'employee',
+                    });
+                  }
                 }
               }
             }
@@ -701,20 +706,20 @@ export default function App() {
   const handleClearAllDesignData = async () => {
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
-      for (const p of state.designProjects || []) {
-        await deleteCollectionItem(targetUid, 'designProjects', p.id);
+      if (state.designProjects && state.designProjects.length > 0) {
+        await batchDeleteCollectionItems(targetUid, 'designProjects', state.designProjects.map((p) => p.id));
       }
-      for (const f of state.designFolders || []) {
-        await deleteCollectionItem(targetUid, 'designFolders', f.id);
+      if (state.designFolders && state.designFolders.length > 0) {
+        await batchDeleteCollectionItems(targetUid, 'designFolders', state.designFolders.map((f) => f.id));
       }
-      for (const b of state.designBriefings || []) {
-        await deleteCollectionItem(targetUid, 'designBriefings', b.id);
+      if (state.designBriefings && state.designBriefings.length > 0) {
+        await batchDeleteCollectionItems(targetUid, 'designBriefings', state.designBriefings.map((b) => b.id));
       }
-      for (const pkg of state.designPackages || []) {
-        await deleteCollectionItem(targetUid, 'designPackages', pkg.id);
+      if (state.designPackages && state.designPackages.length > 0) {
+        await batchDeleteCollectionItems(targetUid, 'designPackages', state.designPackages.map((pkg) => pkg.id));
       }
-      for (const c of state.designComments || []) {
-        await deleteCollectionItem(targetUid, 'designComments', c.id);
+      if (state.designComments && state.designComments.length > 0) {
+        await batchDeleteCollectionItems(targetUid, 'designComments', state.designComments.map((c) => c.id));
       }
     }
     setState((prev) => ({
