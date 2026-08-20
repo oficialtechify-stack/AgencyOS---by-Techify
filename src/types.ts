@@ -219,6 +219,7 @@ export interface DesignProject {
   copyText: string; // Legenda / Texto / Copy
   hashtags?: string;
   imageUrl?: string;
+  images?: string[]; // Array of images for multi-image / carousel posts
   version: number;
   deadline?: string;
   dimensions?: string; // e.g. "1080x1350 (4:5)"
@@ -229,6 +230,12 @@ export interface DesignProject {
   reviewedAt?: string;
   approved: boolean;
   commentsCount?: number;
+  postStatus?: 'nao_postado' | 'agendado' | 'postado';
+  postedAt?: string;
+  postedBy?: string;
+  postPlatforms?: string[];
+  scheduledPostDate?: string;
+  scheduledPostTime?: string;
   createdAt: string;
   updatedAt?: string;
 }

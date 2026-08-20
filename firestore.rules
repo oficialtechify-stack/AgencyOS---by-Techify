@@ -1,12 +1,43 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Users and their individual dashboard workspace collections
     match /users/{userId} {
       allow read, write: if true;
       
       match /{allSubcollections=**} {
         allow read, write: if true;
       }
+    }
+
+    // Creative Hub / Designer Projects
+    match /designProjects/{projectId} {
+      allow read, write: if true;
+    }
+
+    // Designer Folders
+    match /designFolders/{folderId} {
+      allow read, write: if true;
+    }
+
+    // Designer Briefings / Demands
+    match /designBriefings/{briefingId} {
+      allow read, write: if true;
+    }
+
+    // Designer Packages
+    match /designPackages/{packageId} {
+      allow read, write: if true;
+    }
+
+    // Designer Comments & Chat
+    match /designComments/{commentId} {
+      allow read, write: if true;
+    }
+
+    // Catch-all for other operational collections
+    match /{document=**} {
+      allow read, write: if true;
     }
   }
 }

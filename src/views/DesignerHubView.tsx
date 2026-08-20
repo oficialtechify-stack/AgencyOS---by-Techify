@@ -97,6 +97,8 @@ export const DesignerHubView: React.FC<DesignerHubViewProps> = ({
 
   // Modals & Drawers state
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
+  const [projectToEdit, setProjectToEdit] = useState<DesignProject | null>(null);
+  const [projectToPost, setProjectToPost] = useState<DesignProject | null>(null);
   const [isNewBriefingModalOpen, setIsNewBriefingModalOpen] = useState(false);
   const [isNewFolderModalOpen, setIsNewFolderModalOpen] = useState(false);
   const [isNewPackageModalOpen, setIsNewPackageModalOpen] = useState(false);
@@ -128,7 +130,7 @@ export const DesignerHubView: React.FC<DesignerHubViewProps> = ({
   }, [designProjects, designBriefings]);
 
   const handleClaimBriefing = async (briefing: DesignBriefingDemand) => {
-    const designerName = userProfile?.name || 'Vitória Designer';
+    const designerName = userProfile?.name || 'Designer Responsável';
     try {
       if (onUpdateBriefing) {
         await onUpdateBriefing(briefing.id, {
@@ -146,12 +148,13 @@ export const DesignerHubView: React.FC<DesignerHubViewProps> = ({
           channel: briefing.channel,
           status: 'producao',
           assignedTo: designerName,
-          assignedEmail: userProfile?.email || 'designer@agencia.com',
+          assignedEmail: userProfile?.email || '',
           createdBy: briefing.executiveName,
           createdEmail: briefing.executiveEmail,
           briefing: briefing.description,
           copyText: '',
           imageUrl: '',
+          images: [],
           version: 1,
           deadline: briefing.deadline,
           dimensions:
@@ -161,6 +164,7 @@ export const DesignerHubView: React.FC<DesignerHubViewProps> = ({
               ? '1080x1350 (4:5)'
               : '1080x1080 (1:1)',
           approved: false,
+          postStatus: 'nao_postado',
           commentsCount: 0,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -189,8 +193,8 @@ export const DesignerHubView: React.FC<DesignerHubViewProps> = ({
     <div className="space-y-6 pb-16">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#142618] border border-[#22c55e] text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-bounce">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#22c55e] animate-ping" />
+        <div className="fixed bottom-6 right-6 z-50 bg-neutral-900 border border-white text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3">
+          <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping" />
           <span className="text-xs font-bold">{toastMessage}</span>
         </div>
       )}
@@ -213,6 +217,7 @@ export const DesignerHubView: React.FC<DesignerHubViewProps> = ({
       {/* Tab Content */}
       {activeTab === 'criativos' && (
         <CreativesTab
+          userProfile={userProfile}
           designProjects={designProjects}
           designFolders={designFolders}
           channels={CHANNELS}
@@ -221,6 +226,8 @@ export const DesignerHubView: React.FC<DesignerHubViewProps> = ({
           onOpenNewProjectModal={() => setIsNewProjectModalOpen(true)}
           onSelectProjectForDetail={(p) => setSelectedProjectForDetail(p)}
           onSelectProjectForApproval={(p) => setSelectedProjectForApproval(p)}
+          onEditProject={(p) => setProjectToEdit(p)}
+          onPostProject={(p) => setProjectToPost(p)}
           onOpenChatForProject={handleOpenChatForProject}
           onDeleteProject={onDeleteProject}
           showToast={showToast}
@@ -279,6 +286,10 @@ export const DesignerHubView: React.FC<DesignerHubViewProps> = ({
         designFolders={designFolders}
         isNewProjectModalOpen={isNewProjectModalOpen}
         setIsNewProjectModalOpen={setIsNewProjectModalOpen}
+        projectToEdit={projectToEdit}
+        setProjectToEdit={setProjectToEdit}
+        projectToPost={projectToPost}
+        setProjectToPost={setProjectToPost}
         isNewBriefingModalOpen={isNewBriefingModalOpen}
         setIsNewBriefingModalOpen={setIsNewBriefingModalOpen}
         isNewFolderModalOpen={isNewFolderModalOpen}

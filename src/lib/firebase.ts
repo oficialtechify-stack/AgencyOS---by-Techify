@@ -54,6 +54,12 @@ export interface FirestoreUserProfile {
   email: string;
   agencyName: string;
   role?: string;
+  designRole?: 'admin' | 'lider' | 'designer' | 'funcionario' | 'cliente';
+  canEditDesigns?: boolean;
+  canCreateDesigns?: boolean;
+  canApproveDesigns?: boolean;
+  canPublishPosts?: boolean;
+  canDeleteDesigns?: boolean;
   plan: 'Trial Gratuito' | 'Starter' | 'Pro' | 'Agency';
   status: 'active' | 'Trial Expirado' | 'cancelled' | 'blocked';
   trialStartDate: number;
@@ -575,9 +581,20 @@ export async function addUserToFirestore(userData: Omit<FirestoreUserProfile, 'u
 }
 
 // Update user permissions in Firestore
-export async function updateUserPermissionsInFirestore(uid: string, allowedModules: ViewType[]) {
+export async function updateUserPermissionsInFirestore(
+  uid: string,
+  allowedModules: ViewType[],
+  extraData?: Partial<FirestoreUserProfile>
+) {
   const userRef = doc(db, 'users', uid);
-  await updateDoc(userRef, { allowedModules });
+  const payload: Record<string, any> = { allowedModules, ...extraData };
+  const sanitized: Record<string, any> = {};
+  for (const [key, val] of Object.entries(payload)) {
+    if (val !== undefined) {
+      sanitized[key] = val;
+    }
+  }
+  await updateDoc(userRef, sanitized);
 }
 
 // Update existing user profile in Firestore

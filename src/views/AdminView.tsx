@@ -31,6 +31,7 @@ import {
   Copy,
   Sparkles,
   Layers,
+  Palette,
 } from 'lucide-react';
 import {
   FirestoreUserProfile,
@@ -142,6 +143,14 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
   const [currentSelectedModules, setCurrentSelectedModules] = useState<ViewType[]>([
     ...ALL_OPERATIONAL_MODULE_IDS,
   ]);
+
+  // Specific Creative & Posting Permissions for Permissions Modal
+  const [permDesignRole, setPermDesignRole] = useState<'admin' | 'lider' | 'designer' | 'funcionario' | 'cliente'>('funcionario');
+  const [permCanEditDesigns, setPermCanEditDesigns] = useState(true);
+  const [permCanCreateDesigns, setPermCanCreateDesigns] = useState(true);
+  const [permCanApproveDesigns, setPermCanApproveDesigns] = useState(false);
+  const [permCanPublishPosts, setPermCanPublishPosts] = useState(true);
+  const [permCanDeleteDesigns, setPermCanDeleteDesigns] = useState(false);
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [showAddPassword, setShowAddPassword] = useState(false);
@@ -348,13 +357,34 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
       }
     }
     setCurrentSelectedModules(existing);
+
+    // Creative & Posting roles/permissions
+    const isLeader = Boolean(user.designRole === 'lider' || user.role?.toLowerCase().includes('lider') || user.role?.toLowerCase().includes('líder') || user.role?.toLowerCase().includes('gerente') || user.role?.toLowerCase().includes('admin'));
+    const isClient = Boolean(user.designRole === 'cliente' || user.role?.toLowerCase().includes('cliente') || user.role?.toLowerCase().includes('convidado'));
+
+    setPermDesignRole(
+      user.designRole ||
+      (isLeader ? 'lider' : isClient ? 'cliente' : 'funcionario')
+    );
+    setPermCanEditDesigns(user.canEditDesigns !== undefined ? user.canEditDesigns : !isClient);
+    setPermCanCreateDesigns(user.canCreateDesigns !== undefined ? user.canCreateDesigns : !isClient);
+    setPermCanApproveDesigns(user.canApproveDesigns !== undefined ? user.canApproveDesigns : isLeader);
+    setPermCanPublishPosts(user.canPublishPosts !== undefined ? user.canPublishPosts : !isClient);
+    setPermCanDeleteDesigns(user.canDeleteDesigns !== undefined ? user.canDeleteDesigns : isLeader);
   };
 
   const handleSavePermissions = async () => {
     if (!permissionsModalUser) return;
     try {
-      await updateUserPermissionsInFirestore(permissionsModalUser.uid, currentSelectedModules);
-      showToast(`Permissões de ${permissionsModalUser.email} salvas (${currentSelectedModules.length} módulos liberados)!`);
+      await updateUserPermissionsInFirestore(permissionsModalUser.uid, currentSelectedModules, {
+        designRole: permDesignRole,
+        canEditDesigns: permCanEditDesigns,
+        canCreateDesigns: permCanCreateDesigns,
+        canApproveDesigns: permCanApproveDesigns,
+        canPublishPosts: permCanPublishPosts,
+        canDeleteDesigns: permCanDeleteDesigns,
+      });
+      showToast(`Permissões de ${permissionsModalUser.email} salvas com sucesso!`);
       setPermissionsModalUser(null);
     } catch (err) {
       console.error('Erro ao salvar permissões:', err);
@@ -1110,8 +1140,90 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
               </div>
             </div>
 
+            {/* Creative & Post Permissions (Líder / Funcionário / Editor) */}
+            <div className="p-3.5 bg-neutral-950 rounded-2xl border border-neutral-800 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <Palette className="w-3.5 h-3.5" />
+                  Cargo Criativo & Permissões do Hub de Design / Posts:
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-neutral-300 font-bold mb-1 text-[11px]">
+                    Perfil do Funcionário:
+                  </label>
+                  <select
+                    value={permDesignRole}
+                    onChange={(e) => {
+                      const val = e.target.value as any;
+                      setPermDesignRole(val);
+                      if (val === 'lider' || val === 'admin') {
+                        setPermCanEditDesigns(true);
+                        setPermCanCreateDesigns(true);
+                        setPermCanApproveDesigns(true);
+                        setPermCanPublishPosts(true);
+                        setPermCanDeleteDesigns(true);
+                      } else if (val === 'funcionario' || val === 'designer') {
+                        setPermCanEditDesigns(true);
+                        setPermCanCreateDesigns(true);
+                        setPermCanApproveDesigns(false);
+                        setPermCanPublishPosts(true);
+                        setPermCanDeleteDesigns(false);
+                      } else if (val === 'cliente') {
+                        setPermCanEditDesigns(false);
+                        setPermCanCreateDesigns(false);
+                        setPermCanApproveDesigns(false);
+                        setPermCanPublishPosts(false);
+                        setPermCanDeleteDesigns(false);
+                      }
+                    }}
+                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-white"
+                  >
+                    <option value="lider">👑 Líder de Criação (Acesso Total & Aprovação)</option>
+                    <option value="funcionario">🎨 Funcionário / Designer (Criar, Editar & Postar)</option>
+                    <option value="designer">🖌️ Designer / Editor</option>
+                    <option value="cliente">👁️ Cliente / Convidado (Apenas Visualização)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5 pt-1">
+                  <label className="flex items-center gap-2 cursor-pointer text-[11px] text-neutral-300">
+                    <input
+                      type="checkbox"
+                      checked={permCanEditDesigns}
+                      onChange={(e) => setPermCanEditDesigns(e.target.checked)}
+                      className="rounded bg-neutral-900 border-neutral-700 text-white focus:ring-0"
+                    />
+                    <span>Pode Editar Criativos & Imagens</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer text-[11px] text-neutral-300">
+                    <input
+                      type="checkbox"
+                      checked={permCanPublishPosts}
+                      onChange={(e) => setPermCanPublishPosts(e.target.checked)}
+                      className="rounded bg-neutral-900 border-neutral-700 text-white focus:ring-0"
+                    />
+                    <span>Pode Postar / Publicar nas Redes</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer text-[11px] text-neutral-300">
+                    <input
+                      type="checkbox"
+                      checked={permCanApproveDesigns}
+                      onChange={(e) => setPermCanApproveDesigns(e.target.checked)}
+                      className="rounded bg-neutral-900 border-neutral-700 text-white focus:ring-0"
+                    />
+                    <span>Pode Aprovar / Reprovar (Líder)</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
             {/* Modules Checkbox Grid */}
-            <div className="space-y-2 pt-2">
+            <div className="space-y-2 pt-1">
               <div className="flex items-center justify-between text-xs font-bold text-neutral-300">
                 <span>Módulos do Sistema:</span>
                 <span className="text-white font-black">
@@ -1119,7 +1231,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-72 overflow-y-auto pr-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
                 {ALL_SYSTEM_MODULES.filter((m) => m.id !== 'admin').map((mod) => {
                   const isChecked = currentSelectedModules.includes(mod.id);
                   return (

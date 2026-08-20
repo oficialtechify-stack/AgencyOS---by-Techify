@@ -238,3 +238,115 @@ export const PERMISSION_PRESETS = [
     modules: ['dashboard'] as ViewType[],
   },
 ];
+
+/**
+ * Check if the user can create designs or briefings
+ */
+export function canUserCreateDesigns(
+  profile?: FirestoreUserProfile | null,
+  userEmail?: string | null
+): boolean {
+  if (isUserMasterAdmin(profile, userEmail)) return true;
+  if (profile?.canCreateDesigns !== undefined) return profile.canCreateDesigns;
+  // By default, leaders and employees/designers can create
+  const role = (profile?.role || '').toLowerCase();
+  const dRole = profile?.designRole;
+  if (dRole === 'cliente') return false;
+  if (role.includes('cliente') || role.includes('convidado')) return false;
+  return true;
+}
+
+/**
+ * Check if the user has permission to edit designs
+ */
+export function canUserEditDesigns(
+  profile?: FirestoreUserProfile | null,
+  userEmail?: string | null,
+  assignedEmail?: string,
+  createdEmail?: string
+): boolean {
+  if (isUserMasterAdmin(profile, userEmail)) return true;
+  
+  const email = (profile?.email || userEmail || '').toLowerCase().trim();
+  const role = (profile?.role || '').toLowerCase();
+  const dRole = profile?.designRole;
+
+  // Leaders / Admins can always edit any design
+  if (dRole === 'lider' || dRole === 'admin') return true;
+  if (role.includes('lider') || role.includes('líder') || role.includes('diretor') || role.includes('gerente') || role.includes('admin')) return true;
+
+  // If explicitly granted permission
+  if (profile?.canEditDesigns === true) return true;
+  if (profile?.canEditDesigns === false) return false;
+
+  // If user is the assigned designer or creator
+  if (assignedEmail && email && assignedEmail.toLowerCase() === email) return true;
+  if (createdEmail && email && createdEmail.toLowerCase() === email) return true;
+
+  // Employees/Designers can edit by default
+  if (dRole === 'designer' || dRole === 'funcionario') return true;
+  if (role.includes('designer') || role.includes('funcionario') || role.includes('funcionário') || role.includes('gestor')) return true;
+
+  // Clients / Guests cannot edit by default
+  if (dRole === 'cliente') return false;
+  if (role.includes('cliente') || role.includes('convidado')) return false;
+
+  return true;
+}
+
+/**
+ * Check if user can approve/reject designs (Leader / Manager / Admin)
+ */
+export function canUserApproveDesigns(
+  profile?: FirestoreUserProfile | null,
+  userEmail?: string | null
+): boolean {
+  if (isUserMasterAdmin(profile, userEmail)) return true;
+  if (profile?.canApproveDesigns !== undefined) return profile.canApproveDesigns;
+
+  const role = (profile?.role || '').toLowerCase();
+  const dRole = profile?.designRole;
+
+  if (dRole === 'lider' || dRole === 'admin') return true;
+  if (role.includes('lider') || role.includes('líder') || role.includes('diretor') || role.includes('gerente') || role.includes('admin') || role.includes('executiv')) return true;
+
+  return false;
+}
+
+/**
+ * Check if user can publish / post to social media
+ */
+export function canUserPublishPosts(
+  profile?: FirestoreUserProfile | null,
+  userEmail?: string | null
+): boolean {
+  if (isUserMasterAdmin(profile, userEmail)) return true;
+  if (profile?.canPublishPosts !== undefined) return profile.canPublishPosts;
+
+  const role = (profile?.role || '').toLowerCase();
+  const dRole = profile?.designRole;
+
+  if (dRole === 'lider' || dRole === 'admin' || dRole === 'designer' || dRole === 'funcionario') return true;
+  if (role.includes('lider') || role.includes('líder') || role.includes('designer') || role.includes('social') || role.includes('gestor') || role.includes('admin')) return true;
+
+  return true;
+}
+
+/**
+ * Check if user can delete designs
+ */
+export function canUserDeleteDesigns(
+  profile?: FirestoreUserProfile | null,
+  userEmail?: string | null
+): boolean {
+  if (isUserMasterAdmin(profile, userEmail)) return true;
+  if (profile?.canDeleteDesigns !== undefined) return profile.canDeleteDesigns;
+
+  const role = (profile?.role || '').toLowerCase();
+  const dRole = profile?.designRole;
+
+  if (dRole === 'lider' || dRole === 'admin') return true;
+  if (role.includes('lider') || role.includes('líder') || role.includes('admin') || role.includes('diretor') || role.includes('gerente')) return true;
+
+  return true;
+}
