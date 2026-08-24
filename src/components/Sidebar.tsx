@@ -1,6 +1,8 @@
 import React from 'react';
 import {
   LayoutDashboard,
+  Crown,
+  Clock,
   DollarSign,
   TrendingUp,
   Megaphone,
@@ -71,7 +73,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const menuSections = [
     {
       title: 'PRINCIPAL',
-      items: [{ id: 'dashboard' as ViewMode, label: 'Dashboard', icon: LayoutDashboard }],
+      items: [
+        { id: 'dashboard' as ViewMode, label: 'Dashboard Geral', icon: LayoutDashboard },
+        { id: 'lideranca' as ViewMode, label: 'Painel de Liderança', icon: Crown },
+        { id: 'ponto' as ViewMode, label: 'Ponto Eletrônico', icon: Clock },
+      ],
     },
     {
       title: 'FINANCEIRO',
@@ -88,8 +94,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ],
     },
     {
-      title: 'GESTÃO',
-      items: [{ id: 'agenda' as ViewMode, label: 'Agenda', icon: Calendar }],
+      title: 'GESTÃO & EQUIPE',
+      items: [
+        { id: 'agenda' as ViewMode, label: 'Agenda', icon: Calendar },
+        { id: 'ponto' as ViewMode, label: 'Ponto Seguro', icon: Clock },
+      ],
     },
     {
       title: 'PROSPECÇÃO',

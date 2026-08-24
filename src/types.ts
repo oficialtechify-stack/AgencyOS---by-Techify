@@ -2,6 +2,8 @@ export type ViewType =
   | 'landing'
   | 'trial-signup'
   | 'dashboard'
+  | 'lideranca'
+  | 'ponto'
   | 'marketing'
   | 'designer'
   | 'studio-agency'
@@ -380,6 +382,84 @@ export interface MarketingCopyScript {
   createdAt: string;
 }
 
+export type TimeClockType = 'entry' | 'lunch_start' | 'lunch_end' | 'exit' | 'extra_start' | 'extra_end';
+
+export interface EmployeeWorkSchedule {
+  id: string;
+  userId?: string;
+  userEmail: string;
+  userName: string;
+  userRole: string;
+  leadershipRole?: string;
+  entryTime: string; // e.g. "08:00"
+  lunchStartTime: string; // e.g. "12:00"
+  lunchEndTime: string; // e.g. "13:00"
+  exitTime: string; // e.g. "17:00"
+  toleranceMinutes: number; // e.g. 15
+  strictEnforcement: boolean; // if true, blocks punches outside allowed window
+  minIntervalMinutes: number; // minimum minutes between punches (e.g. 5)
+  workDays: ('seg' | 'ter' | 'qua' | 'qui' | 'sex' | 'sab' | 'dom')[];
+  allowOvertime: boolean;
+  notes?: string;
+  updatedAt?: string;
+}
+
+export interface TimeClockRecord {
+  id: string;
+  userId: string;
+  userEmail: string;
+  userName: string;
+  userRole?: string;
+  leadershipRole?: string;
+  type: TimeClockType;
+  typeLabel: string;
+  timestamp: string; // ISO string
+  date: string; // YYYY-MM-DD
+  time: string; // HH:mm:ss
+  status: 'regular' | 'late' | 'overtime' | 'early_departure';
+  scheduledTime?: string; // Expected time based on schedule
+  timeDifferenceMinutes?: number; // Diff from scheduled time
+  location?: {
+    latitude: number;
+    longitude: number;
+    accuracy?: number;
+    city?: string;
+    state?: string;
+    mockDetected?: boolean;
+  };
+  deviceInfo?: string;
+  securityHash: string;
+  notes?: string;
+  photoUrl?: string;
+  createdAt?: string;
+}
+
+export interface LeadershipGoal {
+  id: string;
+  targetRole: 'lider_geral' | 'lider_marketing' | 'lider_prospeccao' | 'lider_design' | 'todos';
+  title: string;
+  metricType: 'leads' | 'revenue' | 'roas' | 'meetings' | 'posts' | 'designs' | 'calls';
+  targetValue: number;
+  currentValue: number;
+  unit: string;
+  period: string;
+  dueDate: string;
+  status: 'em_andamento' | 'atingida' | 'atrasada';
+  updatedAt?: string;
+}
+
+export interface LeadershipNotice {
+  id: string;
+  authorName: string;
+  authorRole: string;
+  targetAudience: 'todos' | 'marketing' | 'prospeccao' | 'design';
+  title: string;
+  content: string;
+  priority: 'alta' | 'normal' | 'urgente';
+  date: string;
+  likes?: number;
+}
+
 export interface AppState {
   activeView: ViewType;
   organization: OrganizationState;
@@ -401,4 +481,8 @@ export interface AppState {
   marketingFunnels?: MarketingFunnel[];
   marketingEmailFlows?: MarketingEmailFlow[];
   marketingCopies?: MarketingCopyScript[];
+  timeClockRecords?: TimeClockRecord[];
+  employeeWorkSchedules?: EmployeeWorkSchedule[];
+  leadershipGoals?: LeadershipGoal[];
+  leadershipNotices?: LeadershipNotice[];
 }

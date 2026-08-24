@@ -48,6 +48,9 @@ import { AdminView } from './views/AdminView';
 import { DesignerHubView } from './views/DesignerHubView';
 import { StudioAgencyView } from './views/StudioAgencyView';
 import { MarketingHubView } from './views/MarketingHubView';
+import { PainelLiderancaView } from './views/PainelLiderancaView';
+import { PontoView } from './views/PontoView';
+import { SecureTimeClockModal } from './components/timeclock/SecureTimeClockModal';
 
 export default function App() {
   const [state, setState] = useState<AppState>(() => loadState());
@@ -60,6 +63,7 @@ export default function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>('login');
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showPunchModal, setShowPunchModal] = useState(false);
 
   // Sync with localStorage as fallback
   useEffect(() => {
@@ -141,6 +145,18 @@ export default function App() {
       const unsubMktCopies = subscribeToUserCollection(dataOwnerUid, 'marketingCopies', (marketingCopies) => {
         setState((prev) => ({ ...prev, marketingCopies }));
       });
+      const unsubTimeClock = subscribeToUserCollection(dataOwnerUid, 'timeClockRecords', (timeClockRecords) => {
+        setState((prev) => ({ ...prev, timeClockRecords }));
+      });
+      const unsubLeadershipGoals = subscribeToUserCollection(dataOwnerUid, 'leadershipGoals', (leadershipGoals) => {
+        setState((prev) => ({ ...prev, leadershipGoals }));
+      });
+      const unsubLeadershipNotices = subscribeToUserCollection(dataOwnerUid, 'leadershipNotices', (leadershipNotices) => {
+        setState((prev) => ({ ...prev, leadershipNotices }));
+      });
+      const unsubSchedules = subscribeToUserCollection(dataOwnerUid, 'employeeWorkSchedules', (employeeWorkSchedules) => {
+        setState((prev) => ({ ...prev, employeeWorkSchedules }));
+      });
 
       activeDataUnsubs.push(
         unsubKPIs,
@@ -160,7 +176,11 @@ export default function App() {
         unsubMktEd,
         unsubMktFun,
         unsubMktEmails,
-        unsubMktCopies
+        unsubMktCopies,
+        unsubTimeClock,
+        unsubLeadershipGoals,
+        unsubLeadershipNotices,
+        unsubSchedules
       );
     };
 
@@ -925,6 +945,136 @@ export default function App() {
     }));
   };
 
+  // Employee Work Schedules Handlers
+  const handleSaveEmployeeSchedule = async (schedule: any) => {
+    const existing = (state.employeeWorkSchedules || []).find(
+      (s) => s.id === schedule.id || s.userEmail.toLowerCase() === schedule.userEmail.toLowerCase()
+    );
+    const targetUid = getWorkspaceTargetUid();
+
+    if (existing) {
+      const updatedSchedule = { ...existing, ...schedule, updatedAt: new Date().toISOString() };
+      setState((prev) => ({
+        ...prev,
+        employeeWorkSchedules: (prev.employeeWorkSchedules || []).map((s) =>
+          s.id === existing.id ? updatedSchedule : s
+        ),
+      }));
+      if (targetUid) {
+        await updateCollectionItem(targetUid, 'employeeWorkSchedules', existing.id, updatedSchedule);
+      }
+    } else {
+      const newSchedule = {
+        ...schedule,
+        id: schedule.id || `sched-${Date.now()}`,
+        updatedAt: new Date().toISOString(),
+      };
+      setState((prev) => ({
+        ...prev,
+        employeeWorkSchedules: [...(prev.employeeWorkSchedules || []), newSchedule],
+      }));
+      if (targetUid) {
+        await addCollectionItem(targetUid, 'employeeWorkSchedules', newSchedule);
+      }
+    }
+  };
+
+  const handleDeleteEmployeeSchedule = async (id: string) => {
+    setState((prev) => ({
+      ...prev,
+      employeeWorkSchedules: (prev.employeeWorkSchedules || []).filter((s) => s.id !== id),
+    }));
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await deleteCollectionItem(targetUid, 'employeeWorkSchedules', id);
+    }
+  };
+
+  // Time Clock & Attendance Handlers
+  const handlePunchTimeClock = async (record: any) => {
+    const newItem = { ...record, id: record.id || `punch-${Date.now()}` };
+    setState((prev) => ({
+      ...prev,
+      timeClockRecords: [newItem, ...(prev.timeClockRecords || [])],
+    }));
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await addCollectionItem(targetUid, 'timeClockRecords', newItem);
+    }
+  };
+
+  const handleDeleteTimeClockRecord = async (id: string) => {
+    setState((prev) => ({
+      ...prev,
+      timeClockRecords: (prev.timeClockRecords || []).filter((r) => r.id !== id),
+    }));
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await deleteCollectionItem(targetUid, 'timeClockRecords', id);
+    }
+  };
+
+  // Leadership Goals Handlers
+  const handleAddLeadershipGoal = async (goal: any) => {
+    const newItem = { ...goal, id: goal.id || `goal-${Date.now()}` };
+    setState((prev) => ({
+      ...prev,
+      leadershipGoals: [newItem, ...(prev.leadershipGoals || [])],
+    }));
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await addCollectionItem(targetUid, 'leadershipGoals', newItem);
+    }
+  };
+
+  const handleUpdateLeadershipGoal = async (id: string, data: any) => {
+    setState((prev) => ({
+      ...prev,
+      leadershipGoals: (prev.leadershipGoals || []).map((g) =>
+        g.id === id ? { ...g, ...data } : g
+      ),
+    }));
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await updateCollectionItem(targetUid, 'leadershipGoals', id, data);
+    }
+  };
+
+  const handleDeleteLeadershipGoal = async (id: string) => {
+    setState((prev) => ({
+      ...prev,
+      leadershipGoals: (prev.leadershipGoals || []).filter((g) => g.id !== id),
+    }));
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await deleteCollectionItem(targetUid, 'leadershipGoals', id);
+    }
+  };
+
+  // Leadership Notices Handlers
+  const handleAddLeadershipNotice = async (notice: any) => {
+    const newItem = { ...notice, id: notice.id || `notice-${Date.now()}` };
+    setState((prev) => ({
+      ...prev,
+      leadershipNotices: [newItem, ...(prev.leadershipNotices || [])],
+    }));
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await addCollectionItem(targetUid, 'leadershipNotices', newItem);
+    }
+  };
+
+  const handleDeleteLeadershipNotice = async (id: string) => {
+    setState((prev) => ({
+      ...prev,
+      leadershipNotices: (prev.leadershipNotices || []).filter((n) => n.id !== id),
+    }));
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await deleteCollectionItem(targetUid, 'leadershipNotices', id);
+    }
+  };
+
   // Render Public Landing View
   if (state.activeView === 'landing') {
     return (
@@ -975,6 +1125,7 @@ export default function App() {
         onOpenDocs={() => setShowDocsModal(true)}
         onOpenUpgradeModal={() => setShowUpgradeModal(true)}
         onOpenAuthModal={() => handleOpenAuth('login')}
+        onOpenPunchModal={() => setShowPunchModal(true)}
       />
 
       <div className="flex flex-1 relative overflow-hidden min-h-0">
@@ -1165,6 +1316,45 @@ export default function App() {
                 />
               )}
 
+              {state.activeView === 'lideranca' && (
+                <PainelLiderancaView
+                  userProfile={userProfile}
+                  campaigns={state.campaigns}
+                  leads={state.leads}
+                  events={state.events}
+                  socialPosts={state.socialPosts}
+                  designProjects={state.designProjects}
+                  marketingCampaigns={state.marketingCampaigns}
+                  marketingEditorials={state.marketingEditorials}
+                  marketingFunnels={state.marketingFunnels}
+                  marketingEmailFlows={state.marketingEmailFlows}
+                  marketingCopies={state.marketingCopies}
+                  timeClockRecords={state.timeClockRecords}
+                  leadershipGoals={state.leadershipGoals}
+                  leadershipNotices={state.leadershipNotices}
+                  onAddGoal={handleAddLeadershipGoal}
+                  onUpdateGoal={handleUpdateLeadershipGoal}
+                  onDeleteGoal={handleDeleteLeadershipGoal}
+                  onAddNotice={handleAddLeadershipNotice}
+                  onDeleteNotice={handleDeleteLeadershipNotice}
+                  onNavigate={setView}
+                  onOpenPunchModal={() => setShowPunchModal(true)}
+                />
+              )}
+
+              {state.activeView === 'ponto' && (
+                <PontoView
+                  userProfile={userProfile}
+                  timeClockRecords={state.timeClockRecords}
+                  employeeWorkSchedules={state.employeeWorkSchedules}
+                  onPunchTimeClock={handlePunchTimeClock}
+                  onDeleteTimeClockRecord={handleDeleteTimeClockRecord}
+                  onOpenPunchModal={() => setShowPunchModal(true)}
+                  onSaveSchedule={handleSaveEmployeeSchedule}
+                  onDeleteSchedule={handleDeleteEmployeeSchedule}
+                />
+              )}
+
               {state.activeView === 'admin' && (
                 <AdminView
                   currentUser={userProfile}
@@ -1177,6 +1367,21 @@ export default function App() {
 
       {/* Floating AI Assistant Widget */}
       <AIAssistantWidget />
+
+      {/* Secure Time Clock Modal (Bater Ponto Seguro) */}
+      <SecureTimeClockModal
+        isOpen={showPunchModal}
+        onClose={() => setShowPunchModal(false)}
+        userProfile={userProfile}
+        timeClockRecords={state.timeClockRecords}
+        employeeWorkSchedules={state.employeeWorkSchedules}
+        onPunchTimeClock={handlePunchTimeClock}
+        onDeleteTimeClockRecord={handleDeleteTimeClockRecord}
+        onOpenScheduleSettings={() => {
+          setShowPunchModal(false);
+          setView('ponto');
+        }}
+      />
 
       {/* Technical Documentation Modal */}
       {showDocsModal && <TechnicalDocsModal onClose={() => setShowDocsModal(false)} />}

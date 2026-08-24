@@ -1,6 +1,6 @@
 {
   "name": "AgencyOS by Techify",
-  "description": "Plataforma completa de gestão de agências com finanças, tráfego, CRM de leads, estoque, projetos e IA consultora.",
-  "requestFramePermissions": [],
+  "description": "Plataforma completa de gestão de agências com finanças, tráfego, CRM de leads, painel de liderança por cargo, ponto eletrônico seguro e IA consultora.",
+  "requestFramePermissions": ["geolocation", "camera"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

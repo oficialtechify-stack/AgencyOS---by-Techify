@@ -18,6 +18,20 @@ export const ALL_SYSTEM_MODULES: SystemModuleInfo[] = [
     iconName: 'LayoutDashboard',
   },
   {
+    id: 'lideranca',
+    name: 'Painel de Liderança',
+    category: 'Principal',
+    description: 'Comando executivo, metas de tráfego/vendas e visão estratégica por liderança',
+    iconName: 'Crown',
+  },
+  {
+    id: 'ponto',
+    name: 'Ponto Eletrônico Seguro',
+    category: 'Gestão & Projetos',
+    description: 'Registro biométrico e geolocalizado de jornada, espelho de ponto e horas trabalhadas',
+    iconName: 'Clock',
+  },
+  {
     id: 'kpis',
     name: 'KPIs & Métricas',
     category: 'Financeiro',
@@ -314,6 +328,23 @@ export function isProspectingLeader(
   return (
     (role.includes('lider') || role.includes('líder') || role.includes('gestor')) &&
     (role.includes('prospec') || role.includes('comercial') || role.includes('vendas') || role.includes('sdr') || role.includes('geral'))
+  );
+}
+
+/**
+ * Checks if a user is Design Leader or General Leader
+ */
+export function isDesignLeader(
+  profile?: FirestoreUserProfile | null,
+  userEmail?: string | null
+): boolean {
+  if (isUserMasterAdmin(profile, userEmail)) return true;
+  if (profile?.leadershipRole === 'lider_design' || profile?.leadershipRole === 'lider_geral') return true;
+  const role = (profile?.role || '').toLowerCase();
+  return (
+    ((role.includes('lider') || role.includes('líder') || role.includes('diretor')) &&
+    (role.includes('design') || role.includes('arte') || role.includes('geral'))) ||
+    profile?.designRole === 'lider'
   );
 }
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bell, Menu, X, Sparkles } from 'lucide-react';
+import { Bell, Menu, X, Sparkles, Clock, ShieldCheck } from 'lucide-react';
 import { SystemUpdate, ViewType } from '../types';
 import { FirestoreUserProfile } from '../lib/firebase';
 import { TrialCountdownWidget } from './TrialCountdownWidget';
@@ -16,6 +16,7 @@ interface HeaderNavProps {
   onOpenDocs: () => void;
   onOpenUpgradeModal?: () => void;
   onOpenAuthModal?: () => void;
+  onOpenPunchModal?: () => void;
   onToggleSidebar?: () => void;
 }
 
@@ -48,6 +49,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   onOpenDocs: _onOpenDocs,
   onOpenUpgradeModal = () => {},
   onOpenAuthModal: _onOpenAuthModal = () => {},
+  onOpenPunchModal,
   onToggleSidebar,
 }) => {
   const [showNotifications, setShowNotifications] = useState(false);
@@ -87,7 +89,20 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
         </div>
       </div>
 
-      <div className="flex items-center gap-2.5 sm:gap-4 shrink-0">
+      <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+        {/* Quick Time Clock Action Button */}
+        {onOpenPunchModal && (
+          <button
+            type="button"
+            onClick={onOpenPunchModal}
+            className="px-3 py-1.5 rounded-xl bg-white hover:bg-neutral-200 text-black font-extrabold text-xs transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+            title="Bater Ponto Seguro com Biometria e GPS"
+          >
+            <Clock className="w-3.5 h-3.5 text-black shrink-0" />
+            <span className="hidden sm:inline">Bater Ponto</span>
+          </button>
+        )}
+
         {/* Real-time 14-Day Trial Timer */}
         {userProfile && (
           <div className="hidden lg:block">

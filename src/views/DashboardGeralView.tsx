@@ -16,6 +16,8 @@ import {
   ArrowRight,
   Lock,
   Palette,
+  Crown,
+  Clock,
 } from 'lucide-react';
 import { ViewMode, KPIPeriod, CashTransaction, AdCampaign, CRMLead, StockItem } from '../types';
 import { hasModuleAccess } from '../lib/permissions';
@@ -50,6 +52,20 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
   const avgRoas = totalSpend > 0 ? `${(totalRevenue / totalSpend).toFixed(1)}x` : '—';
 
   const modules = [
+    {
+      id: 'lideranca' as ViewMode,
+      title: 'Painel de Liderança',
+      desc: 'Comando estratégico por cargo',
+      icon: Crown,
+      badge: 'Liderança',
+    },
+    {
+      id: 'ponto' as ViewMode,
+      title: 'Ponto Eletrônico',
+      desc: 'Registro seguro com GPS',
+      icon: Clock,
+      badge: 'Alô Seguro',
+    },
     {
       id: 'kpis' as ViewMode,
       title: 'Financeiro',
