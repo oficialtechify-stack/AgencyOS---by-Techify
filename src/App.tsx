@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ViewType, AppState } from './types';
+import { ViewType, AppState, TimeClockRecord } from './types';
 import { loadState, saveState } from './lib/storage';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import {
@@ -1014,6 +1014,19 @@ export default function App() {
     }
   };
 
+  const handleUpdateTimeClockRecord = async (id: string, updatedData: Partial<TimeClockRecord>) => {
+    setState((prev) => ({
+      ...prev,
+      timeClockRecords: (prev.timeClockRecords || []).map((r) =>
+        r.id === id ? { ...r, ...updatedData } : r
+      ),
+    }));
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await updateCollectionItem(targetUid, 'timeClockRecords', id, updatedData);
+    }
+  };
+
   // Leadership Goals Handlers
   const handleAddLeadershipGoal = async (goal: any) => {
     const newItem = { ...goal, id: goal.id || `goal-${Date.now()}` };
@@ -1349,6 +1362,7 @@ export default function App() {
                   employeeWorkSchedules={state.employeeWorkSchedules}
                   onPunchTimeClock={handlePunchTimeClock}
                   onDeleteTimeClockRecord={handleDeleteTimeClockRecord}
+                  onUpdateTimeClockRecord={handleUpdateTimeClockRecord}
                   onOpenPunchModal={() => setShowPunchModal(true)}
                   onSaveSchedule={handleSaveEmployeeSchedule}
                   onDeleteSchedule={handleDeleteEmployeeSchedule}

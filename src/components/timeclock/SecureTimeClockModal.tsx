@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { EmployeeWorkSchedule, TimeClockRecord, TimeClockType } from '../../types';
 import { FirestoreUserProfile } from '../../lib/firebase';
+import { isUserMasterAdmin } from '../../lib/permissions';
 import {
   getEmployeeSchedule,
   getStrictSequentialStatus,
@@ -195,6 +196,8 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
   const leadershipRole = userProfile?.leadershipRole || 'lider_geral';
 
   const roleBadge = getRoleBadgeStyle(userRole, leadershipRole);
+
+  const isMaster = isUserMasterAdmin(userProfile, userEmail);
 
   // Active User's Linked Work Schedule
   const effectiveSchedules =
@@ -863,7 +866,7 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
                           {rec.notes && <div className="text-neutral-300 italic">{rec.notes}</div>}
                         </div>
 
-                        {onDeleteTimeClockRecord && (
+                        {isMaster && onDeleteTimeClockRecord && (
                           <button
                             type="button"
                             disabled={deletingId === rec.id}

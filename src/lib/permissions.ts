@@ -176,6 +176,11 @@ export function hasModuleAccess(
     return true;
   }
 
+  // Ponto eletrônico is accessible to all users across the agency
+  if (moduleId === 'ponto') {
+    return true;
+  }
+
   // Admin module is strictly for admins or profiles explicitly granted 'admin'
   if (moduleId === 'admin') {
     return profile?.allowedModules?.includes('admin') || false;

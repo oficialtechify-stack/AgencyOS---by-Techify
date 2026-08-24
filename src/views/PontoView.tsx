@@ -9,8 +9,6 @@ import {
   CheckCircle2,
   AlertTriangle,
   FileSpreadsheet,
-  Printer,
-  Sparkles,
   ArrowRight,
   Filter,
   Search,
@@ -19,17 +17,23 @@ import {
   LogOut,
   LogIn,
   RotateCcw,
-  Building,
-  Info,
   Sliders,
   Lock,
   Trash2,
+  Edit3,
+  Eye,
+  PlusCircle,
   X,
+  Smartphone,
+  Flame,
 } from 'lucide-react';
 import { EmployeeWorkSchedule, TimeClockRecord, TimeClockType } from '../types';
 import { FirestoreUserProfile } from '../lib/firebase';
-import { isLeader, isUserMasterAdmin } from '../lib/permissions';
+import { isUserMasterAdmin } from '../lib/permissions';
 import { EmployeeScheduleModal } from '../components/timeclock/EmployeeScheduleModal';
+import { EditTimeClockModal } from '../components/timeclock/EditTimeClockModal';
+import { ManualPunchModal } from '../components/timeclock/ManualPunchModal';
+import { InspectTimeClockModal } from '../components/timeclock/InspectTimeClockModal';
 import {
   DEFAULT_WORK_SCHEDULES,
   getEmployeeSchedule,
@@ -43,6 +47,7 @@ interface PontoViewProps {
   employeeWorkSchedules?: EmployeeWorkSchedule[];
   onPunchTimeClock: (record: Partial<TimeClockRecord>) => Promise<void>;
   onDeleteTimeClockRecord?: (id: string) => Promise<void>;
+  onUpdateTimeClockRecord?: (id: string, updatedData: Partial<TimeClockRecord>) => Promise<void>;
   onOpenPunchModal: () => void;
   onSaveSchedule?: (schedule: EmployeeWorkSchedule) => Promise<void>;
   onDeleteSchedule?: (id: string) => Promise<void>;
@@ -52,8 +57,9 @@ export const PontoView: React.FC<PontoViewProps> = ({
   userProfile,
   timeClockRecords = [],
   employeeWorkSchedules = [],
-  onPunchTimeClock: _onPunchTimeClock,
+  onPunchTimeClock,
   onDeleteTimeClockRecord,
+  onUpdateTimeClockRecord,
   onOpenPunchModal,
   onSaveSchedule = async () => {},
   onDeleteSchedule,
@@ -62,17 +68,25 @@ export const PontoView: React.FC<PontoViewProps> = ({
   const [selectedMonth, setSelectedMonth] = useState<string>('2026-08');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('todos');
+  const [filterEmployee, setFilterEmployee] = useState<string>('todos');
+  const [filterStatus, setFilterStatus] = useState<string>('todos');
+
+  // Modals state
   const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [showManualPunchModal, setShowManualPunchModal] = useState(false);
+  const [recordToEdit, setRecordToEdit] = useState<TimeClockRecord | null>(null);
+  const [recordToInspect, setRecordToInspect] = useState<TimeClockRecord | null>(null);
   const [recordToDelete, setRecordToDelete] = useState<TimeClockRecord | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const isUserLeader = isLeader(userProfile);
-  const isMaster = isUserMasterAdmin(userProfile);
-  const canManageSchedules = isUserLeader || isMaster;
-
+  // Exclusive Master Admin Permission check
   const userEmail = userProfile?.email || 'rickmarketing81@gmail.com';
   const userName = userProfile?.name || 'Marcos Henrique';
   const userRole = userProfile?.role || 'Diretor Executivo / Master';
+
+  const isMaster = isUserMasterAdmin(userProfile, userEmail);
+  const canEditOrAlter = isMaster;
+  const canManageSchedules = isMaster;
 
   const effectiveSchedules =
     employeeWorkSchedules.length > 0 ? employeeWorkSchedules : DEFAULT_WORK_SCHEDULES;
@@ -134,6 +148,76 @@ export const PontoView: React.FC<PontoViewProps> = ({
       return acc;
     }, {});
 
+  // Extract unique employees for filter dropdown
+  const uniqueEmployeesMap = new Map<string, { email: string; name: string; role: string }>();
+  effectiveSchedules.forEach((s) => {
+    if (s.userEmail) {
+      uniqueEmployeesMap.set(s.userEmail.toLowerCase(), {
+        email: s.userEmail,
+        name: s.userName,
+        role: s.userRole,
+      });
+    }
+  });
+  timeClockRecords.forEach((r) => {
+    if (r.userEmail) {
+      const emailLower = r.userEmail.toLowerCase();
+      if (!uniqueEmployeesMap.has(emailLower)) {
+        uniqueEmployeesMap.set(emailLower, {
+          email: r.userEmail,
+          name: r.userName || 'Colaborador',
+          role: r.userRole || 'Equipe',
+        });
+      }
+    }
+  });
+  const uniqueEmployees = Array.from(uniqueEmployeesMap.values());
+
+  // Overall Statistics for Master Admin
+  const totalPunches = timeClockRecords.length;
+  const latePunches = timeClockRecords.filter((r) => r.status === 'late').length;
+  const overtimePunches = timeClockRecords.filter((r) => r.status === 'overtime').length;
+  const editedPunches = timeClockRecords.filter((r) => r.isManuallyEdited).length;
+  const regularPunches = timeClockRecords.filter((r) => r.status === 'regular').length;
+  const punctualityRate = totalPunches > 0 ? Math.round(((totalPunches - latePunches) / totalPunches) * 100) : 100;
+
+  // Filtered Records for Team Tab
+  const filteredTeamRecords = timeClockRecords.filter((r) => {
+    // Month filter
+    if (selectedMonth && !(r.date || '').startsWith(selectedMonth)) return false;
+
+    // Type filter
+    if (filterType !== 'todos' && r.type !== filterType) return false;
+
+    // Employee filter
+    if (filterEmployee !== 'todos' && (r.userEmail || '').toLowerCase() !== filterEmployee.toLowerCase()) {
+      return false;
+    }
+
+    // Status filter
+    if (filterStatus === 'edited') {
+      if (!r.isManuallyEdited) return false;
+    } else if (filterStatus !== 'todos') {
+      if (r.status !== filterStatus) return false;
+    }
+
+    // Search term
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      const matches =
+        (r.userName || '').toLowerCase().includes(term) ||
+        (r.userEmail || '').toLowerCase().includes(term) ||
+        (r.userRole || '').toLowerCase().includes(term) ||
+        (r.securityHash || '').toLowerCase().includes(term) ||
+        (r.location?.city || '').toLowerCase().includes(term) ||
+        (r.notes || '').toLowerCase().includes(term) ||
+        (r.editReason || '').toLowerCase().includes(term);
+      if (!matches) return false;
+    }
+
+    return true;
+  });
+
   // Export CSV
   const handleExportCSV = () => {
     const recordsToExport = activeTab === 'meu-ponto' ? myRecords : timeClockRecords;
@@ -151,6 +235,8 @@ export const PontoView: React.FC<PontoViewProps> = ({
       'Tipo_Ponto',
       'Horario_Vinculado',
       'Status_Conformidade',
+      'Editado_Manualmente',
+      'Editado_Por',
       'Hash_Auditoria',
       'Dispositivo',
       'Observacoes',
@@ -164,9 +250,11 @@ export const PontoView: React.FC<PontoViewProps> = ({
       `"${r.typeLabel || r.type}"`,
       `"${r.scheduledTime || ''}"`,
       `"${r.status || 'regular'}"`,
+      `"${r.isManuallyEdited ? 'SIM' : 'NAO'}"`,
+      `"${r.editedBy || ''}"`,
       `"${r.securityHash || ''}"`,
       `"${r.deviceInfo || ''}"`,
-      `"${(r.notes || '').replace(/"/g, '""')}"`,
+      `"${(r.notes || r.editReason || '').replace(/"/g, '""')}"`,
     ]);
 
     const csvContent =
@@ -227,17 +315,22 @@ export const PontoView: React.FC<PontoViewProps> = ({
               </h2>
               <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                Alô Seguro & Auditado
+                Auditado por GPS & Biometria
               </span>
               <span
                 className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${currentStatusBadge.color}`}
               >
                 {currentStatusBadge.text}
               </span>
+              {isMaster && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/10 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                  <ShieldCheck className="w-3 h-3 text-amber-400" />
+                  Controle Master (Edição & Exclusão Exclusivas)
+                </span>
+              )}
             </div>
             <p className="text-xs sm:text-sm text-neutral-400 font-medium mt-1">
-              Registro estrito de 1 ponto por vez na sequência legal, com horário vinculado por
-              colaborador e auditoria de Nome e Cargo.
+              Todos os colaboradores registram ponto com 1 clique. Somente o Gestor Master pode alterar e editar registros.
             </p>
           </div>
         </div>
@@ -251,7 +344,19 @@ export const PontoView: React.FC<PontoViewProps> = ({
               title="Ajustar e vincular horários para cada funcionário"
             >
               <Sliders className="w-4 h-4 text-amber-400" />
-              <span>Ajustar Escalas & Horários</span>
+              <span>Ajustar Escalas</span>
+            </button>
+          )}
+
+          {canEditOrAlter && (
+            <button
+              type="button"
+              onClick={() => setShowManualPunchModal(true)}
+              className="px-4 py-3 rounded-2xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-amber-300 font-bold text-xs transition-all flex items-center gap-2 cursor-pointer shadow-sm"
+              title="Adicionar ponto retroativo ou manual para qualquer colaborador"
+            >
+              <PlusCircle className="w-4 h-4 text-amber-400" />
+              <span>+ Ponto Manual</span>
             </button>
           )}
 
@@ -296,24 +401,37 @@ export const PontoView: React.FC<PontoViewProps> = ({
             <span>Pontos no Mês</span>
             <Calendar className="w-4 h-4 text-neutral-400" />
           </div>
-          <div className="text-2xl font-black text-white">{monthlyRecords.length}</div>
+          <div className="text-2xl font-black text-white">
+            {isMaster ? timeClockRecords.filter((r) => (r.date || '').startsWith(selectedMonth)).length : monthlyRecords.length}
+          </div>
           <div className="text-[11px] text-neutral-400 mt-1">
-            Registros auditados em {selectedMonth}
+            {isMaster ? `Total geral na agência (${selectedMonth})` : `Meus registros em ${selectedMonth}`}
           </div>
         </div>
 
         <div className="p-5 rounded-2xl bg-neutral-900 border border-neutral-800">
           <div className="flex items-center justify-between text-neutral-400 text-xs font-bold mb-2">
-            <span>Escala Vinculada</span>
+            <span>{isMaster ? 'Pontualidade da Agência' : 'Minha Escala Vinculada'}</span>
             <Lock className="w-4 h-4 text-white" />
           </div>
-          <div className="text-sm font-black text-white font-mono">
-            {mySchedule.entryTime} → {mySchedule.lunchStartTime} → {mySchedule.exitTime}
-          </div>
-          <div className="text-[11px] text-neutral-400 mt-1">
-            Tolerância: ±{mySchedule.toleranceMinutes} min (Trava:{' '}
-            {mySchedule.strictEnforcement ? 'Ativa' : 'Off'})
-          </div>
+          {isMaster ? (
+            <>
+              <div className="text-2xl font-black text-emerald-400">{punctualityRate}%</div>
+              <div className="text-[11px] text-neutral-400 mt-1">
+                {latePunches} atrasos registrados • {overtimePunches} horas extras
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="text-sm font-black text-white font-mono">
+                {mySchedule.entryTime} → {mySchedule.lunchStartTime} → {mySchedule.exitTime}
+              </div>
+              <div className="text-[11px] text-neutral-400 mt-1">
+                Tolerância: ±{mySchedule.toleranceMinutes} min (Trava:{' '}
+                {mySchedule.strictEnforcement ? 'Ativa' : 'Off'})
+              </div>
+            </>
+          )}
         </div>
 
         <div className="p-5 rounded-2xl bg-neutral-900 border border-neutral-800">
@@ -322,7 +440,9 @@ export const PontoView: React.FC<PontoViewProps> = ({
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
           </div>
           <div className="text-xs font-black text-white truncate">{userName}</div>
-          <div className="text-[11px] text-neutral-400 truncate">{userRole}</div>
+          <div className="text-[11px] text-neutral-400 truncate">
+            {userRole} {isMaster && '• Permissão Master'}
+          </div>
         </div>
       </div>
 
@@ -340,7 +460,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
           <span>Meu Espelho de Ponto</span>
         </button>
 
-        {canManageSchedules && (
+        {isMaster && (
           <button
             onClick={() => setActiveTab('equipe')}
             className={`pb-3 px-4 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
@@ -350,11 +470,11 @@ export const PontoView: React.FC<PontoViewProps> = ({
             }`}
           >
             <Users className="w-4 h-4" />
-            <span>Painel da Equipe & Presença ({Object.keys(teamTodayGrouped).length} Ativos Hoje)</span>
+            <span>Todos os Pontos da Agência ({timeClockRecords.length} Registros • {Object.keys(teamTodayGrouped).length} Ativos Hoje)</span>
           </button>
         )}
 
-        {canManageSchedules && (
+        {isMaster && (
           <button
             onClick={() => setActiveTab('escalas')}
             className={`pb-3 px-4 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
@@ -448,40 +568,21 @@ export const PontoView: React.FC<PontoViewProps> = ({
                 type="month"
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
-                className="bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-white"
+                className="bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-white font-mono"
               />
             </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="px-3 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-xs font-bold text-white flex items-center gap-1.5 cursor-pointer"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                <span>Imprimir Espelho</span>
-              </button>
+            <div className="text-xs text-neutral-400">
+              Total de registros no mês:{' '}
+              <strong className="text-white font-mono">{monthlyRecords.length}</strong>
             </div>
           </div>
 
           {/* Records Table */}
           <div className="bg-neutral-900 border border-neutral-800 rounded-3xl overflow-hidden shadow-xl">
-            <div className="p-4 border-b border-neutral-800 flex items-center justify-between">
-              <span className="font-extrabold text-white text-sm">
-                Registros de Ponto ({monthlyRecords.length})
-              </span>
-              <span className="text-xs text-neutral-400 font-mono">
-                {userName} ({userRole})
-              </span>
-            </div>
-
             {monthlyRecords.length === 0 ? (
-              <div className="p-12 text-center text-neutral-500 text-xs space-y-2">
-                <Clock className="w-8 h-8 mx-auto text-neutral-600 mb-2" />
-                <p className="font-bold text-neutral-400">
-                  Nenhum registro encontrado para este mês.
-                </p>
-                <p>Clique em "Bater Ponto Agora" para iniciar o registro da sua jornada.</p>
+              <div className="p-12 text-center text-neutral-500 text-xs">
+                Nenhum ponto registrado em {selectedMonth}.
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -489,13 +590,13 @@ export const PontoView: React.FC<PontoViewProps> = ({
                   <thead className="bg-neutral-950 text-[10px] uppercase font-black text-neutral-400 tracking-wider border-b border-neutral-800">
                     <tr>
                       <th className="p-3.5 pl-5">Data</th>
-                      <th className="p-3.5">Horário Real</th>
-                      <th className="p-3.5">Horário Previsto</th>
+                      <th className="p-3.5">Horário Batido</th>
+                      <th className="p-3.5">Horário Vinculado</th>
                       <th className="p-3.5">Tipo do Ponto</th>
                       <th className="p-3.5">Status</th>
-                      <th className="p-3.5">Localização GPS</th>
-                      <th className="p-3.5">Hash Auditado</th>
-                      <th className="p-3.5 pr-5 text-right">Ação</th>
+                      <th className="p-3.5">Localização</th>
+                      <th className="p-3.5">Hash de Segurança</th>
+                      <th className="p-3.5 pr-5 text-right">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-800/60 font-sans">
@@ -508,13 +609,23 @@ export const PontoView: React.FC<PontoViewProps> = ({
                             isToday ? 'bg-neutral-800/20' : ''
                           }`}
                         >
-                          <td className="p-3.5 pl-5 font-bold text-white font-mono flex items-center gap-2">
-                            <span>{r.date}</span>
-                            {isToday && (
-                              <span className="text-[9px] bg-white text-black px-1.5 py-0.5 rounded font-black">
-                                HOJE
-                              </span>
-                            )}
+                          <td className="p-3.5 pl-5 font-bold text-white font-mono">
+                            <div className="flex items-center gap-2">
+                              <span>{r.date}</span>
+                              {isToday && (
+                                <span className="text-[9px] bg-white text-black px-1.5 py-0.5 rounded font-black">
+                                  HOJE
+                                </span>
+                              )}
+                              {r.isManuallyEdited && (
+                                <span
+                                  className="text-[9px] bg-amber-500/10 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded font-bold"
+                                  title={`Editado por ${r.editedBy || 'Master'}`}
+                                >
+                                  EDITADO
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="p-3.5 font-mono font-black text-white text-sm">
                             {r.time}
@@ -536,6 +647,10 @@ export const PontoView: React.FC<PontoViewProps> = ({
                               <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-950 border border-blue-800 text-blue-300">
                                 Hora Extra
                               </span>
+                            ) : r.status === 'early_departure' ? (
+                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-950 border border-purple-800 text-purple-300">
+                                Saída Antecipada
+                              </span>
                             ) : (
                               <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-neutral-800 border border-neutral-700 text-neutral-300">
                                 Regular
@@ -556,15 +671,40 @@ export const PontoView: React.FC<PontoViewProps> = ({
                             {r.securityHash}
                           </td>
                           <td className="p-3.5 pr-5 text-right">
-                            <button
-                              type="button"
-                              onClick={() => setRecordToDelete(r)}
-                              className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-red-950/40 border border-transparent hover:border-red-800/60 transition-all cursor-pointer inline-flex items-center gap-1"
-                              title="Apagar este ponto errado"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              <span className="hidden sm:inline text-[11px]">Apagar</span>
-                            </button>
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => setRecordToInspect(r)}
+                                className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-all cursor-pointer"
+                                title="Inspecionar detalhes de auditoria"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+
+                              {canEditOrAlter && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => setRecordToEdit(r)}
+                                    className="p-1.5 rounded-lg text-amber-400 hover:text-amber-200 hover:bg-amber-950/40 border border-amber-900/40 transition-all cursor-pointer flex items-center gap-1"
+                                    title="Editar horário e dados deste ponto (Master Admin)"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                    <span className="hidden sm:inline text-[11px] font-bold">Editar</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => setRecordToDelete(r)}
+                                    className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-red-950/40 border border-transparent hover:border-red-800/60 transition-all cursor-pointer flex items-center gap-1"
+                                    title="Apagar este ponto errado (Master Admin)"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <span className="hidden sm:inline text-[11px]">Apagar</span>
+                                  </button>
+                                </>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -577,23 +717,37 @@ export const PontoView: React.FC<PontoViewProps> = ({
         </div>
       )}
 
-      {/* Tab: Controle da Equipe (Líderes & Administradores) */}
-      {activeTab === 'equipe' && canManageSchedules && (
+      {/* Tab: Controle Geral da Equipe & Todos os Pontos (Master Admin) */}
+      {activeTab === 'equipe' && isMaster && (
         <div className="space-y-6">
           {/* Team Members Today Presence Cards */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-black text-white uppercase tracking-wider">
-                Status da Equipe Hoje ({todayStr})
+              <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                <span>Presença da Equipe Hoje ({todayStr})</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                  {Object.keys(teamTodayGrouped).length} com registro ativo
+                </span>
               </h3>
-              <button
-                type="button"
-                onClick={() => setShowScheduleModal(true)}
-                className="text-xs text-amber-400 hover:underline font-bold flex items-center gap-1 cursor-pointer"
-              >
-                <Sliders className="w-3.5 h-3.5" />
-                Gerenciar Horários da Equipe
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowManualPunchModal(true)}
+                  className="text-xs text-amber-300 hover:text-amber-100 bg-amber-950/50 hover:bg-amber-900/50 border border-amber-800 px-3 py-1 rounded-xl font-bold flex items-center gap-1.5 cursor-pointer transition-all"
+                >
+                  <PlusCircle className="w-3.5 h-3.5" />
+                  + Ponto Manual
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowScheduleModal(true)}
+                  className="text-xs text-neutral-300 hover:text-white bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 px-3 py-1 rounded-xl font-bold flex items-center gap-1 cursor-pointer transition-all"
+                >
+                  <Sliders className="w-3.5 h-3.5 text-amber-400" />
+                  Gerenciar Escalas
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
@@ -707,151 +861,218 @@ export const PontoView: React.FC<PontoViewProps> = ({
             </div>
           </div>
 
-          {/* Full Audit Filter and Table */}
-          <div className="p-4 bg-neutral-950 rounded-2xl border border-neutral-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2 flex-1 w-full sm:w-auto">
-              <Search className="w-4 h-4 text-neutral-400" />
+          {/* Full Audit Filter and Table Controls */}
+          <div className="p-4 bg-neutral-950 rounded-2xl border border-neutral-800 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+            <div className="flex items-center gap-2 flex-1">
+              <Search className="w-4 h-4 text-neutral-400 shrink-0" />
               <input
                 type="text"
-                placeholder="Buscar por colaborador (Nome), cargo ou e-mail..."
+                placeholder="Buscar por colaborador (Nome), cargo, e-mail, hash ou cidade..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-1.5 text-xs text-white w-full sm:w-80 focus:outline-none focus:border-white"
+                className="bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white w-full focus:outline-none focus:border-white"
               />
             </div>
 
-            <div className="flex items-center gap-2">
-              <Filter className="w-3.5 h-3.5 text-neutral-400" />
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Employee Dropdown */}
+              <select
+                value={filterEmployee}
+                onChange={(e) => setFilterEmployee(e.target.value)}
+                className="bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white"
+              >
+                <option value="todos">Todos os Colaboradores</option>
+                {uniqueEmployees.map((emp) => (
+                  <option key={emp.email} value={emp.email}>
+                    {emp.name} ({emp.role})
+                  </option>
+                ))}
+              </select>
+
+              {/* Status Dropdown */}
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white"
+              >
+                <option value="todos">Todos os Status</option>
+                <option value="regular">No Horário / Regular</option>
+                <option value="late">Atrasos</option>
+                <option value="overtime">Horas Extras</option>
+                <option value="early_departure">Saídas Antecipadas</option>
+                <option value="edited">Apenas Editados Manualmente</option>
+              </select>
+
+              {/* Type Dropdown */}
               <select
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value)}
-                className="bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-white"
+                className="bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white"
               >
                 <option value="todos">Todos os Tipos</option>
-                <option value="entry">Apenas Entradas</option>
-                <option value="lunch_start">Apenas Saída Almoço</option>
-                <option value="lunch_end">Apenas Retorno Almoço</option>
-                <option value="exit">Apenas Saídas</option>
+                <option value="entry">1. Entrada</option>
+                <option value="lunch_start">2. Saída Almoço</option>
+                <option value="lunch_end">3. Retorno Almoço</option>
+                <option value="exit">4. Saída Expediente</option>
+                <option value="overtime_in">5. Início Horas Extras</option>
+                <option value="overtime_out">6. Término Horas Extras</option>
               </select>
+
+              {/* Month */}
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white font-mono"
+              />
             </div>
           </div>
 
           {/* All Team Records Table */}
           <div className="bg-neutral-900 border border-neutral-800 rounded-3xl overflow-hidden shadow-xl">
             <div className="p-4 border-b border-neutral-800 flex items-center justify-between">
-              <span className="font-extrabold text-white text-sm">
-                Auditoria de Registros de Ponto ({timeClockRecords.length})
+              <span className="font-extrabold text-white text-sm flex items-center gap-2">
+                <span>Auditoria Consolidada de Pontos</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-300 font-mono">
+                  {filteredTeamRecords.length} de {timeClockRecords.length} registros
+                </span>
               </span>
-              <span className="text-xs text-neutral-400 font-mono">
-                Identificação Completa: Nome + Cargo
+              <span className="text-xs text-amber-400 font-mono flex items-center gap-1 font-bold">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                Painel Master Exclusivo (Editar & Apagar Liberados)
               </span>
             </div>
 
-            {timeClockRecords.length === 0 ? (
+            {filteredTeamRecords.length === 0 ? (
               <div className="p-12 text-center text-neutral-500 text-xs">
-                Nenhum ponto registrado por colaboradores ainda.
+                Nenhum registro de ponto encontrado com os filtros selecionados.
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs text-neutral-300">
                   <thead className="bg-neutral-950 text-[10px] uppercase font-black text-neutral-400 tracking-wider border-b border-neutral-800">
                     <tr>
-                      <th className="p-3.5 pl-5">Colaborador (Nome & E-mail)</th>
+                      <th className="p-3.5 pl-5">Colaborador</th>
                       <th className="p-3.5">Cargo Oficial</th>
                       <th className="p-3.5">Data & Horário</th>
-                      <th className="p-3.5">Registro</th>
+                      <th className="p-3.5">Tipo da Batida</th>
                       <th className="p-3.5">Horário Vinculado</th>
                       <th className="p-3.5">Status</th>
                       <th className="p-3.5">Localização GPS</th>
-                      <th className="p-3.5">Hash Auditado</th>
-                      <th className="p-3.5 pr-5 text-right">Ação</th>
+                      <th className="p-3.5">Hash de Segurança</th>
+                      <th className="p-3.5 pr-5 text-right">Ações Master</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-800/60 font-sans">
-                    {timeClockRecords
-                      .filter((r) => {
-                        if (filterType !== 'todos' && r.type !== filterType) return false;
-                        if (searchTerm) {
-                          const term = searchTerm.toLowerCase();
-                          const matches =
-                            (r.userName || '').toLowerCase().includes(term) ||
-                            (r.userEmail || '').toLowerCase().includes(term) ||
-                            (r.userRole || '').toLowerCase().includes(term);
-                          if (!matches) return false;
-                        }
-                        return true;
-                      })
-                      .map((r) => {
-                        const badge = getRoleBadgeStyle(r.userRole, r.leadershipRole);
-                        return (
-                          <tr key={r.id} className="hover:bg-neutral-800/40 transition-colors">
-                            <td className="p-3.5 pl-5 font-bold text-white">
-                              <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 rounded-full bg-neutral-800 text-white flex items-center justify-center font-bold text-xs shrink-0">
-                                  {(r.userName || 'U')[0].toUpperCase()}
+                    {filteredTeamRecords.map((r) => {
+                      const badge = getRoleBadgeStyle(r.userRole, r.leadershipRole);
+                      return (
+                        <tr key={r.id} className="hover:bg-neutral-800/40 transition-colors">
+                          <td className="p-3.5 pl-5 font-bold text-white">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                                {(r.userName || 'U')[0].toUpperCase()}
+                              </div>
+                              <div>
+                                <div className="font-bold text-white text-xs flex items-center gap-1.5">
+                                  <span>{r.userName || 'Colaborador'}</span>
+                                  {r.isManuallyEdited && (
+                                    <span
+                                      className="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1 rounded font-bold"
+                                      title={`Editado por ${r.editedBy || 'Master'}`}
+                                    >
+                                      EDITADO
+                                    </span>
+                                  )}
                                 </div>
-                                <div>
-                                  <div className="font-bold text-white text-xs">
-                                    {r.userName || 'Colaborador'}
-                                  </div>
-                                  <div className="text-[10px] text-neutral-400 font-normal">
-                                    {r.userEmail}
-                                  </div>
+                                <div className="text-[10px] text-neutral-400 font-normal">
+                                  {r.userEmail}
                                 </div>
                               </div>
-                            </td>
-                            <td className="p-3.5">
-                              <span
-                                className={`px-2 py-0.5 rounded text-[10px] font-bold border ${badge.bg} ${badge.text} ${badge.border}`}
-                              >
-                                {r.userRole || 'Equipe'}
+                            </div>
+                          </td>
+                          <td className="p-3.5">
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold border ${badge.bg} ${badge.text} ${badge.border}`}
+                            >
+                              {r.userRole || 'Equipe'}
+                            </span>
+                          </td>
+                          <td className="p-3.5 font-mono text-neutral-300">
+                            <div className="text-neutral-400 text-[11px]">{r.date}</div>
+                            <div className="text-white font-black text-sm">{r.time}</div>
+                          </td>
+                          <td className="p-3.5 font-bold text-white">
+                            {r.typeLabel || r.type}
+                          </td>
+                          <td className="p-3.5 font-mono text-neutral-400">
+                            {r.scheduledTime || '--:--'}
+                          </td>
+                          <td className="p-3.5">
+                            {r.status === 'late' ? (
+                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-950 border border-amber-800 text-amber-300">
+                                Atraso
                               </span>
-                            </td>
-                            <td className="p-3.5 font-mono text-neutral-300">
-                              <div>{r.date}</div>
-                              <div className="text-white font-black">{r.time}</div>
-                            </td>
-                            <td className="p-3.5 font-bold text-white">
-                              {r.typeLabel || r.type}
-                            </td>
-                            <td className="p-3.5 font-mono text-neutral-400">
-                              {r.scheduledTime || '--:--'}
-                            </td>
-                            <td className="p-3.5">
-                              {r.status === 'late' ? (
-                                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-950 border border-amber-800 text-amber-300">
-                                  Atraso
-                                </span>
-                              ) : r.status === 'overtime' ? (
-                                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-950 border border-blue-800 text-blue-300">
-                                  Hora Extra
-                                </span>
-                              ) : (
-                                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-neutral-800 border border-neutral-700 text-neutral-300">
-                                  Regular
-                                </span>
-                              )}
-                            </td>
-                            <td className="p-3.5 text-neutral-400 text-[11px]">
-                              {r.location ? r.location.city || 'GPS Ativo' : 'Auditado'}
-                            </td>
-                            <td className="p-3.5 font-mono text-[10px] text-neutral-400 font-bold">
+                            ) : r.status === 'overtime' ? (
+                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-950 border border-blue-800 text-blue-300">
+                                Hora Extra
+                              </span>
+                            ) : r.status === 'early_departure' ? (
+                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-950 border border-purple-800 text-purple-300">
+                                Saída Antecipada
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-neutral-800 border border-neutral-700 text-neutral-300">
+                                Regular
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-3.5 text-neutral-400 text-[11px]">
+                            {r.location ? r.location.city || 'GPS Ativo' : 'Auditado'}
+                          </td>
+                          <td className="p-3.5 font-mono text-[10px] text-neutral-400 font-bold">
+                            <span className="truncate max-w-[120px] block" title={r.securityHash}>
                               {r.securityHash}
-                            </td>
-                            <td className="p-3.5 pr-5 text-right">
+                            </span>
+                          </td>
+                          <td className="p-3.5 pr-5 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {/* Inspecionar */}
+                              <button
+                                type="button"
+                                onClick={() => setRecordToInspect(r)}
+                                className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-all cursor-pointer"
+                                title="Inspecionar metadados de auditoria"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+
+                              {/* Editar (Master Only) */}
+                              <button
+                                type="button"
+                                onClick={() => setRecordToEdit(r)}
+                                className="p-1.5 rounded-lg text-amber-400 hover:text-amber-200 hover:bg-amber-950/50 border border-amber-800/60 transition-all cursor-pointer flex items-center gap-1"
+                                title="Editar horário e dados deste ponto"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                                <span className="text-[11px] font-bold">Editar</span>
+                              </button>
+
+                              {/* Apagar (Master Only) */}
                               <button
                                 type="button"
                                 onClick={() => setRecordToDelete(r)}
-                                className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-red-950/40 border border-transparent hover:border-red-800/60 transition-all cursor-pointer inline-flex items-center gap-1"
-                                title="Apagar este ponto errado"
+                                className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-red-950/40 border border-transparent hover:border-red-800/60 transition-all cursor-pointer flex items-center gap-1"
+                                title="Apagar este ponto"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
-                                <span className="hidden sm:inline text-[11px]">Apagar</span>
+                                <span className="text-[11px]">Apagar</span>
                               </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -860,8 +1081,8 @@ export const PontoView: React.FC<PontoViewProps> = ({
         </div>
       )}
 
-      {/* Tab: Gestão de Escalas Vinculadas */}
-      {activeTab === 'escalas' && canManageSchedules && (
+      {/* Tab: Gestão de Escalas Vinculadas (Master Admin) */}
+      {activeTab === 'escalas' && isMaster && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -947,7 +1168,42 @@ export const PontoView: React.FC<PontoViewProps> = ({
         onDeleteSchedule={onDeleteSchedule}
       />
 
-      {/* Modal de Confirmação para Apagar Ponto Errado */}
+      {/* Edit Time Clock Record Modal (Master Admin) */}
+      <EditTimeClockModal
+        record={recordToEdit}
+        onClose={() => setRecordToEdit(null)}
+        onSave={async (id, updatedData) => {
+          if (onUpdateTimeClockRecord) {
+            await onUpdateTimeClockRecord(id, updatedData);
+          }
+        }}
+        employeeWorkSchedules={effectiveSchedules}
+        currentAdminName={userName}
+      />
+
+      {/* Manual Time Clock Record Modal (Master Admin) */}
+      <ManualPunchModal
+        isOpen={showManualPunchModal}
+        onClose={() => setShowManualPunchModal(false)}
+        onSave={async (newRecord) => {
+          await onPunchTimeClock(newRecord);
+        }}
+        employeeWorkSchedules={effectiveSchedules}
+        currentAdminName={userName}
+      />
+
+      {/* Inspect Record Modal */}
+      <InspectTimeClockModal
+        record={recordToInspect}
+        onClose={() => setRecordToInspect(null)}
+        canEdit={canEditOrAlter}
+        onEdit={(rec) => {
+          setRecordToInspect(null);
+          setRecordToEdit(rec);
+        }}
+      />
+
+      {/* Modal de Confirmação para Apagar Ponto Errado (Master Admin Only) */}
       {recordToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
           <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
@@ -968,7 +1224,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
             </div>
 
             <p className="text-xs text-neutral-300">
-              Tem certeza que deseja apagar permanentemente este registro de ponto errado? O colaborador poderá registrar novamente a batida correta.
+              Tem certeza que deseja apagar permanentemente este registro de ponto errado? O colaborador poderá registrar novamente a batida correta na sequência.
             </p>
 
             <div className="p-3.5 rounded-2xl bg-neutral-950 border border-neutral-800 text-xs space-y-1.5 font-mono">

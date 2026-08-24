@@ -432,6 +432,10 @@ export interface TimeClockRecord {
   notes?: string;
   photoUrl?: string;
   createdAt?: string;
+  isManuallyEdited?: boolean;
+  editedBy?: string;
+  editedAt?: string;
+  editReason?: string;
 }
 
 export interface LeadershipGoal {
