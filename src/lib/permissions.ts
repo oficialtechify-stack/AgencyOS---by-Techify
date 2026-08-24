@@ -67,6 +67,13 @@ export const ALL_SYSTEM_MODULES: SystemModuleInfo[] = [
     iconName: 'Palette',
   },
   {
+    id: 'studio-agency',
+    name: 'Studio Agency (Canva)',
+    category: 'Gestão & Projetos',
+    description: 'Plataforma completa de design gráfico estilo Canva com IA, modelos, kits de marca e gráfica',
+    iconName: 'Wand2',
+  },
+  {
     id: 'social-hub',
     name: 'Social Media Hub',
     category: 'Inteligência & IA',
@@ -196,48 +203,119 @@ export function getAllowedModulesCount(
  */
 export const PERMISSION_PRESETS = [
   {
-    name: 'Liberar Tudo (Acesso Total)',
-    badge: 'Total',
-    color: 'border-[#22c55e] text-[#22c55e] bg-[#142816]',
+    name: '👑 Líder Geral (Acesso Total / Gestão)',
+    badge: 'Líder Geral',
+    color: 'border-white text-white bg-neutral-900',
     modules: ALL_OPERATIONAL_MODULE_IDS,
   },
   {
-    name: 'Design & Criação',
-    badge: 'Design',
-    color: 'border-pink-500/40 text-pink-400 bg-[#26101c]',
-    modules: ['dashboard', 'designer', 'social-hub', 'kanban', 'agenda', 'relatorios'] as ViewType[],
+    name: '🎯 Líder de Marketing (Estratégia & Lançamentos)',
+    badge: 'Líder Marketing',
+    color: 'border-neutral-700 text-white bg-neutral-900',
+    modules: ['dashboard', 'marketing', 'campanhas', 'social-hub', 'calculadora-roi', 'relatorios', 'ia-consultora', 'designer'] as ViewType[],
   },
   {
-    name: 'Gestor de Tráfego',
+    name: '📍 Líder de Prospecção (Comercial, SDR & CRM)',
+    badge: 'Líder Prospecção',
+    color: 'border-neutral-700 text-white bg-neutral-900',
+    modules: ['dashboard', 'maps-scraper', 'agenda', 'relatorios', 'social-hub', 'ia-consultora', 'campanhas'] as ViewType[],
+  },
+  {
+    name: '🎨 Líder de Design (Direção Criativa)',
+    badge: 'Líder Design',
+    color: 'border-neutral-700 text-white bg-neutral-900',
+    modules: ['dashboard', 'designer', 'studio-agency', 'social-hub', 'kanban', 'agenda', 'relatorios'] as ViewType[],
+  },
+  {
+    name: '🚀 Gestor de Tráfego',
     badge: 'Tráfego',
-    color: 'border-blue-500/40 text-blue-400 bg-[#0f1728]',
+    color: 'border-neutral-700 text-neutral-300 bg-neutral-950',
     modules: ['dashboard', 'campanhas', 'calculadora-roi', 'relatorios', 'ia-consultora'] as ViewType[],
   },
   {
-    name: 'Comercial & Prospecção (CRM)',
-    badge: 'CRM',
-    color: 'border-amber-500/40 text-amber-400 bg-[#24170d]',
-    modules: ['dashboard', 'maps-scraper', 'agenda', 'social-hub', 'relatorios'] as ViewType[],
+    name: '🎨 Designer Gráfico',
+    badge: 'Designer',
+    color: 'border-neutral-700 text-neutral-300 bg-neutral-950',
+    modules: ['dashboard', 'designer', 'studio-agency', 'social-hub', 'kanban'] as ViewType[],
   },
   {
-    name: 'Financeiro & Contabilidade',
+    name: '💼 Closer / SDR de Prospecção',
+    badge: 'Prospecção',
+    color: 'border-neutral-700 text-neutral-300 bg-neutral-950',
+    modules: ['dashboard', 'maps-scraper', 'agenda', 'relatorios'] as ViewType[],
+  },
+  {
+    name: '💰 Financeiro & Contabilidade',
     badge: 'Financeiro',
-    color: 'border-emerald-500/40 text-emerald-400 bg-[#101912]',
+    color: 'border-neutral-700 text-neutral-300 bg-neutral-950',
     modules: ['dashboard', 'kpis', 'fluxo-caixa', 'calculadora-roi', 'relatorios'] as ViewType[],
   },
   {
-    name: 'Operação & Projetos',
+    name: '⚡ Operação & Projetos',
     badge: 'Operação',
-    color: 'border-purple-500/40 text-purple-400 bg-[#1b1228]',
+    color: 'border-neutral-700 text-neutral-300 bg-neutral-950',
     modules: ['dashboard', 'kanban', 'estoque', 'agenda', 'ia-consultora'] as ViewType[],
   },
   {
-    name: 'Apenas Dashboard',
+    name: '📊 Apenas Dashboard',
     badge: 'Básico',
-    color: 'border-gray-500/40 text-gray-400 bg-[#12141e]',
+    color: 'border-neutral-800 text-neutral-400 bg-neutral-950',
     modules: ['dashboard'] as ViewType[],
   },
 ];
+
+/**
+ * Checks if a user has any Leadership role
+ */
+export function isLeader(
+  profile?: FirestoreUserProfile | null,
+  userEmail?: string | null
+): boolean {
+  if (isUserMasterAdmin(profile, userEmail)) return true;
+  if (profile?.leadershipRole && profile.leadershipRole !== 'membro') return true;
+  const role = (profile?.role || '').toLowerCase();
+  return (
+    role.includes('lider') ||
+    role.includes('líder') ||
+    role.includes('diretor') ||
+    role.includes('gestor') ||
+    role.includes('gerente') ||
+    profile?.designRole === 'lider' ||
+    profile?.designRole === 'admin'
+  );
+}
+
+/**
+ * Checks if a user is Marketing Leader or General Leader
+ */
+export function isMarketingLeader(
+  profile?: FirestoreUserProfile | null,
+  userEmail?: string | null
+): boolean {
+  if (isUserMasterAdmin(profile, userEmail)) return true;
+  if (profile?.leadershipRole === 'lider_marketing' || profile?.leadershipRole === 'lider_geral') return true;
+  const role = (profile?.role || '').toLowerCase();
+  return (
+    (role.includes('lider') || role.includes('líder') || role.includes('gestor')) &&
+    (role.includes('marketing') || role.includes('geral') || role.includes('estratégia'))
+  );
+}
+
+/**
+ * Checks if a user is Prospecting Leader or General Leader
+ */
+export function isProspectingLeader(
+  profile?: FirestoreUserProfile | null,
+  userEmail?: string | null
+): boolean {
+  if (isUserMasterAdmin(profile, userEmail)) return true;
+  if (profile?.leadershipRole === 'lider_prospeccao' || profile?.leadershipRole === 'lider_geral') return true;
+  const role = (profile?.role || '').toLowerCase();
+  return (
+    (role.includes('lider') || role.includes('líder') || role.includes('gestor')) &&
+    (role.includes('prospec') || role.includes('comercial') || role.includes('vendas') || role.includes('sdr') || role.includes('geral'))
+  );
+}
 
 /**
  * Check if the user can create designs or briefings
@@ -333,8 +411,20 @@ export function canUserPublishPosts(
 }
 
 /**
- * Check if user can delete designs
+ * Check if user can edit marketing campaigns, funnels, editorials, copy
  */
+export function canUserEditMarketing(
+  profile?: FirestoreUserProfile | null,
+  userEmail?: string | null
+): boolean {
+  if (isUserMasterAdmin(profile, userEmail)) return true;
+  const role = (profile?.role || '').toLowerCase();
+  const dRole = profile?.designRole;
+  if (dRole === 'cliente') return false;
+  if (role.includes('cliente') || role.includes('convidado')) return false;
+  return true;
+}
+
 export function canUserDeleteDesigns(
   profile?: FirestoreUserProfile | null,
   userEmail?: string | null

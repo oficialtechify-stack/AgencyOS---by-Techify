@@ -8,6 +8,7 @@ import {
   Calendar,
   MapPin,
   Palette,
+  Wand2,
   Share2,
   Package,
   Kanban,
@@ -97,6 +98,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     {
       title: 'CRIAÇÃO & DESIGN',
       items: [
+        { id: 'studio-agency' as ViewMode, label: 'Studio Agency (Canva)', icon: Wand2 },
         { id: 'designer' as ViewMode, label: 'Área do Designer', icon: Palette },
         { id: 'social-hub' as ViewMode, label: 'Social Hub (Instagram & WhatsApp)', icon: Share2 },
       ],

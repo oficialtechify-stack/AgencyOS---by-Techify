@@ -4,6 +4,7 @@ export type ViewType =
   | 'dashboard'
   | 'marketing'
   | 'designer'
+  | 'studio-agency'
   | 'kpis'
   | 'fluxo-caixa'
   | 'campanhas'
@@ -25,6 +26,7 @@ export interface UserProfile {
   email: string;
   agencyName?: string;
   role?: string;
+  leadershipRole?: 'lider_geral' | 'lider_marketing' | 'lider_prospeccao' | 'lider_design' | 'membro';
   userType?: 'employee' | 'client';
   agencyOwnerUid?: string;
   plan: 'Starter' | 'Pro' | 'Agency' | 'Trial Gratuito' | 'Gratuito / Equipe';
@@ -118,6 +120,7 @@ export interface CRMLead {
   status: LeadStatus;
   source?: string;
   address?: string;
+  assignedLeader?: string; // e.g. "Líder de Prospecção", "Líder Geral", "SDR"
 }
 
 export interface StockItem {
@@ -137,6 +140,7 @@ export interface KanbanTask {
   description: string;
   status: 'Backlog' | 'Em Andamento' | 'Revisão' | 'Concluído';
   priority: 'Baixa' | 'Média' | 'Alta';
+  assignedLeader?: string; // e.g. "Líder Geral", "Líder de Marketing", "Líder de Prospecção", "Líder de Design"
 }
 
 export interface SystemUpdate {

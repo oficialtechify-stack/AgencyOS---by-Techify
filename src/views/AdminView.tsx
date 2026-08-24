@@ -38,6 +38,9 @@ import {
   ArrowRightLeft,
   ChevronRight,
   TrendingUp,
+  Target,
+  MapPin,
+  Rocket,
 } from 'lucide-react';
 import { ViewType } from '../types';
 import {
@@ -59,12 +62,13 @@ interface AdminViewProps {
   currentUser?: FirestoreUserProfile | null;
 }
 
-// Initial Demo Seed Data
+// Initial Demo Seed Data with All Leadership Roles
 const INITIAL_DEMO_USERS: Partial<FirestoreUserProfile & { password?: string }>[] = [
   {
-    name: 'Vitória Designer',
+    name: 'Vitória Líder',
     email: 'vitoriajob02@gmail.com',
     role: 'Líder de Design',
+    leadershipRole: 'lider_design',
     agencyName: 'Agência Digital',
     userType: 'employee',
     plan: 'Gratuito / Equipe',
@@ -75,14 +79,53 @@ const INITIAL_DEMO_USERS: Partial<FirestoreUserProfile & { password?: string }>[
     canApproveDesigns: true,
     canPublishPosts: true,
     canDeleteDesigns: true,
-    notes: 'Líder da equipe criativa com acesso ao workspace compartilhado',
-    allowedModules: ['dashboard', 'designer', 'social-hub', 'kanban', 'agenda', 'relatorios'],
+    notes: 'Líder da equipe criativa com aprovação de artes e demandas',
+    allowedModules: ['dashboard', 'designer', 'studio-agency', 'social-hub', 'kanban', 'agenda', 'relatorios'],
     tempPasswordHint: 'Vitoria@2026',
+  },
+  {
+    name: 'Camila Marketing',
+    email: 'camila.marketing@agency.com',
+    role: 'Líder de Marketing',
+    leadershipRole: 'lider_marketing',
+    agencyName: 'Agência Digital',
+    userType: 'employee',
+    plan: 'Gratuito / Equipe',
+    status: 'active',
+    designRole: 'lider',
+    canEditDesigns: true,
+    canCreateDesigns: true,
+    canApproveDesigns: true,
+    canPublishPosts: true,
+    canDeleteDesigns: true,
+    notes: 'Líder do setor de marketing, campanhas, funis e lançamentos',
+    allowedModules: ['dashboard', 'marketing', 'campanhas', 'social-hub', 'calculadora-roi', 'relatorios', 'ia-consultora', 'designer'],
+    tempPasswordHint: 'Marketing@2026',
+  },
+  {
+    name: 'Felipe Prospecção',
+    email: 'felipe.prospeccao@agency.com',
+    role: 'Líder de Prospecção',
+    leadershipRole: 'lider_prospeccao',
+    agencyName: 'Agência Digital',
+    userType: 'employee',
+    plan: 'Gratuito / Equipe',
+    status: 'active',
+    designRole: 'lider',
+    canEditDesigns: true,
+    canCreateDesigns: true,
+    canApproveDesigns: false,
+    canPublishPosts: true,
+    canDeleteDesigns: false,
+    notes: 'Líder comercial, prospecção e fechamento de novos clientes',
+    allowedModules: ['dashboard', 'maps-scraper', 'agenda', 'relatorios', 'social-hub', 'ia-consultora', 'campanhas'],
+    tempPasswordHint: 'Prospeccao@2026',
   },
   {
     name: 'Marcos Roberto',
     email: 'marcos.designer@agency.com',
     role: 'Designer Gráfico',
+    leadershipRole: 'membro',
     agencyName: 'Agência Digital',
     userType: 'employee',
     plan: 'Gratuito / Equipe',
@@ -133,19 +176,20 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
     name: '',
     email: '',
     password: 'AgOS@' + Math.random().toString(36).slice(-5),
-    role: 'Designer Gráfico',
+    role: 'Líder de Design',
+    leadershipRole: 'lider_design' as 'lider_geral' | 'lider_marketing' | 'lider_prospeccao' | 'lider_design' | 'membro',
     userType: 'employee' as 'employee' | 'client',
     agencyName: 'Agência Digital',
     plan: 'Gratuito / Equipe' as FirestoreUserProfile['plan'],
     status: 'active' as FirestoreUserProfile['status'],
     notes: '',
-    designRole: 'funcionario' as 'admin' | 'lider' | 'designer' | 'funcionario' | 'cliente',
+    designRole: 'lider' as 'admin' | 'lider' | 'designer' | 'funcionario' | 'cliente',
     canEditDesigns: true,
     canCreateDesigns: true,
-    canApproveDesigns: false,
+    canApproveDesigns: true,
     canPublishPosts: true,
-    canDeleteDesigns: false,
-    allowedModules: ['dashboard', 'designer', 'social-hub', 'kanban', 'agenda', 'relatorios'] as ViewType[],
+    canDeleteDesigns: true,
+    allowedModules: ['dashboard', 'designer', 'studio-agency', 'social-hub', 'kanban', 'agenda', 'relatorios'] as ViewType[],
   });
 
   const [currentSelectedModules, setCurrentSelectedModules] = useState<ViewType[]>([
@@ -154,6 +198,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
 
   // Specific Creative & Posting Permissions for Permissions Modal
   const [permDesignRole, setPermDesignRole] = useState<'admin' | 'lider' | 'designer' | 'funcionario' | 'cliente'>('funcionario');
+  const [permLeadershipRole, setPermLeadershipRole] = useState<'lider_geral' | 'lider_marketing' | 'lider_prospeccao' | 'lider_design' | 'membro'>('membro');
   const [permCanEditDesigns, setPermCanEditDesigns] = useState(true);
   const [permCanCreateDesigns, setPermCanCreateDesigns] = useState(true);
   const [permCanApproveDesigns, setPermCanApproveDesigns] = useState(false);
@@ -250,7 +295,11 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
       roleLow.includes('funcionario') ||
       roleLow.includes('funcionário') ||
       roleLow.includes('estagiário') ||
-      roleLow.includes('equipe')
+      roleLow.includes('equipe') ||
+      roleLow.includes('sdr') ||
+      roleLow.includes('closer') ||
+      roleLow.includes('prospec') ||
+      roleLow.includes('marketing')
     ) {
       return true;
     }
@@ -280,7 +329,18 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
     if (filterCategory === 'Pro') return u.plan === 'Pro';
     if (filterCategory === 'Agency') return u.plan === 'Agency';
     if (filterCategory === 'Gratuito / Equipe') return u.plan === 'Gratuito / Equipe';
-    if (filterCategory === 'lider') return u.designRole === 'lider' || u.role?.toLowerCase().includes('lider') || u.role?.toLowerCase().includes('líder');
+    if (filterCategory === 'lideres') {
+      return u.leadershipRole?.startsWith('lider') || u.designRole === 'lider' || u.role?.toLowerCase().includes('lider') || u.role?.toLowerCase().includes('líder');
+    }
+    if (filterCategory === 'lider_marketing') {
+      return u.leadershipRole === 'lider_marketing' || u.role?.toLowerCase().includes('marketing');
+    }
+    if (filterCategory === 'lider_prospeccao') {
+      return u.leadershipRole === 'lider_prospeccao' || u.role?.toLowerCase().includes('prospec') || u.role?.toLowerCase().includes('sdr') || u.role?.toLowerCase().includes('closer');
+    }
+    if (filterCategory === 'lider_design') {
+      return u.leadershipRole === 'lider_design' || (u.designRole === 'lider' && !u.role?.toLowerCase().includes('marketing') && !u.role?.toLowerCase().includes('prospec'));
+    }
     if (filterCategory === 'designer') return u.designRole === 'designer' || u.role?.toLowerCase().includes('designer');
     if (filterCategory === 'gestor') return u.role?.toLowerCase().includes('gestor') || u.role?.toLowerCase().includes('tráfego');
     if (filterCategory === 'cancelled') return u.status === 'cancelled';
@@ -392,6 +452,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
         agencyOwnerUid: newUser.userType === 'employee' ? (currentUser?.uid || 'agency-master-owner') : undefined,
         agencyName: newUser.agencyName.trim() || (newUser.userType === 'employee' ? 'Agência Digital' : 'Cliente Digital'),
         role: newUser.role.trim() || (newUser.userType === 'employee' ? 'Designer Gráfico' : 'Cliente AgencyOS'),
+        leadershipRole: newUser.leadershipRole,
         plan: newUser.userType === 'employee' ? 'Gratuito / Equipe' : newUser.plan,
         status: newUser.status,
         designRole: newUser.designRole,
@@ -425,6 +486,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
         email: editingUser.email || '',
         userType: editingUser.userType,
         role: editingUser.role || 'Gestor de Tráfego',
+        leadershipRole: editingUser.leadershipRole || (editingUser.role?.toLowerCase().includes('marketing') ? 'lider_marketing' : editingUser.role?.toLowerCase().includes('prospec') ? 'lider_prospeccao' : editingUser.role?.toLowerCase().includes('lider') ? 'lider_geral' : 'membro'),
         agencyName: editingUser.agencyName || '',
         plan: editingUser.plan,
         status: editingUser.status,
@@ -473,10 +535,11 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
     }
     setCurrentSelectedModules(existing);
 
-    // Creative & Posting roles/permissions
-    const isLeader = Boolean(user.designRole === 'lider' || user.role?.toLowerCase().includes('lider') || user.role?.toLowerCase().includes('líder') || user.role?.toLowerCase().includes('gerente') || user.role?.toLowerCase().includes('admin'));
+    // Creative & Leadership roles/permissions
+    const isLeader = Boolean(user.leadershipRole?.startsWith('lider') || user.designRole === 'lider' || user.role?.toLowerCase().includes('lider') || user.role?.toLowerCase().includes('líder') || user.role?.toLowerCase().includes('gerente') || user.role?.toLowerCase().includes('admin'));
     const isClient = Boolean(user.designRole === 'cliente' || user.role?.toLowerCase().includes('cliente') || user.role?.toLowerCase().includes('convidado'));
 
+    setPermLeadershipRole(user.leadershipRole || (user.role?.toLowerCase().includes('marketing') ? 'lider_marketing' : user.role?.toLowerCase().includes('prospec') ? 'lider_prospeccao' : isLeader ? 'lider_geral' : 'membro'));
     setPermDesignRole(
       user.designRole ||
       (isLeader ? 'lider' : isClient ? 'cliente' : 'funcionario')
@@ -497,6 +560,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
         currentSelectedModules,
         {
           designRole: permDesignRole,
+          leadershipRole: permLeadershipRole,
           canEditDesigns: permCanEditDesigns,
           canCreateDesigns: permCanCreateDesigns,
           canApproveDesigns: permCanApproveDesigns,
@@ -806,10 +870,13 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
             {[
               { id: 'Todos', label: `Todos da Equipe (${totalEmployeesCount})` },
-              { id: 'active', label: `Ativos (${activeEmployeesCount})` },
-              { id: 'lider', label: `Líderes de Design` },
+              { id: 'lideres', label: `👑 Todos os Líderes` },
+              { id: 'lider_marketing', label: `🎯 Líderes de Marketing` },
+              { id: 'lider_prospeccao', label: `📍 Líderes de Prospecção` },
+              { id: 'lider_design', label: `🎨 Líderes de Design` },
               { id: 'designer', label: `Designers` },
               { id: 'gestor', label: `Gestores de Tráfego` },
+              { id: 'active', label: `Ativos (${activeEmployeesCount})` },
               { id: 'blocked', label: 'Bloqueados' },
             ].map((f) => (
               <button
@@ -915,7 +982,10 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
                     const allowedList = user.allowedModules || ALL_OPERATIONAL_MODULE_IDS;
                     const allowedCount = isMaster ? ALL_OPERATIONAL_MODULE_IDS.length : allowedList.length;
 
-                    const isLeader = user.designRole === 'lider' || user.role?.toLowerCase().includes('lider') || user.role?.toLowerCase().includes('líder');
+                    const isMarketingLeader = user.leadershipRole === 'lider_marketing' || user.role?.toLowerCase().includes('marketing');
+                    const isProspectingLeader = user.leadershipRole === 'lider_prospeccao' || user.role?.toLowerCase().includes('prospec') || user.role?.toLowerCase().includes('sdr') || user.role?.toLowerCase().includes('closer');
+                    const isDesignLeader = user.leadershipRole === 'lider_design' || (user.designRole === 'lider' && !isMarketingLeader && !isProspectingLeader);
+                    const isGeneralLeader = user.leadershipRole === 'lider_geral' || (!isMarketingLeader && !isProspectingLeader && !isDesignLeader && (user.role?.toLowerCase().includes('lider') || user.role?.toLowerCase().includes('líder') || user.role?.toLowerCase().includes('gerente') || user.role?.toLowerCase().includes('diretor')));
 
                     return (
                       <tr
@@ -936,16 +1006,31 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
 
                         {/* User Email + Password Hint + Copy */}
                         <td className="p-3.5">
-                          <div className="font-bold text-neutral-100 flex items-center gap-1.5">
-                            <span className="truncate max-w-[220px]">{user.name || user.email.split('@')[0]}</span>
+                          <div className="font-bold text-neutral-100 flex items-center gap-1.5 flex-wrap">
+                            <span className="truncate max-w-[200px]">{user.name || user.email.split('@')[0]}</span>
                             {isMaster && (
                               <span className="text-[9px] bg-white text-black px-1.5 py-0.5 rounded font-black">
                                 ADMIN
                               </span>
                             )}
-                            {isLeader && !isMaster && (
-                              <span className="text-[9px] bg-amber-400 text-black px-1.5 py-0.5 rounded font-black">
-                                👑 LÍDER
+                            {isMarketingLeader && !isMaster && (
+                              <span className="text-[9px] bg-emerald-400 text-black px-1.5 py-0.5 rounded font-black flex items-center gap-0.5 shadow-sm">
+                                <Target className="w-2.5 h-2.5" /> LÍDER MARKETING
+                              </span>
+                            )}
+                            {isProspectingLeader && !isMaster && (
+                              <span className="text-[9px] bg-amber-400 text-black px-1.5 py-0.5 rounded font-black flex items-center gap-0.5 shadow-sm">
+                                <MapPin className="w-2.5 h-2.5" /> LÍDER PROSPECÇÃO
+                              </span>
+                            )}
+                            {isDesignLeader && !isMaster && (
+                              <span className="text-[9px] bg-sky-400 text-black px-1.5 py-0.5 rounded font-black flex items-center gap-0.5 shadow-sm">
+                                <Palette className="w-2.5 h-2.5" /> LÍDER DESIGN
+                              </span>
+                            )}
+                            {isGeneralLeader && !isMarketingLeader && !isProspectingLeader && !isDesignLeader && !isMaster && (
+                              <span className="text-[9px] bg-amber-300 text-black px-1.5 py-0.5 rounded font-black flex items-center gap-0.5 shadow-sm">
+                                <Crown className="w-2.5 h-2.5" /> LÍDER GERAL
                               </span>
                             )}
                           </div>
@@ -971,8 +1056,28 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
 
                         {/* Cargo Interno */}
                         <td className="p-3.5">
-                          <span className="inline-flex items-center gap-1 text-neutral-300 bg-neutral-950 border border-neutral-800 px-2.5 py-1 rounded-lg text-[11px] font-bold">
-                            <Briefcase className="w-3 h-3 text-neutral-400" />
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold border ${
+                            isMarketingLeader
+                              ? 'bg-emerald-950/60 border-emerald-800/80 text-emerald-300'
+                              : isProspectingLeader
+                              ? 'bg-amber-950/60 border-amber-800/80 text-amber-300'
+                              : isDesignLeader
+                              ? 'bg-sky-950/60 border-sky-800/80 text-sky-300'
+                              : isGeneralLeader
+                              ? 'bg-purple-950/60 border-purple-800/80 text-purple-300'
+                              : 'bg-neutral-950 border-neutral-800 text-neutral-300'
+                          }`}>
+                            {isMarketingLeader ? (
+                              <Target className="w-3 h-3 text-emerald-400" />
+                            ) : isProspectingLeader ? (
+                              <MapPin className="w-3 h-3 text-amber-400" />
+                            ) : isDesignLeader ? (
+                              <Palette className="w-3 h-3 text-sky-400" />
+                            ) : isGeneralLeader ? (
+                              <Crown className="w-3 h-3 text-purple-400" />
+                            ) : (
+                              <Briefcase className="w-3 h-3 text-neutral-400" />
+                            )}
                             {user.role || 'Membro da Equipe'}
                           </span>
                         </td>
@@ -1653,40 +1758,134 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
 
               {/* Role & Plan Fields */}
               {newUser.userType === 'employee' ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  <div>
-                    <label className="block text-neutral-300 font-bold mb-1.5">Cargo Interno</label>
-                    <select
-                      value={newUser.role}
-                      onChange={(e) => {
-                        const r = e.target.value;
-                        const isLider = r.includes('Líder');
-                        setNewUser({
-                          ...newUser,
-                          role: r,
-                          designRole: isLider ? 'lider' : 'designer',
-                          canApproveDesigns: isLider,
-                        });
-                      }}
-                      className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-white"
-                    >
-                      <option value="Líder de Design">👑 Líder de Design (Aprova e Edita)</option>
-                      <option value="Designer Gráfico">🎨 Designer Gráfico</option>
-                      <option value="Gestor de Tráfego">🚀 Gestor de Tráfego</option>
-                      <option value="Editor de Vídeo">🎬 Editor de Vídeo</option>
-                      <option value="Copywriter / Redator">✍️ Copywriter / Redator</option>
-                      <option value="Social Media Manager">📱 Social Media Manager</option>
-                      <option value="Colaborador">👔 Colaborador Geral</option>
-                    </select>
+                <div className="space-y-3.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="block text-neutral-300 font-bold mb-1.5">Cargo Interno / Liderança</label>
+                      <select
+                        value={newUser.role}
+                        onChange={(e) => {
+                          const r = e.target.value;
+                          let leadership: 'lider_geral' | 'lider_marketing' | 'lider_prospeccao' | 'lider_design' | 'membro' = 'membro';
+                          let dRole: 'admin' | 'lider' | 'designer' | 'funcionario' | 'cliente' = 'funcionario';
+                          let approve = false;
+                          let mods: ViewType[] = [...ALL_OPERATIONAL_MODULE_IDS];
+
+                          if (r === 'Líder Geral') {
+                            leadership = 'lider_geral';
+                            dRole = 'lider';
+                            approve = true;
+                            mods = [...ALL_OPERATIONAL_MODULE_IDS];
+                          } else if (r === 'Líder de Marketing') {
+                            leadership = 'lider_marketing';
+                            dRole = 'lider';
+                            approve = true;
+                            mods = ['dashboard', 'marketing', 'campanhas', 'social-hub', 'designer', 'studio-agency', 'calculadora-roi', 'relatorios', 'ia-consultora', 'agenda'];
+                          } else if (r === 'Líder de Prospecção') {
+                            leadership = 'lider_prospeccao';
+                            dRole = 'lider';
+                            approve = false;
+                            mods = ['dashboard', 'maps-scraper', 'agenda', 'relatorios', 'campanhas', 'social-hub', 'ia-consultora', 'calculadora-roi'];
+                          } else if (r === 'Líder de Design') {
+                            leadership = 'lider_design';
+                            dRole = 'lider';
+                            approve = true;
+                            mods = ['dashboard', 'designer', 'studio-agency', 'social-hub', 'kanban', 'agenda', 'relatorios'];
+                          } else if (r === 'Gestor de Tráfego') {
+                            leadership = 'membro';
+                            dRole = 'designer';
+                            approve = false;
+                            mods = ['dashboard', 'campanhas', 'marketing', 'calculadora-roi', 'relatorios', 'ia-consultora', 'agenda'];
+                          } else if (r === 'Closer / SDR de Prospecção') {
+                            leadership = 'membro';
+                            dRole = 'funcionario';
+                            approve = false;
+                            mods = ['dashboard', 'maps-scraper', 'agenda', 'relatorios', 'ia-consultora'];
+                          } else if (r === 'Designer Gráfico') {
+                            leadership = 'membro';
+                            dRole = 'designer';
+                            approve = false;
+                            mods = ['dashboard', 'designer', 'studio-agency', 'social-hub', 'kanban', 'agenda'];
+                          } else {
+                            leadership = 'membro';
+                            dRole = 'funcionario';
+                            approve = false;
+                            mods = ['dashboard', 'kanban', 'agenda'];
+                          }
+
+                          setNewUser({
+                            ...newUser,
+                            role: r,
+                            leadershipRole: leadership,
+                            designRole: dRole,
+                            canApproveDesigns: approve,
+                            canDeleteDesigns: approve,
+                            allowedModules: mods,
+                          });
+                        }}
+                        className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-white font-bold focus:outline-none focus:border-white"
+                      >
+                        <optgroup label="👑 Cargos de Liderança da Agência">
+                          <option value="Líder Geral">👑 Líder Geral (Gestão Total)</option>
+                          <option value="Líder de Marketing">🎯 Líder de Marketing (Estratégia, Ads & Social)</option>
+                          <option value="Líder de Prospecção">📍 Líder de Prospecção (Comercial, SDR & Vendas)</option>
+                          <option value="Líder de Design">🎨 Líder de Design (Direção de Arte & Aprovações)</option>
+                        </optgroup>
+                        <optgroup label="👥 Equipe Operacional">
+                          <option value="Designer Gráfico">🎨 Designer Gráfico (Criação de Artes)</option>
+                          <option value="Gestor de Tráfego">🚀 Gestor de Tráfego (Meta & Google Ads)</option>
+                          <option value="Closer / SDR de Prospecção">💼 Closer / SDR de Prospecção (CRM & Leads)</option>
+                          <option value="Editor de Vídeo">🎬 Editor de Vídeo</option>
+                          <option value="Copywriter / Redator">✍️ Copywriter / Redator</option>
+                          <option value="Social Media Manager">📱 Social Media Manager</option>
+                          <option value="Colaborador">👔 Colaborador Geral</option>
+                        </optgroup>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-neutral-300 font-bold mb-1.5">Tipo de Faturamento</label>
+                      <div className="p-2.5 rounded-xl bg-neutral-950 border border-neutral-800 text-neutral-300 font-bold flex items-center justify-between">
+                        <span>Gratuito (Equipe)</span>
+                        <span className="text-[10px] bg-neutral-900 px-2 py-0.5 rounded text-white border border-neutral-700 font-bold">
+                          R$ 0,00
+                        </span>
+                      </div>
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-neutral-300 font-bold mb-1.5">Tipo de Faturamento</label>
-                    <div className="p-2.5 rounded-xl bg-neutral-950 border border-neutral-800 text-neutral-300 font-bold flex items-center justify-between">
-                      <span>Gratuito (Equipe)</span>
-                      <span className="text-[10px] bg-neutral-900 px-2 py-0.5 rounded text-white border border-neutral-700 font-bold">
-                        R$ 0,00
-                      </span>
+                  {/* Quick Preset Buttons for New Employee */}
+                  <div className="p-3 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-2">
+                    <span className="text-[11px] font-bold text-neutral-400 block">⚡ Aplicar Perfil & Módulos Recomendados:</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        { label: '👑 Líder Geral', role: 'Líder Geral', leadership: 'lider_geral' as const, designRole: 'lider' as const, approve: true, mods: [...ALL_OPERATIONAL_MODULE_IDS] },
+                        { label: '🎯 Líder Marketing', role: 'Líder de Marketing', leadership: 'lider_marketing' as const, designRole: 'lider' as const, approve: true, mods: ['dashboard', 'marketing', 'campanhas', 'social-hub', 'designer', 'studio-agency', 'calculadora-roi', 'relatorios', 'ia-consultora', 'agenda'] as ViewType[] },
+                        { label: '📍 Líder Prospecção', role: 'Líder de Prospecção', leadership: 'lider_prospeccao' as const, designRole: 'lider' as const, approve: false, mods: ['dashboard', 'maps-scraper', 'agenda', 'relatorios', 'campanhas', 'social-hub', 'ia-consultora', 'calculadora-roi'] as ViewType[] },
+                        { label: '🎨 Líder Design', role: 'Líder de Design', leadership: 'lider_design' as const, designRole: 'lider' as const, approve: true, mods: ['dashboard', 'designer', 'studio-agency', 'social-hub', 'kanban', 'agenda', 'relatorios'] as ViewType[] },
+                        { label: '🚀 Gestor Tráfego', role: 'Gestor de Tráfego', leadership: 'membro' as const, designRole: 'designer' as const, approve: false, mods: ['dashboard', 'campanhas', 'marketing', 'calculadora-roi', 'relatorios', 'ia-consultora', 'agenda'] as ViewType[] },
+                        { label: '💼 Closer / SDR', role: 'Closer / SDR de Prospecção', leadership: 'membro' as const, designRole: 'funcionario' as const, approve: false, mods: ['dashboard', 'maps-scraper', 'agenda', 'relatorios', 'ia-consultora'] as ViewType[] },
+                        { label: '🎨 Designer', role: 'Designer Gráfico', leadership: 'membro' as const, designRole: 'designer' as const, approve: false, mods: ['dashboard', 'designer', 'studio-agency', 'social-hub', 'kanban', 'agenda'] as ViewType[] },
+                      ].map((preset) => (
+                        <button
+                          key={preset.label}
+                          type="button"
+                          onClick={() => {
+                            setNewUser({
+                              ...newUser,
+                              role: preset.role,
+                              leadershipRole: preset.leadership,
+                              designRole: preset.designRole,
+                              canApproveDesigns: preset.approve,
+                              canDeleteDesigns: preset.approve,
+                              allowedModules: preset.mods,
+                            });
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-neutral-900 hover:bg-white hover:text-black border border-neutral-700 text-[10px] font-bold text-neutral-300 transition-all cursor-pointer"
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -1839,14 +2038,132 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
             </div>
 
             <div className="space-y-5 text-xs">
-              {/* Creative Permissions Section */}
+              {/* Quick Presets for Permissions */}
+              <div className="p-3.5 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-2">
+                <span className="text-[11px] font-bold text-neutral-400 block">⚡ Aplicar Modelo de Cargo & Permissões Instantâneo:</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    {
+                      label: '👑 Líder Geral',
+                      leadership: 'lider_geral' as const,
+                      design: 'lider' as const,
+                      canEdit: true,
+                      canApprove: true,
+                      canPublish: true,
+                      canDelete: true,
+                      mods: [...ALL_OPERATIONAL_MODULE_IDS],
+                    },
+                    {
+                      label: '🎯 Líder de Marketing',
+                      leadership: 'lider_marketing' as const,
+                      design: 'lider' as const,
+                      canEdit: true,
+                      canApprove: true,
+                      canPublish: true,
+                      canDelete: true,
+                      mods: ['dashboard', 'marketing', 'campanhas', 'social-hub', 'designer', 'studio-agency', 'calculadora-roi', 'relatorios', 'ia-consultora', 'agenda'] as ViewType[],
+                    },
+                    {
+                      label: '📍 Líder de Prospecção',
+                      leadership: 'lider_prospeccao' as const,
+                      design: 'lider' as const,
+                      canEdit: true,
+                      canApprove: false,
+                      canPublish: true,
+                      canDelete: false,
+                      mods: ['dashboard', 'maps-scraper', 'agenda', 'relatorios', 'campanhas', 'social-hub', 'ia-consultora', 'calculadora-roi'] as ViewType[],
+                    },
+                    {
+                      label: '🎨 Líder de Design',
+                      leadership: 'lider_design' as const,
+                      design: 'lider' as const,
+                      canEdit: true,
+                      canApprove: true,
+                      canPublish: true,
+                      canDelete: true,
+                      mods: ['dashboard', 'designer', 'studio-agency', 'social-hub', 'kanban', 'agenda', 'relatorios'] as ViewType[],
+                    },
+                    {
+                      label: '🚀 Gestor de Tráfego',
+                      leadership: 'membro' as const,
+                      design: 'designer' as const,
+                      canEdit: true,
+                      canApprove: false,
+                      canPublish: true,
+                      canDelete: false,
+                      mods: ['dashboard', 'campanhas', 'marketing', 'calculadora-roi', 'relatorios', 'ia-consultora', 'agenda'] as ViewType[],
+                    },
+                    {
+                      label: '💼 Closer / SDR',
+                      leadership: 'membro' as const,
+                      design: 'funcionario' as const,
+                      canEdit: false,
+                      canApprove: false,
+                      canPublish: false,
+                      canDelete: false,
+                      mods: ['dashboard', 'maps-scraper', 'agenda', 'relatorios', 'ia-consultora'] as ViewType[],
+                    },
+                    {
+                      label: '🎨 Designer',
+                      leadership: 'membro' as const,
+                      design: 'designer' as const,
+                      canEdit: true,
+                      canApprove: false,
+                      canPublish: true,
+                      canDelete: false,
+                      mods: ['dashboard', 'designer', 'studio-agency', 'social-hub', 'kanban', 'agenda'] as ViewType[],
+                    },
+                  ].map((p) => (
+                    <button
+                      key={p.label}
+                      type="button"
+                      onClick={() => {
+                        setPermLeadershipRole(p.leadership);
+                        setPermDesignRole(p.design);
+                        setPermCanEditDesigns(p.canEdit);
+                        setPermCanApproveDesigns(p.canApprove);
+                        setPermCanPublishPosts(p.canPublish);
+                        setPermCanDeleteDesigns(p.canDelete);
+                        setCurrentSelectedModules(p.mods);
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-neutral-900 hover:bg-white hover:text-black border border-neutral-700 text-[10px] font-bold text-neutral-300 transition-all cursor-pointer"
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Leadership Role Selector */}
               <div className="p-4 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-3">
                 <h4 className="font-bold text-white flex items-center gap-2">
-                  <Palette className="w-4 h-4 text-white" />
-                  <span>Permissões na Área de Design & Criação</span>
+                  <Crown className="w-4 h-4 text-amber-400" />
+                  <span>Designação de Liderança na Agência</span>
                 </h4>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-neutral-400 font-bold mb-1">Nível / Cargo de Líder</label>
+                    <select
+                      value={permLeadershipRole}
+                      onChange={(e) => {
+                        const val = e.target.value as any;
+                        setPermLeadershipRole(val);
+                        if (val !== 'membro') {
+                          setPermDesignRole('lider');
+                          setPermCanApproveDesigns(true);
+                        }
+                      }}
+                      className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-white font-bold focus:outline-none"
+                    >
+                      <option value="lider_geral">👑 Líder Geral (Gestão & Acesso Amplo)</option>
+                      <option value="lider_marketing">🎯 Líder de Marketing (Comando de Campanhas & Social)</option>
+                      <option value="lider_prospeccao">📍 Líder de Prospecção (Comando Comercial & CRM)</option>
+                      <option value="lider_design">🎨 Líder de Design (Direção Criativa & Aprovações)</option>
+                      <option value="membro">👔 Membro / Sem Cargo de Liderança</option>
+                    </select>
+                  </div>
+
                   <div>
                     <label className="block text-neutral-400 font-bold mb-1">Papel na Equipe Criativa</label>
                     <select
@@ -1876,38 +2193,38 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
                       <option value="cliente">💼 Cliente (Apenas Aprovação)</option>
                     </select>
                   </div>
+                </div>
 
-                  <div className="space-y-2 pt-1">
-                    <label className="flex items-center gap-2 font-bold text-neutral-300 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={permCanEditDesigns}
-                        onChange={(e) => setPermCanEditDesigns(e.target.checked)}
-                        className="rounded bg-neutral-900 border-neutral-700 text-white focus:ring-0"
-                      />
-                      <span>Pode Editar e Alterar Criativos</span>
-                    </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-neutral-800">
+                  <label className="flex items-center gap-2 font-bold text-neutral-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={permCanEditDesigns}
+                      onChange={(e) => setPermCanEditDesigns(e.target.checked)}
+                      className="rounded bg-neutral-900 border-neutral-700 text-white focus:ring-0"
+                    />
+                    <span>Pode Criar/Editar</span>
+                  </label>
 
-                    <label className="flex items-center gap-2 font-bold text-neutral-300 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={permCanApproveDesigns}
-                        onChange={(e) => setPermCanApproveDesigns(e.target.checked)}
-                        className="rounded bg-neutral-900 border-neutral-700 text-white focus:ring-0"
-                      />
-                      <span>Pode Aprovar / Reprovar Artes</span>
-                    </label>
+                  <label className="flex items-center gap-2 font-bold text-neutral-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={permCanApproveDesigns}
+                      onChange={(e) => setPermCanApproveDesigns(e.target.checked)}
+                      className="rounded bg-neutral-900 border-neutral-700 text-white focus:ring-0"
+                    />
+                    <span>Pode Aprovar Artes</span>
+                  </label>
 
-                    <label className="flex items-center gap-2 font-bold text-neutral-300 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={permCanPublishPosts}
-                        onChange={(e) => setPermCanPublishPosts(e.target.checked)}
-                        className="rounded bg-neutral-900 border-neutral-700 text-white focus:ring-0"
-                      />
-                      <span>Pode Postar / Agendar no Social Hub</span>
-                    </label>
-                  </div>
+                  <label className="flex items-center gap-2 font-bold text-neutral-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={permCanPublishPosts}
+                      onChange={(e) => setPermCanPublishPosts(e.target.checked)}
+                      className="rounded bg-neutral-900 border-neutral-700 text-white focus:ring-0"
+                    />
+                    <span>Pode Agendar Posts</span>
+                  </label>
                 </div>
               </div>
 
@@ -2033,6 +2350,30 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
                   />
                 </div>
               </div>
+
+              {editingUser.userType === 'employee' && (
+                <div>
+                  <label className="block text-neutral-300 font-bold mb-1">Nível de Liderança na Agência</label>
+                  <select
+                    value={editingUser.leadershipRole || (editingUser.role?.toLowerCase().includes('marketing') ? 'lider_marketing' : editingUser.role?.toLowerCase().includes('prospec') ? 'lider_prospeccao' : editingUser.role?.toLowerCase().includes('lider') ? 'lider_geral' : 'membro')}
+                    onChange={(e) => {
+                      const lRole = e.target.value as any;
+                      setEditingUser({
+                        ...editingUser,
+                        leadershipRole: lRole,
+                        designRole: lRole !== 'membro' ? 'lider' : (editingUser.designRole || 'designer'),
+                      });
+                    }}
+                    className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-white font-bold focus:outline-none focus:border-white"
+                  >
+                    <option value="lider_geral">👑 Líder Geral</option>
+                    <option value="lider_marketing">🎯 Líder de Marketing</option>
+                    <option value="lider_prospeccao">📍 Líder de Prospecção</option>
+                    <option value="lider_design">🎨 Líder de Design</option>
+                    <option value="membro">👔 Membro da Equipe</option>
+                  </select>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>

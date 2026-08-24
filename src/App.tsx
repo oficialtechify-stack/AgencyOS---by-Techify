@@ -46,6 +46,7 @@ import { CalculadoraROIView } from './views/CalculadoraROIView';
 import { IAConsultoraView } from './views/IAConsultoraView';
 import { AdminView } from './views/AdminView';
 import { DesignerHubView } from './views/DesignerHubView';
+import { StudioAgencyView } from './views/StudioAgencyView';
 import { MarketingHubView } from './views/MarketingHubView';
 
 export default function App() {
@@ -320,386 +321,368 @@ export default function App() {
     if (isEmployee && userProfile?.agencyOwnerUid && userProfile.agencyOwnerUid !== 'agency-master-owner') {
       return userProfile.agencyOwnerUid;
     }
-    return user?.uid || null;
+    return userProfile?.agencyOwnerUid || userProfile?.uid || user?.uid || null;
   };
 
   // Realtime Firestore CRUD Handlers
   const handleAddKPIPeriod = async (period: any) => {
+    const newItem = { ...period, id: period.id || `kpi-${Date.now()}` };
+    setState((prev) => ({
+      ...prev,
+      kpiPeriods: [...prev.kpiPeriods, newItem],
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
-      await addCollectionItem(targetUid, 'kpiPeriods', period);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        kpiPeriods: [...prev.kpiPeriods, { ...period, id: `kpi-${Date.now()}` }],
-      }));
+      await addCollectionItem(targetUid, 'kpiPeriods', newItem);
     }
   };
 
   const handleDeleteKPIPeriod = async (id: string) => {
+    setState((prev) => ({
+      ...prev,
+      kpiPeriods: prev.kpiPeriods.filter((k) => k.id !== id),
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
       await deleteCollectionItem(targetUid, 'kpiPeriods', id);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        kpiPeriods: prev.kpiPeriods.filter((k) => k.id !== id),
-      }));
     }
   };
 
   const handleAddTransaction = async (t: any) => {
+    const newItem = { ...t, id: t.id || `tx-${Date.now()}` };
+    setState((prev) => ({
+      ...prev,
+      transactions: [newItem, ...prev.transactions],
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
-      await addCollectionItem(targetUid, 'transactions', t);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        transactions: [{ ...t, id: `tx-${Date.now()}` }, ...prev.transactions],
-      }));
+      await addCollectionItem(targetUid, 'transactions', newItem);
     }
   };
 
   const handleDeleteTransaction = async (id: string) => {
+    setState((prev) => ({
+      ...prev,
+      transactions: prev.transactions.filter((t) => t.id !== id),
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
       await deleteCollectionItem(targetUid, 'transactions', id);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        transactions: prev.transactions.filter((t) => t.id !== id),
-      }));
     }
   };
 
   const handleAddCampaign = async (c: any) => {
+    const newItem = { ...c, id: c.id || `camp-${Date.now()}` };
+    setState((prev) => ({
+      ...prev,
+      campaigns: [...prev.campaigns, newItem],
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
-      await addCollectionItem(targetUid, 'campaigns', c);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        campaigns: [...prev.campaigns, { ...c, id: `camp-${Date.now()}` }],
-      }));
+      await addCollectionItem(targetUid, 'campaigns', newItem);
     }
   };
 
   const handleDeleteCampaign = async (id: string) => {
+    setState((prev) => ({
+      ...prev,
+      campaigns: prev.campaigns.filter((c) => c.id !== id),
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
       await deleteCollectionItem(targetUid, 'campaigns', id);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        campaigns: prev.campaigns.filter((c) => c.id !== id),
-      }));
     }
   };
 
   const handleAddSocialPost = async (post: any) => {
+    const newItem = { ...post, id: post.id || `post-${Date.now()}` };
+    setState((prev) => ({
+      ...prev,
+      socialPosts: [newItem, ...prev.socialPosts],
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
-      await addCollectionItem(targetUid, 'socialPosts', post);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        socialPosts: [{ ...post, id: `post-${Date.now()}` }, ...prev.socialPosts],
-      }));
+      await addCollectionItem(targetUid, 'socialPosts', newItem);
     }
   };
 
   const handleDeleteSocialPost = async (id: string) => {
+    setState((prev) => ({
+      ...prev,
+      socialPosts: prev.socialPosts.filter((p) => p.id !== id),
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
       await deleteCollectionItem(targetUid, 'socialPosts', id);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        socialPosts: prev.socialPosts.filter((p) => p.id !== id),
-      }));
     }
   };
 
   const handleAddStockItem = async (item: any) => {
+    const newItem = { ...item, id: item.id || `stock-${Date.now()}` };
+    setState((prev) => ({
+      ...prev,
+      stockItems: [...prev.stockItems, newItem],
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
-      await addCollectionItem(targetUid, 'stockItems', item);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        stockItems: [...prev.stockItems, { ...item, id: `stock-${Date.now()}` }],
-      }));
+      await addCollectionItem(targetUid, 'stockItems', newItem);
     }
   };
 
   const handleDeleteStockItem = async (id: string) => {
+    setState((prev) => ({
+      ...prev,
+      stockItems: prev.stockItems.filter((i) => i.id !== id),
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
       await deleteCollectionItem(targetUid, 'stockItems', id);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        stockItems: prev.stockItems.filter((i) => i.id !== id),
-      }));
     }
   };
 
   const handleAddTask = async (task: any) => {
+    const newItem = { ...task, id: task.id || `task-${Date.now()}` };
+    setState((prev) => ({
+      ...prev,
+      tasks: [...prev.tasks, newItem],
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
-      await addCollectionItem(targetUid, 'tasks', task);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        tasks: [...prev.tasks, { ...task, id: `task-${Date.now()}` }],
-      }));
+      await addCollectionItem(targetUid, 'tasks', newItem);
     }
   };
 
   const handleUpdateTaskStatus = async (id: string, status: any) => {
+    setState((prev) => ({
+      ...prev,
+      tasks: prev.tasks.map((t) => (t.id === id ? { ...t, status } : t)),
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
       await updateCollectionItem(targetUid, 'tasks', id, { status });
-    } else {
-      setState((prev) => ({
-        ...prev,
-        tasks: prev.tasks.map((t) => (t.id === id ? { ...t, status } : t)),
-      }));
     }
   };
 
   const handleDeleteTask = async (id: string) => {
+    setState((prev) => ({
+      ...prev,
+      tasks: prev.tasks.filter((t) => t.id !== id),
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
       await deleteCollectionItem(targetUid, 'tasks', id);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        tasks: prev.tasks.filter((t) => t.id !== id),
-      }));
     }
   };
 
   const handleAddLead = async (lead: any) => {
+    const newItem = { ...lead, id: lead.id || `lead-${Date.now()}` };
+    setState((prev) => ({
+      ...prev,
+      leads: [newItem, ...prev.leads],
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
-      await addCollectionItem(targetUid, 'leads', lead);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        leads: [{ ...lead, id: `lead-${Date.now()}` }, ...prev.leads],
-      }));
+      await addCollectionItem(targetUid, 'leads', newItem);
     }
   };
 
   const handleUpdateLeadStatus = async (id: string, status: any) => {
+    setState((prev) => ({
+      ...prev,
+      leads: prev.leads.map((l) => (l.id === id ? { ...l, status } : l)),
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
       await updateCollectionItem(targetUid, 'leads', id, { status });
-    } else {
-      setState((prev) => ({
-        ...prev,
-        leads: prev.leads.map((l) => (l.id === id ? { ...l, status } : l)),
-      }));
     }
   };
 
   const handleDeleteLead = async (id: string) => {
+    setState((prev) => ({
+      ...prev,
+      leads: prev.leads.filter((l) => l.id !== id),
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
       await deleteCollectionItem(targetUid, 'leads', id);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        leads: prev.leads.filter((l) => l.id !== id),
-      }));
     }
   };
 
   const handleAddEvent = async (ev: any) => {
+    const newItem = { ...ev, id: ev.id || `ev-${Date.now()}` };
+    setState((prev) => ({
+      ...prev,
+      events: [...prev.events, newItem],
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
-      await addCollectionItem(targetUid, 'events', ev);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        events: [...prev.events, { ...ev, id: `ev-${Date.now()}` }],
-      }));
+      await addCollectionItem(targetUid, 'events', newItem);
     }
   };
 
   const handleDeleteEvent = async (id: string) => {
+    setState((prev) => ({
+      ...prev,
+      events: prev.events.filter((e) => e.id !== id),
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
       await deleteCollectionItem(targetUid, 'events', id);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        events: prev.events.filter((e) => e.id !== id),
-      }));
     }
   };
 
   // Design Hub Handlers
   const handleAddDesignProject = async (proj: any) => {
+    const newItem = { ...proj, id: proj.id || `des-${Date.now()}` };
+    setState((prev) => ({
+      ...prev,
+      designProjects: [newItem, ...(prev.designProjects || [])],
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
-      await addCollectionItem(targetUid, 'designProjects', proj);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        designProjects: [{ ...proj, id: `des-${Date.now()}` }, ...(prev.designProjects || [])],
-      }));
+      await addCollectionItem(targetUid, 'designProjects', newItem);
     }
   };
 
   const handleUpdateDesignProject = async (id: string, data: any) => {
+    setState((prev) => ({
+      ...prev,
+      designProjects: (prev.designProjects || []).map((p) =>
+        p.id === id ? { ...p, ...data } : p
+      ),
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
       await updateCollectionItem(targetUid, 'designProjects', id, data);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        designProjects: (prev.designProjects || []).map((p) =>
-          p.id === id ? { ...p, ...data } : p
-        ),
-      }));
     }
   };
 
   const handleDeleteDesignProject = async (id: string) => {
+    setState((prev) => ({
+      ...prev,
+      designProjects: (prev.designProjects || []).filter((p) => p.id !== id),
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
       await deleteCollectionItem(targetUid, 'designProjects', id);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        designProjects: (prev.designProjects || []).filter((p) => p.id !== id),
-      }));
     }
   };
 
   const handleAddDesignFolder = async (folder: any) => {
+    const newItem = { ...folder, id: folder.id || `fold-${Date.now()}` };
+    setState((prev) => ({
+      ...prev,
+      designFolders: [newItem, ...(prev.designFolders || [])],
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
-      await addCollectionItem(targetUid, 'designFolders', folder);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        designFolders: [{ ...folder, id: `fold-${Date.now()}` }, ...(prev.designFolders || [])],
-      }));
+      await addCollectionItem(targetUid, 'designFolders', newItem);
     }
   };
 
   const handleAddDesignBriefing = async (briefing: any) => {
+    const newItem = { ...briefing, id: briefing.id || `brief-${Date.now()}` };
+    setState((prev) => ({
+      ...prev,
+      designBriefings: [newItem, ...(prev.designBriefings || [])],
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
-      await addCollectionItem(targetUid, 'designBriefings', briefing);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        designBriefings: [{ ...briefing, id: `brief-${Date.now()}` }, ...(prev.designBriefings || [])],
-      }));
+      await addCollectionItem(targetUid, 'designBriefings', newItem);
     }
   };
 
   const handleUpdateDesignBriefing = async (id: string, data: any) => {
+    setState((prev) => ({
+      ...prev,
+      designBriefings: (prev.designBriefings || []).map((b) =>
+        b.id === id ? { ...b, ...data } : b
+      ),
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
       await updateCollectionItem(targetUid, 'designBriefings', id, data);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        designBriefings: (prev.designBriefings || []).map((b) =>
-          b.id === id ? { ...b, ...data } : b
-        ),
-      }));
     }
   };
 
   const handleAddDesignPackage = async (pkg: any) => {
+    const newItem = { ...pkg, id: pkg.id || `pack-${Date.now()}` };
+    setState((prev) => ({
+      ...prev,
+      designPackages: [newItem, ...(prev.designPackages || [])],
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
-      await addCollectionItem(targetUid, 'designPackages', pkg);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        designPackages: [{ ...pkg, id: `pack-${Date.now()}` }, ...(prev.designPackages || [])],
-      }));
+      await addCollectionItem(targetUid, 'designPackages', newItem);
     }
   };
 
   const handleUpdateDesignPackage = async (id: string, data: any) => {
+    setState((prev) => ({
+      ...prev,
+      designPackages: (prev.designPackages || []).map((p) =>
+        p.id === id ? { ...p, ...data } : p
+      ),
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
       await updateCollectionItem(targetUid, 'designPackages', id, data);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        designPackages: (prev.designPackages || []).map((p) =>
-          p.id === id ? { ...p, ...data } : p
-        ),
-      }));
     }
   };
 
   const handleAddDesignComment = async (comment: any) => {
+    const newItem = { ...comment, id: comment.id || `com-${Date.now()}` };
+    setState((prev) => ({
+      ...prev,
+      designComments: [...(prev.designComments || []), newItem],
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
-      await addCollectionItem(targetUid, 'designComments', comment);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        designComments: [...(prev.designComments || []), { ...comment, id: `com-${Date.now()}` }],
-      }));
+      await addCollectionItem(targetUid, 'designComments', newItem);
     }
   };
 
   const handleDeleteDesignFolder = async (id: string) => {
+    setState((prev) => ({
+      ...prev,
+      designFolders: (prev.designFolders || []).filter((f) => f.id !== id),
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
       await deleteCollectionItem(targetUid, 'designFolders', id);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        designFolders: (prev.designFolders || []).filter((f) => f.id !== id),
-      }));
     }
   };
 
   const handleDeleteDesignBriefing = async (id: string) => {
+    setState((prev) => ({
+      ...prev,
+      designBriefings: (prev.designBriefings || []).filter((b) => b.id !== id),
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
       await deleteCollectionItem(targetUid, 'designBriefings', id);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        designBriefings: (prev.designBriefings || []).filter((b) => b.id !== id),
-      }));
     }
   };
 
   const handleDeleteDesignPackage = async (id: string) => {
+    setState((prev) => ({
+      ...prev,
+      designPackages: (prev.designPackages || []).filter((p) => p.id !== id),
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
       await deleteCollectionItem(targetUid, 'designPackages', id);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        designPackages: (prev.designPackages || []).filter((p) => p.id !== id),
-      }));
     }
   };
 
   const handleDeleteDesignComment = async (id: string) => {
+    setState((prev) => ({
+      ...prev,
+      designComments: (prev.designComments || []).filter((c) => c.id !== id),
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
       await deleteCollectionItem(targetUid, 'designComments', id);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        designComments: (prev.designComments || []).filter((c) => c.id !== id),
-      }));
     }
   };
 
@@ -734,142 +717,202 @@ export default function App() {
 
   // Marketing Hub Handlers
   const handleAddMarketingCampaign = async (campaign: any) => {
+    const newItem = { ...campaign, id: campaign.id || `mkt-c-${Date.now()}` };
+    setState((prev) => ({
+      ...prev,
+      marketingCampaigns: [newItem, ...(prev.marketingCampaigns || [])],
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
-      await addCollectionItem(targetUid, 'marketingCampaigns', campaign);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        marketingCampaigns: [{ ...campaign, id: `mkt-c-${Date.now()}` }, ...(prev.marketingCampaigns || [])],
-      }));
+      await addCollectionItem(targetUid, 'marketingCampaigns', newItem);
+    }
+  };
+
+  const handleUpdateMarketingCampaign = async (id: string, data: any) => {
+    setState((prev) => ({
+      ...prev,
+      marketingCampaigns: (prev.marketingCampaigns || []).map((c) =>
+        c.id === id ? { ...c, ...data } : c
+      ),
+    }));
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await updateCollectionItem(targetUid, 'marketingCampaigns', id, data);
     }
   };
 
   const handleDeleteMarketingCampaign = async (id: string) => {
+    setState((prev) => ({
+      ...prev,
+      marketingCampaigns: (prev.marketingCampaigns || []).filter((c) => c.id !== id),
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
       await deleteCollectionItem(targetUid, 'marketingCampaigns', id);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        marketingCampaigns: (prev.marketingCampaigns || []).filter((c) => c.id !== id),
-      }));
     }
   };
 
   const handleAddMarketingEditorial = async (item: any) => {
+    const newItem = { ...item, id: item.id || `mkt-e-${Date.now()}` };
+    setState((prev) => ({
+      ...prev,
+      marketingEditorials: [newItem, ...(prev.marketingEditorials || [])],
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
-      await addCollectionItem(targetUid, 'marketingEditorials', item);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        marketingEditorials: [{ ...item, id: `mkt-e-${Date.now()}` }, ...(prev.marketingEditorials || [])],
-      }));
+      await addCollectionItem(targetUid, 'marketingEditorials', newItem);
+    }
+  };
+
+  const handleUpdateMarketingEditorial = async (id: string, data: any) => {
+    setState((prev) => ({
+      ...prev,
+      marketingEditorials: (prev.marketingEditorials || []).map((e) =>
+        e.id === id ? { ...e, ...data } : e
+      ),
+    }));
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await updateCollectionItem(targetUid, 'marketingEditorials', id, data);
     }
   };
 
   const handleDeleteMarketingEditorial = async (id: string) => {
+    setState((prev) => ({
+      ...prev,
+      marketingEditorials: (prev.marketingEditorials || []).filter((e) => e.id !== id),
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
       await deleteCollectionItem(targetUid, 'marketingEditorials', id);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        marketingEditorials: (prev.marketingEditorials || []).filter((e) => e.id !== id),
-      }));
     }
   };
 
   const handleAddMarketingFunnel = async (funnel: any) => {
+    const newItem = { ...funnel, id: funnel.id || `mkt-f-${Date.now()}` };
+    setState((prev) => ({
+      ...prev,
+      marketingFunnels: [newItem, ...(prev.marketingFunnels || [])],
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
-      await addCollectionItem(targetUid, 'marketingFunnels', funnel);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        marketingFunnels: [{ ...funnel, id: `mkt-f-${Date.now()}` }, ...(prev.marketingFunnels || [])],
-      }));
+      await addCollectionItem(targetUid, 'marketingFunnels', newItem);
+    }
+  };
+
+  const handleUpdateMarketingFunnel = async (id: string, data: any) => {
+    setState((prev) => ({
+      ...prev,
+      marketingFunnels: (prev.marketingFunnels || []).map((f) =>
+        f.id === id ? { ...f, ...data } : f
+      ),
+    }));
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await updateCollectionItem(targetUid, 'marketingFunnels', id, data);
     }
   };
 
   const handleDeleteMarketingFunnel = async (id: string) => {
+    setState((prev) => ({
+      ...prev,
+      marketingFunnels: (prev.marketingFunnels || []).filter((f) => f.id !== id),
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
       await deleteCollectionItem(targetUid, 'marketingFunnels', id);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        marketingFunnels: (prev.marketingFunnels || []).filter((f) => f.id !== id),
-      }));
     }
   };
 
   const handleAddMarketingEmailFlow = async (flow: any) => {
+    const newItem = { ...flow, id: flow.id || `mkt-ef-${Date.now()}` };
+    setState((prev) => ({
+      ...prev,
+      marketingEmailFlows: [newItem, ...(prev.marketingEmailFlows || [])],
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
-      await addCollectionItem(targetUid, 'marketingEmailFlows', flow);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        marketingEmailFlows: [{ ...flow, id: `mkt-ef-${Date.now()}` }, ...(prev.marketingEmailFlows || [])],
-      }));
+      await addCollectionItem(targetUid, 'marketingEmailFlows', newItem);
+    }
+  };
+
+  const handleUpdateMarketingEmailFlow = async (id: string, data: any) => {
+    setState((prev) => ({
+      ...prev,
+      marketingEmailFlows: (prev.marketingEmailFlows || []).map((ef) =>
+        ef.id === id ? { ...ef, ...data } : ef
+      ),
+    }));
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await updateCollectionItem(targetUid, 'marketingEmailFlows', id, data);
     }
   };
 
   const handleDeleteMarketingEmailFlow = async (id: string) => {
+    setState((prev) => ({
+      ...prev,
+      marketingEmailFlows: (prev.marketingEmailFlows || []).filter((ef) => ef.id !== id),
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
       await deleteCollectionItem(targetUid, 'marketingEmailFlows', id);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        marketingEmailFlows: (prev.marketingEmailFlows || []).filter((ef) => ef.id !== id),
-      }));
     }
   };
 
   const handleAddMarketingCopyScript = async (copy: any) => {
+    const newItem = { ...copy, id: copy.id || `mkt-cp-${Date.now()}` };
+    setState((prev) => ({
+      ...prev,
+      marketingCopies: [newItem, ...(prev.marketingCopies || [])],
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
-      await addCollectionItem(targetUid, 'marketingCopies', copy);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        marketingCopies: [{ ...copy, id: `mkt-cp-${Date.now()}` }, ...(prev.marketingCopies || [])],
-      }));
+      await addCollectionItem(targetUid, 'marketingCopies', newItem);
+    }
+  };
+
+  const handleUpdateMarketingCopyScript = async (id: string, data: any) => {
+    setState((prev) => ({
+      ...prev,
+      marketingCopies: (prev.marketingCopies || []).map((cp) =>
+        cp.id === id ? { ...cp, ...data } : cp
+      ),
+    }));
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await updateCollectionItem(targetUid, 'marketingCopies', id, data);
     }
   };
 
   const handleDeleteMarketingCopyScript = async (id: string) => {
+    setState((prev) => ({
+      ...prev,
+      marketingCopies: (prev.marketingCopies || []).filter((cp) => cp.id !== id),
+    }));
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
       await deleteCollectionItem(targetUid, 'marketingCopies', id);
-    } else {
-      setState((prev) => ({
-        ...prev,
-        marketingCopies: (prev.marketingCopies || []).filter((cp) => cp.id !== id),
-      }));
     }
   };
 
   const handleClearAllMarketingData = async () => {
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
-      for (const c of state.marketingCampaigns || []) {
-        await deleteCollectionItem(targetUid, 'marketingCampaigns', c.id);
+      if (state.marketingCampaigns && state.marketingCampaigns.length > 0) {
+        await batchDeleteCollectionItems(targetUid, 'marketingCampaigns', state.marketingCampaigns.map((c) => c.id));
       }
-      for (const e of state.marketingEditorials || []) {
-        await deleteCollectionItem(targetUid, 'marketingEditorials', e.id);
+      if (state.marketingEditorials && state.marketingEditorials.length > 0) {
+        await batchDeleteCollectionItems(targetUid, 'marketingEditorials', state.marketingEditorials.map((e) => e.id));
       }
-      for (const f of state.marketingFunnels || []) {
-        await deleteCollectionItem(targetUid, 'marketingFunnels', f.id);
+      if (state.marketingFunnels && state.marketingFunnels.length > 0) {
+        await batchDeleteCollectionItems(targetUid, 'marketingFunnels', state.marketingFunnels.map((f) => f.id));
       }
-      for (const ef of state.marketingEmailFlows || []) {
-        await deleteCollectionItem(targetUid, 'marketingEmailFlows', ef.id);
+      if (state.marketingEmailFlows && state.marketingEmailFlows.length > 0) {
+        await batchDeleteCollectionItems(targetUid, 'marketingEmailFlows', state.marketingEmailFlows.map((ef) => ef.id));
       }
-      for (const cp of state.marketingCopies || []) {
-        await deleteCollectionItem(targetUid, 'marketingCopies', cp.id);
+      if (state.marketingCopies && state.marketingCopies.length > 0) {
+        await batchDeleteCollectionItems(targetUid, 'marketingCopies', state.marketingCopies.map((cp) => cp.id));
       }
     }
     setState((prev) => ({
@@ -949,7 +992,13 @@ export default function App() {
         />
 
         {/* Main Content View Area */}
-        <main className="flex-1 h-full overflow-y-auto min-h-0 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+        <main
+          className={`flex-1 h-full overflow-y-auto min-h-0 ${
+            state.activeView === 'studio-agency'
+              ? 'p-0 max-w-none w-full overflow-x-hidden'
+              : 'p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full'
+          }`}
+        >
           {!hasModuleAccess(state.activeView, userProfile) ? (
             <LockedModuleView
               moduleId={state.activeView}
@@ -1049,14 +1098,19 @@ export default function App() {
                   marketingEmailFlows={state.marketingEmailFlows}
                   marketingCopies={state.marketingCopies}
                   onAddCampaign={handleAddMarketingCampaign}
+                  onUpdateCampaign={handleUpdateMarketingCampaign}
                   onDeleteCampaign={handleDeleteMarketingCampaign}
                   onAddEditorial={handleAddMarketingEditorial}
+                  onUpdateEditorial={handleUpdateMarketingEditorial}
                   onDeleteEditorial={handleDeleteMarketingEditorial}
                   onAddFunnel={handleAddMarketingFunnel}
+                  onUpdateFunnel={handleUpdateMarketingFunnel}
                   onDeleteFunnel={handleDeleteMarketingFunnel}
                   onAddEmailFlow={handleAddMarketingEmailFlow}
+                  onUpdateEmailFlow={handleUpdateMarketingEmailFlow}
                   onDeleteEmailFlow={handleDeleteMarketingEmailFlow}
                   onAddCopyScript={handleAddMarketingCopyScript}
+                  onUpdateCopyScript={handleUpdateMarketingCopyScript}
                   onDeleteCopyScript={handleDeleteMarketingCopyScript}
                   onClearAllMarketingData={handleClearAllMarketingData}
                   onNavigate={setView}
@@ -1097,6 +1151,16 @@ export default function App() {
                   onAddComment={handleAddDesignComment}
                   onDeleteComment={handleDeleteDesignComment}
                   onClearAllData={handleClearAllDesignData}
+                  onNavigate={setView}
+                />
+              )}
+
+              {state.activeView === 'studio-agency' && (
+                <StudioAgencyView
+                  userProfile={userProfile}
+                  designProjects={state.designProjects}
+                  designFolders={state.designFolders}
+                  onAddProject={handleAddDesignProject}
                   onNavigate={setView}
                 />
               )}

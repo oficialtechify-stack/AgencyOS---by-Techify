@@ -16,6 +16,7 @@ import { BriefingsTab } from '../components/designer/BriefingsTab';
 import { FoldersTab } from '../components/designer/FoldersTab';
 import { PackagesTab } from '../components/designer/PackagesTab';
 import { ChatTab } from '../components/designer/ChatTab';
+import { CanvaStudio } from '../components/designer/canva/CanvaStudio';
 import { DesignerModals } from '../components/designer/DesignerModals';
 
 interface DesignerHubViewProps {
@@ -89,7 +90,7 @@ export const DesignerHubView: React.FC<DesignerHubViewProps> = ({
 }) => {
   // Navigation Tabs
   const [activeTab, setActiveTab] = useState<
-    'criativos' | 'briefings' | 'pastas' | 'pacotes' | 'mensagens'
+    'canva' | 'criativos' | 'briefings' | 'pastas' | 'pacotes' | 'mensagens'
   >('criativos');
 
   // Filter state for folders in CreativesTab
@@ -231,6 +232,16 @@ export const DesignerHubView: React.FC<DesignerHubViewProps> = ({
 
       {/* Tab Content (Independent Render & Scroll Container) */}
       <div className="relative w-full min-h-[450px]">
+        {activeTab === 'canva' && (
+          <CanvaStudio
+            userProfile={userProfile}
+            designFolders={designFolders}
+            onAddProject={onAddProject}
+            showToast={showToast}
+            onClose={() => setActiveTab('criativos')}
+          />
+        )}
+
         {activeTab === 'criativos' && (
           <CreativesTab
             userProfile={userProfile}

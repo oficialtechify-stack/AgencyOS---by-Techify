@@ -9,14 +9,16 @@ import {
   Trash2,
   Sparkles,
   Shield,
+  Layers,
+  Wand2,
 } from 'lucide-react';
 import { DesignProject, DesignFolder, DesignBriefingDemand, DesignPackage, DesignComment } from '../../types';
 import { FirestoreUserProfile } from '../../lib/firebase';
 
 interface DesignerHeaderProps {
   userProfile: FirestoreUserProfile | null;
-  activeTab: 'criativos' | 'briefings' | 'pastas' | 'pacotes' | 'mensagens';
-  setActiveTab: (tab: 'criativos' | 'briefings' | 'pastas' | 'pacotes' | 'mensagens') => void;
+  activeTab: 'canva' | 'criativos' | 'briefings' | 'pastas' | 'pacotes' | 'mensagens';
+  setActiveTab: (tab: 'canva' | 'criativos' | 'briefings' | 'pastas' | 'pacotes' | 'mensagens') => void;
   stats: {
     total: number;
     producao: number;
@@ -75,19 +77,31 @@ export const DesignerHeader: React.FC<DesignerHeaderProps> = ({
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-neutral-900 border border-neutral-700 flex items-center justify-center text-white">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
                 <Palette className="w-5 h-5 stroke-[2.2]" />
               </div>
               <h2 className="text-xl font-black text-white tracking-tight">
-                Hub do Designer & Produção Criativa
+                Hub do Designer & Studio Criativo
               </h2>
             </div>
             <p className="text-xs text-neutral-400 max-w-2xl">
-              Esteira de produção visual, aprovação por líderes, pastas por empresa, entrega de pacotes e gestão de briefings de executivos.
+              Crie artes completas no <strong>Studio Canva integrado</strong>, gerencie a esteira de produção visual, aprovação por líderes, pastas de clientes e entrega de pacotes.
             </p>
           </div>
 
           <div className="flex items-center gap-2.5 flex-wrap">
+            <button
+              onClick={() => setActiveTab('canva')}
+              className={`px-4 py-2.5 rounded-xl font-black text-xs flex items-center gap-2 transition-all cursor-pointer shadow-lg ${
+                activeTab === 'canva'
+                  ? 'bg-blue-600 text-white shadow-blue-600/30'
+                  : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white'
+              }`}
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>Abrir Studio Canva</span>
+            </button>
+
             {hasAnyData && (
               <button
                 onClick={onOpenClearAllModal}
@@ -95,16 +109,16 @@ export const DesignerHeader: React.FC<DesignerHeaderProps> = ({
                 title="Apagar dados e deixar o painel limpo"
               >
                 <Trash2 className="w-4 h-4 text-neutral-400" />
-                <span>Limpar / Zerar Painel</span>
+                <span>Limpar Painel</span>
               </button>
             )}
 
             <button
               onClick={onOpenNewProjectModal}
-              className="px-5 py-2.5 rounded-xl bg-white hover:bg-neutral-200 text-black font-black text-xs flex items-center gap-2 transition-all cursor-pointer"
+              className="px-4 py-2.5 rounded-xl bg-white hover:bg-neutral-200 text-black font-black text-xs flex items-center gap-2 transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4 stroke-[3]" />
-              <span>Novo Criativo / Arte</span>
+              <span>Novo Criativo / Upload</span>
             </button>
           </div>
         </div>
@@ -141,6 +155,19 @@ export const DesignerHeader: React.FC<DesignerHeaderProps> = ({
       {/* Navigation Tabs (Sticky & Isolated Scrolling) */}
       <div className="sticky top-0 z-20 bg-[#0a0a0a]/95 backdrop-blur-md py-2.5 -mx-1 px-1 border-b border-neutral-800/80">
         <div className="flex items-center gap-2 overflow-x-auto overscroll-x-contain scrollbar-none py-0.5">
+          {/* Dedicated Canva Studio Tab */}
+          <button
+            onClick={() => setActiveTab('canva')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+              activeTab === 'canva'
+                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-600/30'
+                : 'text-blue-400 hover:text-white hover:bg-neutral-900 border border-blue-900/40 hover:border-blue-700'
+            }`}
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>🎨 Studio Canva (Editor Completo)</span>
+          </button>
+
           <button
             onClick={() => setActiveTab('criativos')}
             className={`px-4 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap shrink-0 ${

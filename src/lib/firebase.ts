@@ -55,6 +55,7 @@ export interface FirestoreUserProfile {
   email: string;
   agencyName: string;
   role?: string;
+  leadershipRole?: 'lider_geral' | 'lider_marketing' | 'lider_prospeccao' | 'lider_design' | 'membro';
   userType?: 'employee' | 'client';
   agencyOwnerUid?: string;
   designRole?: 'admin' | 'lider' | 'designer' | 'funcionario' | 'cliente';
@@ -451,16 +452,22 @@ export function sanitizeFirestorePayload<T = any>(obj: T): T {
 
 // Firestore collection Item operations
 export async function addCollectionItem(uid: string, collectionName: string, itemData: any) {
-  const colRef = collection(db, 'users', uid, collectionName);
   const cleanData = sanitizeFirestorePayload(itemData);
+  if (itemData && itemData.id) {
+    const itemRef = doc(db, 'users', uid, collectionName, String(itemData.id));
+    await setDoc(itemRef, cleanData, { merge: true });
+    return itemData.id;
+  }
+  const colRef = collection(db, 'users', uid, collectionName);
   const docRef = await addDoc(colRef, cleanData);
   return docRef.id;
 }
 
 export async function updateCollectionItem(uid: string, collectionName: string, itemId: string, itemData: any) {
-  const itemRef = doc(db, 'users', uid, collectionName, itemId);
+  if (!uid || !itemId) return;
+  const itemRef = doc(db, 'users', uid, collectionName, String(itemId));
   const cleanData = sanitizeFirestorePayload(itemData);
-  await updateDoc(itemRef, cleanData);
+  await setDoc(itemRef, cleanData, { merge: true });
 }
 
 export async function deleteCollectionItem(uid: string, collectionName: string, itemId: string) {
@@ -569,6 +576,7 @@ export async function createUserWithAuthAndPermissions(userData: {
   password?: string;
   name?: string;
   role?: string;
+  leadershipRole?: 'lider_geral' | 'lider_marketing' | 'lider_prospeccao' | 'lider_design' | 'membro';
   userType?: 'employee' | 'client';
   agencyOwnerUid?: string;
   designRole?: 'admin' | 'lider' | 'designer' | 'funcionario' | 'cliente';
@@ -649,6 +657,7 @@ export async function createUserWithAuthAndPermissions(userData: {
     email: normalizedEmail,
     agencyName: userData.agencyName?.trim() || 'Agência Digital',
     role: userData.role?.trim() || (isEmployee ? 'Membro da Equipe' : 'Cliente AgencyOS'),
+    leadershipRole: userData.leadershipRole || (userData.role?.toLowerCase().includes('marketing') ? 'lider_marketing' : userData.role?.toLowerCase().includes('prospec') ? 'lider_prospeccao' : userData.role?.toLowerCase().includes('lider') || userData.role?.toLowerCase().includes('líder') ? 'lider_geral' : 'membro'),
     userType: userData.userType || (isEmployee ? 'employee' : 'client'),
     agencyOwnerUid: userData.agencyOwnerUid || undefined,
     designRole: userData.designRole || (isEmployee ? 'funcionario' : 'cliente'),
