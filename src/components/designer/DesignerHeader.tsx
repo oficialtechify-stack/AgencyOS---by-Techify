@@ -85,23 +85,11 @@ export const DesignerHeader: React.FC<DesignerHeaderProps> = ({
               </h2>
             </div>
             <p className="text-xs text-neutral-400 max-w-2xl">
-              Crie artes completas no <strong>Studio Canva integrado</strong>, gerencie a esteira de produção visual, aprovação por líderes, pastas de clientes e entrega de pacotes.
+              Gerencie a esteira de produção visual, aprovação por líderes, pastas de clientes e entrega de pacotes.
             </p>
           </div>
 
           <div className="flex items-center gap-2.5 flex-wrap">
-            <button
-              onClick={() => setActiveTab('canva')}
-              className={`px-4 py-2.5 rounded-xl font-black text-xs flex items-center gap-2 transition-all cursor-pointer shadow-lg ${
-                activeTab === 'canva'
-                  ? 'bg-blue-600 text-white shadow-blue-600/30'
-                  : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white'
-              }`}
-            >
-              <Sparkles className="w-4 h-4" />
-              <span>Abrir Studio Canva</span>
-            </button>
-
             {hasAnyData && (
               <button
                 onClick={onOpenClearAllModal}
@@ -155,19 +143,6 @@ export const DesignerHeader: React.FC<DesignerHeaderProps> = ({
       {/* Navigation Tabs (Sticky & Isolated Scrolling) */}
       <div className="sticky top-0 z-20 bg-[#0a0a0a]/95 backdrop-blur-md py-2.5 -mx-1 px-1 border-b border-neutral-800/80">
         <div className="flex items-center gap-2 overflow-x-auto overscroll-x-contain scrollbar-none py-0.5">
-          {/* Dedicated Canva Studio Tab */}
-          <button
-            onClick={() => setActiveTab('canva')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              activeTab === 'canva'
-                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-600/30'
-                : 'text-blue-400 hover:text-white hover:bg-neutral-900 border border-blue-900/40 hover:border-blue-700'
-            }`}
-          >
-            <Sparkles className="w-4 h-4" />
-            <span>🎨 Studio Canva (Editor Completo)</span>
-          </button>
-
           <button
             onClick={() => setActiveTab('criativos')}
             className={`px-4 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
