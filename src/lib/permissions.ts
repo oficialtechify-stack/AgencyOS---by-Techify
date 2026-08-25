@@ -18,6 +18,20 @@ export const ALL_SYSTEM_MODULES: SystemModuleInfo[] = [
     iconName: 'LayoutDashboard',
   },
   {
+    id: 'chat',
+    name: 'Chat da Empresa & Equipe',
+    category: 'Principal',
+    description: 'Comunicação interna em tempo real, canais setoriais, status do ponto e compartilhamento',
+    iconName: 'MessageSquare',
+  },
+  {
+    id: 'profile',
+    name: 'Meu Perfil & Crachá',
+    category: 'Principal',
+    description: 'Foto de perfil, dados profissionais, setor e crachá digital da agência',
+    iconName: 'UserCheck',
+  },
+  {
     id: 'lideranca',
     name: 'Painel de Liderança',
     category: 'Principal',
@@ -65,6 +79,13 @@ export const ALL_SYSTEM_MODULES: SystemModuleInfo[] = [
     category: 'Gestão & Projetos',
     description: 'Agendamento de reuniões, alinhamentos e fechamentos com clientes',
     iconName: 'Calendar',
+  },
+  {
+    id: 'prospection',
+    name: 'Prospecção & Fechamentos',
+    category: 'Tráfego & Vendas',
+    description: 'Demandas comerciais, abordagem por Instagram, pacotes Techify e contratos fechados em tempo real',
+    iconName: 'Target',
   },
   {
     id: 'maps-scraper',

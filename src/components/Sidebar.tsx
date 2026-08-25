@@ -23,6 +23,8 @@ import {
   Zap,
   ChevronRight,
   User as UserIcon,
+  MessageSquare,
+  UserCircle,
   Lock,
 } from 'lucide-react';
 import { ViewMode, UserProfile } from '../types';
@@ -72,11 +74,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const menuSections = [
     {
+      title: 'COMUNICAÇÃO & PESSOAS',
+      items: [
+        { id: 'chat' as ViewMode, label: 'Chat da Empresa', icon: MessageSquare },
+        { id: 'profile' as ViewMode, label: 'Meu Perfil', icon: UserCircle },
+        { id: 'ponto' as ViewMode, label: 'Ponto Seguro', icon: Clock },
+      ],
+    },
+    {
       title: 'PRINCIPAL',
       items: [
         { id: 'dashboard' as ViewMode, label: 'Dashboard Geral', icon: LayoutDashboard },
         { id: 'lideranca' as ViewMode, label: 'Painel de Liderança', icon: Crown },
-        { id: 'ponto' as ViewMode, label: 'Ponto Eletrônico', icon: Clock },
       ],
     },
     {
@@ -94,15 +103,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ],
     },
     {
-      title: 'GESTÃO & EQUIPE',
+      title: 'PROSPECÇÃO & VENDAS',
       items: [
-        { id: 'agenda' as ViewMode, label: 'Agenda', icon: Calendar },
-        { id: 'ponto' as ViewMode, label: 'Ponto Seguro', icon: Clock },
+        { id: 'prospection' as ViewMode, label: 'Demandas & Catálogo', icon: Target },
+        { id: 'maps-scraper' as ViewMode, label: 'Maps Scraper', icon: MapPin },
       ],
-    },
-    {
-      title: 'PROSPECÇÃO',
-      items: [{ id: 'maps-scraper' as ViewMode, label: 'Maps Scraper', icon: MapPin }],
     },
     {
       title: 'CRIAÇÃO & DESIGN',
@@ -113,8 +118,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ],
     },
     {
-      title: 'OPERAÇÕES',
+      title: 'OPERAÇÕES & AGENDA',
       items: [
+        { id: 'agenda' as ViewMode, label: 'Agenda', icon: Calendar },
         { id: 'estoque' as ViewMode, label: 'Estoque de Recursos', icon: Package },
         { id: 'kanban' as ViewMode, label: 'Kanban de Projetos', icon: Kanban },
         { id: 'relatorios' as ViewMode, label: 'Relatórios', icon: FileText },

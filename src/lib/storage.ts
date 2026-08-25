@@ -7,6 +7,8 @@ import {
   initialKanbanTasks,
   initialStockItems,
   initialAgendaEvents,
+  initialProspectionDemands,
+  initialProspectionContracts,
 } from '../data/mockInitialData';
 
 const STORAGE_KEY = 'agencyos_full_app_state_v2';
@@ -52,6 +54,8 @@ export const getDefaultState = (): AppState => ({
     meetUrl: 'https://meet.google.com/abc-defg-hij',
   })),
   socialPosts: initialSocialPosts,
+  prospectionDemands: initialProspectionDemands,
+  prospectionContracts: initialProspectionContracts,
 });
 
 export const loadState = (): AppState => {

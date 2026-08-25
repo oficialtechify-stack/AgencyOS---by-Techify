@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ViewType, AppState, TimeClockRecord } from './types';
+import { ViewType, AppState, TimeClockRecord, ProspectionDemand, ProspectionClosedContract } from './types';
 import { loadState, saveState } from './lib/storage';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import {
@@ -36,6 +36,7 @@ import { DashboardGeralView } from './views/DashboardGeralView';
 import { KPIsView } from './views/KPIsView';
 import { FluxoCaixaView } from './views/FluxoCaixaView';
 import { MapsScraperView } from './views/MapsScraperView';
+import { ProspectionView } from './views/ProspectionView';
 import { SocialHubView } from './views/SocialHubView';
 import { EstoqueView } from './views/EstoqueView';
 import { KanbanView } from './views/KanbanView';
@@ -157,6 +158,12 @@ export default function App() {
       const unsubSchedules = subscribeToUserCollection(dataOwnerUid, 'employeeWorkSchedules', (employeeWorkSchedules) => {
         setState((prev) => ({ ...prev, employeeWorkSchedules }));
       });
+      const unsubProspectionDemands = subscribeToUserCollection(dataOwnerUid, 'prospectionDemands', (prospectionDemands) => {
+        setState((prev) => ({ ...prev, prospectionDemands }));
+      });
+      const unsubProspectionContracts = subscribeToUserCollection(dataOwnerUid, 'prospectionContracts', (prospectionContracts) => {
+        setState((prev) => ({ ...prev, prospectionContracts }));
+      });
 
       activeDataUnsubs.push(
         unsubKPIs,
@@ -180,7 +187,9 @@ export default function App() {
         unsubTimeClock,
         unsubLeadershipGoals,
         unsubLeadershipNotices,
-        unsubSchedules
+        unsubSchedules,
+        unsubProspectionDemands,
+        unsubProspectionContracts
       );
     };
 
@@ -1088,6 +1097,157 @@ export default function App() {
     }
   };
 
+  // -------------------------------------------------------------
+  // PROSPECTION MODULE HANDLERS (Demandas & Contratos Fechados)
+  // -------------------------------------------------------------
+  const handleAddProspectionDemand = async (
+    demandData: Omit<ProspectionDemand, 'id' | 'createdAt'>
+  ) => {
+    const newDemand: ProspectionDemand = {
+      ...demandData,
+      id: `dem-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+    };
+    setState((prev) => ({
+      ...prev,
+      prospectionDemands: [newDemand, ...(prev.prospectionDemands || [])],
+    }));
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await addCollectionItem(targetUid, 'prospectionDemands', newDemand);
+    }
+  };
+
+  const handleUpdateProspectionDemand = async (
+    id: string,
+    updatedData: Partial<ProspectionDemand>
+  ) => {
+    setState((prev) => ({
+      ...prev,
+      prospectionDemands: (prev.prospectionDemands || []).map((d) =>
+        d.id === id ? { ...d, ...updatedData } : d
+      ),
+    }));
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await updateCollectionItem(targetUid, 'prospectionDemands', id, updatedData);
+    }
+  };
+
+  const handleDeleteProspectionDemand = async (id: string) => {
+    setState((prev) => ({
+      ...prev,
+      prospectionDemands: (prev.prospectionDemands || []).filter((d) => d.id !== id),
+    }));
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await deleteCollectionItem(targetUid, 'prospectionDemands', id);
+    }
+  };
+
+  const handleClaimProspectionDemand = async (id: string) => {
+    const claimerName = userProfile?.name || 'Membro da Prospecção';
+    const claimerEmail = userProfile?.email || '';
+    const claimerRole = userProfile?.role || 'SDR / Prospecção';
+    const nowIso = new Date().toISOString();
+    const nowFormatted = new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+
+    const currentDemand = (state.prospectionDemands || []).find((d) => d.id === id);
+    const existingNotes = currentDemand?.historyNotes || [];
+
+    const claimNote = {
+      id: `note-${Date.now()}`,
+      author: claimerName,
+      authorEmail: claimerEmail,
+      text: `Demanda assumida por ${claimerName} (${claimerRole}). Lead adicionado ao pipeline individual.`,
+      date: nowFormatted,
+    };
+
+    const updatePayload: Partial<ProspectionDemand> = {
+      status: 'Assumida',
+      assignedTo: claimerName,
+      assignedEmail: claimerEmail,
+      assignedRole: claimerRole,
+      claimedAt: nowIso,
+      historyNotes: [...existingNotes, claimNote],
+    };
+
+    await handleUpdateProspectionDemand(id, updatePayload);
+  };
+
+  const handleAddProspectionContract = async (
+    contractData: Omit<ProspectionClosedContract, 'id' | 'createdAt'>
+  ) => {
+    const newContract: ProspectionClosedContract = {
+      ...contractData,
+      id: `deal-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+    };
+
+    setState((prev) => ({
+      ...prev,
+      prospectionContracts: [newContract, ...(prev.prospectionContracts || [])],
+      // If linked to a demand, automatically mark demand as "Contrato Fechado"
+      prospectionDemands: contractData.demandId
+        ? (prev.prospectionDemands || []).map((d) =>
+            d.id === contractData.demandId
+              ? {
+                  ...d,
+                  status: 'Contrato Fechado' as const,
+                  historyNotes: [
+                    ...(d.historyNotes || []),
+                    {
+                      id: `note-${Date.now()}`,
+                      author: contractData.closingEmployeeName,
+                      authorEmail: contractData.closingEmployeeEmail,
+                      text: `🎉 Contrato Fechado! Solução: ${contractData.packageName || contractData.individualService} no valor de R$ ${contractData.dealValue.toLocaleString('pt-BR')}.`,
+                      date: new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }),
+                    },
+                  ],
+                }
+              : d
+          )
+        : prev.prospectionDemands,
+    }));
+
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await addCollectionItem(targetUid, 'prospectionContracts', newContract);
+      if (contractData.demandId) {
+        await updateCollectionItem(targetUid, 'prospectionDemands', contractData.demandId, {
+          status: 'Contrato Fechado',
+        });
+      }
+    }
+  };
+
+  const handleUpdateProspectionContract = async (
+    id: string,
+    updatedData: Partial<ProspectionClosedContract>
+  ) => {
+    setState((prev) => ({
+      ...prev,
+      prospectionContracts: (prev.prospectionContracts || []).map((c) =>
+        c.id === id ? { ...c, ...updatedData } : c
+      ),
+    }));
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await updateCollectionItem(targetUid, 'prospectionContracts', id, updatedData);
+    }
+  };
+
+  const handleDeleteProspectionContract = async (id: string) => {
+    setState((prev) => ({
+      ...prev,
+      prospectionContracts: (prev.prospectionContracts || []).filter((c) => c.id !== id),
+    }));
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await deleteCollectionItem(targetUid, 'prospectionContracts', id);
+    }
+  };
+
   // Render Public Landing View
   if (state.activeView === 'landing') {
     return (
@@ -1207,6 +1367,21 @@ export default function App() {
                   onAddLead={handleAddLead}
                   onUpdateLeadStatus={handleUpdateLeadStatus}
                   onDeleteLead={handleDeleteLead}
+                />
+              )}
+
+              {state.activeView === 'prospection' && (
+                <ProspectionView
+                  demands={state.prospectionDemands || []}
+                  contracts={state.prospectionContracts || []}
+                  currentUser={userProfile}
+                  onAddDemand={handleAddProspectionDemand}
+                  onUpdateDemand={handleUpdateProspectionDemand}
+                  onDeleteDemand={handleDeleteProspectionDemand}
+                  onClaimDemand={handleClaimProspectionDemand}
+                  onAddContract={handleAddProspectionContract}
+                  onUpdateContract={handleUpdateProspectionContract}
+                  onDeleteContract={handleDeleteProspectionContract}
                 />
               )}
 

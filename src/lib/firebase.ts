@@ -54,8 +54,16 @@ export interface FirestoreUserProfile {
   name: string;
   email: string;
   agencyName: string;
+  avatarUrl?: string;
+  phone?: string;
+  whatsapp?: string;
+  instagram?: string;
+  bio?: string;
+  department?: 'marketing' | 'design' | 'prospeccao' | 'trafego' | 'gestao' | 'suporte' | 'desenvolvimento' | string;
   role?: string;
   leadershipRole?: 'lider_geral' | 'lider_marketing' | 'lider_prospeccao' | 'lider_design' | 'membro';
+  workStatus?: 'online' | 'busy' | 'lunch' | 'away' | 'offline';
+  customStatus?: string;
   userType?: 'employee' | 'client';
   agencyOwnerUid?: string;
   designRole?: 'admin' | 'lider' | 'designer' | 'funcionario' | 'cliente';

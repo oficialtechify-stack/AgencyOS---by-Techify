@@ -4,7 +4,10 @@ export type ViewType =
   | 'dashboard'
   | 'lideranca'
   | 'ponto'
+  | 'chat'
+  | 'profile'
   | 'marketing'
+  | 'prospection'
   | 'designer'
   | 'studio-agency'
   | 'kpis'
@@ -24,11 +27,20 @@ export type ViewType =
 export type ViewMode = ViewType;
 
 export interface UserProfile {
+  uid?: string;
   name: string;
   email: string;
   agencyName?: string;
+  avatarUrl?: string;
+  phone?: string;
+  whatsapp?: string;
+  instagram?: string;
+  bio?: string;
+  department?: 'marketing' | 'design' | 'prospeccao' | 'trafego' | 'gestao' | 'suporte' | 'desenvolvimento' | string;
   role?: string;
   leadershipRole?: 'lider_geral' | 'lider_marketing' | 'lider_prospeccao' | 'lider_design' | 'membro';
+  workStatus?: 'online' | 'busy' | 'lunch' | 'away' | 'offline';
+  customStatus?: string;
   userType?: 'employee' | 'client';
   agencyOwnerUid?: string;
   plan: 'Starter' | 'Pro' | 'Agency' | 'Trial Gratuito' | 'Gratuito / Equipe';
@@ -464,6 +476,157 @@ export interface LeadershipNotice {
   likes?: number;
 }
 
+export interface ProspectionDemandNote {
+  id: string;
+  author: string;
+  authorEmail?: string;
+  text: string;
+  date: string;
+}
+
+export type ProspectionDemandStatus =
+  | 'Pendente'
+  | 'Assumida'
+  | 'Em Abordagem'
+  | 'Reunião Agendada'
+  | 'Contrato Fechado'
+  | 'Desqualificado';
+
+export interface ProspectionDemand {
+  id: string;
+  title: string;
+  companyName: string;
+  instagram: string;
+  segment: string;
+  city: string;
+  phone?: string;
+  targetPackages: string[]; // Pacotes ou serviços que a Techify vende indicados para a abordagem
+  approachBriefing: string; // Instruções / dores / roteiro de abordagem
+  priority: 'Baixa' | 'Média' | 'Alta' | 'Urgente';
+  deadline?: string;
+  createdBy: string;
+  createdEmail?: string;
+  createdAt: string;
+  status: ProspectionDemandStatus;
+  assignedTo?: string; // Nome do colaborador que pegou
+  assignedEmail?: string; // Email do colaborador
+  assignedRole?: string; // Cargo do colaborador (ex: SDR, Closer, Prospecção)
+  claimedAt?: string;
+  historyNotes?: ProspectionDemandNote[];
+}
+
+export type ProspectionContractStatus =
+  | 'contatado'
+  | 'em_analise'
+  | 'fazer_reuniao'
+  | 'proposta_enviada'
+  | 'contrato_fechado'
+  | 'onboarding_iniciado';
+
+export interface ProspectionClosedContract {
+  id: string;
+  clientName: string;
+  instagram: string;
+  contactPerson?: string;
+  phone?: string;
+  email?: string;
+  segment: string;
+  city: string;
+  contractType: 'Pacote Completo' | 'Serviço Individual';
+  packageName?: string; // Ex: 'Techify Scale 360', 'Techify Tráfego & Performance'
+  individualService?: string; // Ex: 'Gestão de Tráfego Pago', 'Criação de Landing Page'
+  customPackageDetails?: string;
+  dealValue: number; // Valor em R$
+  recurringType: 'Mensal Recorrente (MRR)' | 'Pontual / Projeto Único' | 'Trimestral' | 'Semestral' | 'Anual';
+  paymentMethod?: string;
+  signedDate: string;
+  startDate?: string;
+  closingEmployeeName: string; // Nome do funcionário da prospecção
+  closingEmployeeEmail: string; // Email do funcionário
+  closingEmployeeRole?: string; // Cargo (ex: Closer, SDR)
+  status: ProspectionContractStatus;
+  meetingDate?: string;
+  meetingTime?: string;
+  meetingLink?: string;
+  meetingNotes?: string;
+  contractImageUrl?: string; // Imagem / Comprovante / Print do contrato
+  images?: string[]; // Imagens adicionais
+  notes?: string;
+  demandId?: string;
+  leadId?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface TechifyPackageOption {
+  id: string;
+  name: string;
+  category: 'pacote' | 'servico';
+  description: string;
+  features: string[];
+  suggestedPrice: number;
+  priceType: 'Mensal Recorrente (MRR)' | 'Pontual / Projeto Único';
+  badge: string;
+  popular?: boolean;
+}
+
+export interface AgencySharePayload {
+  type: 'prospection_demand' | 'contract' | 'lead' | 'task' | 'package' | 'campaign' | 'link';
+  title: string;
+  subtitle?: string;
+  value?: string;
+  statusBadge?: string;
+  targetView?: ViewType;
+  linkUrl?: string;
+  metaData?: Record<string, any>;
+}
+
+export interface ChatMessage {
+  id: string;
+  channelId: string; // Direct: "dm_user1_user2" or Group ID: "grp_general", "grp_mkt_design", etc.
+  senderUid: string;
+  senderName: string;
+  senderEmail: string;
+  senderAvatar?: string;
+  senderRole?: string;
+  senderDepartment?: string;
+  recipientEmail?: string; // For 1-on-1 direct message
+  text: string;
+  type: 'text' | 'image' | 'video' | 'file' | 'audio' | 'agency_share' | 'system';
+  fileUrl?: string;
+  fileName?: string;
+  fileSize?: string;
+  fileType?: string;
+  agencyShareData?: AgencySharePayload;
+  readBy?: {
+    [emailOrUid: string]: {
+      readAt: string;
+      userName?: string;
+    };
+  };
+  isDeleted?: boolean;
+  createdAt: string;
+}
+
+export interface ChatChannel {
+  id: string;
+  name: string;
+  description?: string;
+  type: 'direct' | 'department' | 'custom_group';
+  department?: string; // e.g. 'marketing', 'design', 'prospeccao', 'trafego', 'geral'
+  members: string[]; // List of user emails or UIDs
+  memberNames?: Record<string, string>;
+  memberAvatars?: Record<string, string>;
+  icon?: string;
+  createdBy?: string;
+  createdAt: string;
+  lastMessageText?: string;
+  lastMessageTime?: string;
+  lastMessageSender?: string;
+  lastMessageType?: string;
+  unreadCount?: number;
+}
+
 export interface AppState {
   activeView: ViewType;
   organization: OrganizationState;
@@ -489,4 +652,9 @@ export interface AppState {
   employeeWorkSchedules?: EmployeeWorkSchedule[];
   leadershipGoals?: LeadershipGoal[];
   leadershipNotices?: LeadershipNotice[];
+  prospectionDemands?: ProspectionDemand[];
+  prospectionContracts?: ProspectionClosedContract[];
+  techifyPackages?: TechifyPackageOption[];
+  chatMessages?: ChatMessage[];
+  chatChannels?: ChatChannel[];
 }
