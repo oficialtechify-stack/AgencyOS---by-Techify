@@ -997,6 +997,7 @@ export async function updateUserPermissionsInFirestore(
 
 // Update existing user profile in Firestore
 export async function updateUserInFirestore(uid: string, data: Partial<FirestoreUserProfile>) {
+  if (!uid) return;
   const userRef = doc(db, 'users', uid);
   const sanitizedData: Record<string, any> = {};
   for (const [key, val] of Object.entries(data)) {
@@ -1005,6 +1006,71 @@ export async function updateUserInFirestore(uid: string, data: Partial<Firestore
     }
   }
   await setDoc(userRef, sanitizedData, { merge: true });
+}
+
+// Comprehensive profile updater: syncs Firestore by UID, by Email, in static list, and local session
+export async function updateUserProfileInFirestore(
+  targetUid: string | undefined | null,
+  targetEmail: string | undefined | null,
+  data: Partial<FirestoreUserProfile>
+) {
+  const sanitizedData = sanitizeFirestorePayload(data);
+  const normalizedEmail = (targetEmail || '').toLowerCase().trim();
+
+  // 1. Update in memory default team members array
+  if (normalizedEmail) {
+    const memIdx = AGENCY_REGISTERED_TEAM_MEMBERS.findIndex(
+      (m) => (m.email || '').toLowerCase().trim() === normalizedEmail
+    );
+    if (memIdx !== -1) {
+      AGENCY_REGISTERED_TEAM_MEMBERS[memIdx] = {
+        ...AGENCY_REGISTERED_TEAM_MEMBERS[memIdx],
+        ...data,
+      };
+    }
+  }
+
+  // 2. Update by UID in Firestore
+  if (targetUid) {
+    const userRef = doc(db, 'users', targetUid);
+    await setDoc(userRef, sanitizedData, { merge: true });
+  }
+
+  // 3. Update any documents matching email in Firestore
+  if (normalizedEmail) {
+    try {
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('email', '==', normalizedEmail));
+      const querySnap = await getDocs(q);
+      const batch = writeBatch(db);
+      let batchCount = 0;
+
+      querySnap.forEach((docSnap) => {
+        if (docSnap.id !== targetUid) {
+          batch.set(docSnap.ref, sanitizedData, { merge: true });
+          batchCount++;
+        }
+      });
+
+      if (batchCount > 0) {
+        await batch.commit();
+      }
+    } catch (err) {
+      console.warn('Erro ao atualizar documentos de usuário por e-mail:', err);
+    }
+  }
+
+  // 4. Update stored session if active
+  const stored = getStoredSession();
+  if (
+    stored &&
+    (stored.uid === targetUid || (stored.email && stored.email.toLowerCase().trim() === normalizedEmail))
+  ) {
+    setStoredSession({
+      ...stored,
+      name: data.name || stored.name,
+    });
+  }
 }
 
 // Auth Session Management (Supporting both Firebase Auth & Firestore Admin-Created Users)

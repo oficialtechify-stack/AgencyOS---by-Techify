@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { FirestoreUserProfile } from '../lib/firebase';
 import { TimeClockRecord } from '../types';
+import { compressAvatarImage } from '../lib/imageCompressor';
 
 interface ProfileViewProps {
   userProfile?: FirestoreUserProfile | null;
@@ -53,14 +54,17 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   );
   const [customStatus, setCustomStatus] = useState(userProfile?.customStatus || '');
   const [isSaving, setIsSaving] = useState(false);
+  const [isProcessingPhoto, setIsProcessingPhoto] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Synchronize state when userProfile prop updates
+  // Synchronize state when userProfile prop updates (only if not currently editing)
   React.useEffect(() => {
     if (userProfile) {
       if (userProfile.name) setName(userProfile.name);
       if (userProfile.email) setEmail(userProfile.email);
-      if (userProfile.avatarUrl !== undefined) setAvatarUrl(userProfile.avatarUrl);
+      if (userProfile.avatarUrl !== undefined && userProfile.avatarUrl !== '') {
+        setAvatarUrl(userProfile.avatarUrl);
+      }
       if (userProfile.phone !== undefined) setPhone(userProfile.phone);
       if (userProfile.whatsapp !== undefined) setWhatsapp(userProfile.whatsapp);
       if (userProfile.instagram !== undefined) setInstagram(userProfile.instagram);
@@ -70,7 +74,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       if (userProfile.workStatus) setWorkStatus(userProfile.workStatus);
       if (userProfile.customStatus !== undefined) setCustomStatus(userProfile.customStatus);
     }
-  }, [userProfile]);
+  }, [userProfile?.email, userProfile?.avatarUrl, userProfile?.name, userProfile?.role, userProfile?.department]);
 
   // Departments list
   const departments = [
@@ -91,27 +95,33 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       (r.userEmail || '').toLowerCase().trim() === (userProfile?.email || '').toLowerCase().trim()
   );
 
+  const processFile = async (file: File) => {
+    setIsProcessingPhoto(true);
+    setFeedback(null);
+    try {
+      // Compress and optimize image to 360x360 JPEG with high quality (~25KB payload)
+      const compressedDataUrl = await compressAvatarImage(file, 360, 0.85);
+      setAvatarUrl(compressedDataUrl);
+      setFeedback({
+        type: 'success',
+        text: 'Foto carregada e otimizada com sucesso! Clique em "Salvar Alterações" para gravar no sistema.',
+      });
+    } catch (err: any) {
+      console.error('Erro ao processar foto:', err);
+      setFeedback({ type: 'error', text: 'Não foi possível carregar esta imagem. Tente outro formato.' });
+    } finally {
+      setIsProcessingPhoto(false);
+    }
+  };
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    if (file.size > 2 * 1024 * 1024) {
-      setFeedback({ type: 'error', text: 'A imagem deve ter no máximo 2MB.' });
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) {
-        setAvatarUrl(event.target.result as string);
-        setFeedback({ type: 'success', text: 'Foto carregada! Clique em "Salvar Alterações".' });
-      }
-    };
-    reader.readAsDataURL(file);
+    processFile(file);
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSave = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setIsSaving(true);
     setFeedback(null);
 
@@ -129,7 +139,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         customStatus: customStatus.trim(),
       });
 
-      setFeedback({ type: 'success', text: 'Perfil atualizado com sucesso no Techify AgencyOS!' });
+      setFeedback({
+        type: 'success',
+        text: 'Perfil e foto salvos permanentemente no banco de dados com sucesso!',
+      });
       setTimeout(() => setFeedback(null), 4000);
     } catch (err: any) {
       setFeedback({ type: 'error', text: err?.message || 'Erro ao salvar alterações do perfil.' });
@@ -224,8 +237,16 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
             {/* Avatar Upload Section */}
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 p-4 rounded-xl bg-neutral-900/50 border border-neutral-800">
-              <div className="relative group shrink-0">
-                <div className="w-24 h-24 rounded-2xl bg-neutral-800 border-2 border-neutral-700 overflow-hidden flex items-center justify-center shadow-lg">
+              <div
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const droppedFile = e.dataTransfer.files?.[0];
+                  if (droppedFile) processFile(droppedFile);
+                }}
+                className="relative group shrink-0"
+              >
+                <div className="w-24 h-24 rounded-2xl bg-neutral-800 border-2 border-neutral-700 overflow-hidden flex items-center justify-center shadow-lg relative">
                   {avatarUrl ? (
                     <img
                       src={avatarUrl}
@@ -235,6 +256,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                     />
                   ) : (
                     <User className="w-10 h-10 text-neutral-500" />
+                  )}
+                  {isProcessingPhoto && (
+                    <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center text-[10px] text-white">
+                      <span className="animate-spin w-5 h-5 border-2 border-purple-400 border-t-transparent rounded-full mb-1" />
+                      <span>Processando</span>
+                    </div>
                   )}
                 </div>
                 <label className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 rounded-2xl flex flex-col items-center justify-center text-[10px] font-bold text-white cursor-pointer transition-opacity">
@@ -252,12 +279,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <div className="space-y-2 flex-1 text-center sm:text-left">
                 <strong className="text-xs font-bold text-white block">Foto de Perfil do Colaborador</strong>
                 <p className="text-[11px] text-neutral-400 leading-relaxed">
-                  Envie uma foto profissional para identificação no Chat da Empresa, Ponto Eletrônico e Demandas da Prospecção.
+                  Envie ou arraste uma foto profissional para identificação no Chat da Empresa, Ponto Eletrônico e Demandas da Prospecção.
                 </p>
                 <div className="flex items-center justify-center sm:justify-start gap-2 pt-1 flex-wrap">
                   <label className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-md">
                     <Upload className="w-3.5 h-3.5" />
-                    <span>Upload do Aparelho</span>
+                    <span>{isProcessingPhoto ? 'Processando Foto...' : 'Upload do Aparelho'}</span>
                     <input
                       type="file"
                       accept="image/*"

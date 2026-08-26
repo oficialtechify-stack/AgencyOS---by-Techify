@@ -718,6 +718,11 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
                 msg.readBy &&
                 Object.keys(msg.readBy).some((reader) => reader.toLowerCase() !== myEmail);
 
+              const senderUser = teamList.find(
+                (u) => (u.email || '').toLowerCase().trim() === (msg.senderEmail || '').toLowerCase().trim()
+              );
+              const effectiveSenderAvatar = senderUser?.avatarUrl || msg.senderAvatar;
+
               return (
                 <div
                   key={msg.id}
@@ -725,9 +730,9 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
                 >
                   {!isMine && (
                     <div className="w-8 h-8 rounded-full bg-neutral-800 border border-neutral-700 overflow-hidden shrink-0 flex items-center justify-center text-xs font-bold text-white mt-1">
-                      {msg.senderAvatar ? (
+                      {effectiveSenderAvatar ? (
                         <img
-                          src={msg.senderAvatar}
+                          src={effectiveSenderAvatar}
                           alt={msg.senderName}
                           className="w-full h-full object-cover"
                           referrerPolicy="no-referrer"

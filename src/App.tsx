@@ -29,6 +29,7 @@ import {
   deleteCollectionItem,
   updateCollectionItem,
   updateUserInFirestore,
+  updateUserProfileInFirestore,
   batchDeleteCollectionItems,
   resolvePrimaryAgencyOwnerUid,
   getStoredSession,
@@ -1381,12 +1382,29 @@ export default function App() {
     await markAgencyChatChannelAsRead(channelId, myEmail, userName);
   };
 
-  // Profile Update Handler
+  // Profile Update Handler (Permanent Firestore save & Realtime sync across all views)
   const handleUpdateUserProfile = async (data: Partial<FirestoreUserProfile>) => {
-    if (userProfile?.uid) {
-      setUserProfile((prev) => (prev ? { ...prev, ...data } : null));
-      await updateUserInFirestore(userProfile.uid, data);
-    }
+    const targetUid = userProfile?.uid || user?.uid;
+    const targetEmail = userProfile?.email || user?.email;
+
+    // Optimistically update active user profile
+    setUserProfile((prev) => (prev ? { ...prev, ...data } : null));
+
+    // Optimistically update allUsers so the entire UI and Chat updates in real-time
+    setAllUsers((prev) =>
+      prev.map((u) => {
+        if (
+          (targetUid && u.uid === targetUid) ||
+          (targetEmail && (u.email || '').toLowerCase().trim() === targetEmail.toLowerCase().trim())
+        ) {
+          return { ...u, ...data };
+        }
+        return u;
+      })
+    );
+
+    // Save permanently to Firestore (by UID and Email)
+    await updateUserProfileInFirestore(targetUid, targetEmail, data);
   };
 
   // Packages CRUD
