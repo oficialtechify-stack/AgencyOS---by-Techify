@@ -50,9 +50,11 @@ import {
   createUserWithAuthAndPermissions,
   updateUserPermissionsInFirestore,
   updateUserInFirestore,
+  updateUserProfileInFirestore,
   deleteUserFromFirestore,
   AGENCY_REGISTERED_TEAM_MEMBERS,
 } from '../lib/firebase';
+import { compressAvatarImage } from '../lib/imageCompressor';
 import {
   ALL_SYSTEM_MODULES,
   ALL_OPERATIONAL_MODULE_IDS,
@@ -395,9 +397,10 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
     if (!editingUser) return;
 
     try {
-      await updateUserInFirestore(editingUser.uid, {
+      await updateUserProfileInFirestore(editingUser.uid, editingUser.email, {
         name: editingUser.name || '',
         email: editingUser.email || '',
+        avatarUrl: editingUser.avatarUrl || '',
         userType: editingUser.userType,
         role: editingUser.role || 'Gestor de Tráfego',
         leadershipRole: editingUser.leadershipRole || (editingUser.role?.toLowerCase().includes('marketing') ? 'lider_marketing' : editingUser.role?.toLowerCase().includes('prospec') ? 'lider_prospeccao' : editingUser.role?.toLowerCase().includes('lider') ? 'lider_geral' : 'membro'),

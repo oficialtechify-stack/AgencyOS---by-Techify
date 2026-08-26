@@ -141,8 +141,15 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
     }
     for (const u of (allUsers || [])) {
       if (u && u.email) {
-        const existing = map.get(u.email.toLowerCase().trim());
-        map.set(u.email.toLowerCase().trim(), { ...existing, ...u });
+        const key = u.email.toLowerCase().trim();
+        const existing = map.get(key);
+        map.set(key, {
+          ...existing,
+          ...u,
+          avatarUrl: (u.avatarUrl && u.avatarUrl.trim()) || existing?.avatarUrl || '',
+        });
+      } else if (u && u.uid) {
+        map.set(u.uid, u);
       }
     }
     return Array.from(map.values()).filter((u) => u && u.email && u.status !== 'blocked' && u.status !== 'cancelled');

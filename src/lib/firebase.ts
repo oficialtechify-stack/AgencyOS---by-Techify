@@ -656,12 +656,21 @@ export function subscribeAllUsers(
         // Merge registered team with live Firestore users by email
         const emailMap = new Map<string, FirestoreUserProfile>();
         for (const def of AGENCY_REGISTERED_TEAM_MEMBERS) {
-          emailMap.set(def.email.toLowerCase().trim(), def);
+          if (def && def.email) {
+            emailMap.set(def.email.toLowerCase().trim(), def);
+          }
         }
         for (const u of users) {
           if (u.email) {
-            const existing = emailMap.get(u.email.toLowerCase().trim());
-            emailMap.set(u.email.toLowerCase().trim(), { ...existing, ...u });
+            const key = u.email.toLowerCase().trim();
+            const existing = emailMap.get(key);
+            emailMap.set(key, {
+              ...existing,
+              ...u,
+              avatarUrl: (u.avatarUrl && u.avatarUrl.trim()) || existing?.avatarUrl || '',
+            });
+          } else if (u.uid) {
+            emailMap.set(u.uid, u);
           }
         }
         onData(Array.from(emailMap.values()));
@@ -1054,6 +1063,10 @@ export async function updateUserProfileInFirestore(
 
       if (batchCount > 0) {
         await batch.commit();
+      } else if (!targetUid) {
+        // Create new document for this email
+        const newUserRef = doc(collection(db, 'users'));
+        await setDoc(newUserRef, { ...sanitizedData, email: normalizedEmail }, { merge: true });
       }
     } catch (err) {
       console.warn('Erro ao atualizar documentos de usuário por e-mail:', err);
