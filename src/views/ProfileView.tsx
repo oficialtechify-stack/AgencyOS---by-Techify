@@ -40,7 +40,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   onNavigateToPonto,
 }) => {
   const [name, setName] = useState(userProfile?.name || '');
-  const [email] = useState(userProfile?.email || '');
+  const [email, setEmail] = useState(userProfile?.email || '');
   const [avatarUrl, setAvatarUrl] = useState(userProfile?.avatarUrl || '');
   const [phone, setPhone] = useState(userProfile?.phone || '');
   const [whatsapp, setWhatsapp] = useState(userProfile?.whatsapp || '');
@@ -54,6 +54,23 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [customStatus, setCustomStatus] = useState(userProfile?.customStatus || '');
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Synchronize state when userProfile prop updates
+  React.useEffect(() => {
+    if (userProfile) {
+      if (userProfile.name) setName(userProfile.name);
+      if (userProfile.email) setEmail(userProfile.email);
+      if (userProfile.avatarUrl !== undefined) setAvatarUrl(userProfile.avatarUrl);
+      if (userProfile.phone !== undefined) setPhone(userProfile.phone);
+      if (userProfile.whatsapp !== undefined) setWhatsapp(userProfile.whatsapp);
+      if (userProfile.instagram !== undefined) setInstagram(userProfile.instagram);
+      if (userProfile.role !== undefined) setRole(userProfile.role);
+      if (userProfile.department) setDepartment(userProfile.department);
+      if (userProfile.bio !== undefined) setBio(userProfile.bio);
+      if (userProfile.workStatus) setWorkStatus(userProfile.workStatus);
+      if (userProfile.customStatus !== undefined) setCustomStatus(userProfile.customStatus);
+    }
+  }, [userProfile]);
 
   // Departments list
   const departments = [
@@ -146,9 +163,20 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={isSaving}
+            className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-black transition-all shadow-lg shadow-purple-600/30 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+          >
+            <Save className="w-4 h-4" />
+            <span>{isSaving ? 'Salvando...' : 'Salvar Alterações'}</span>
+          </button>
+
           {onNavigateToChat && (
             <button
+              type="button"
               onClick={onNavigateToChat}
               className="px-3.5 py-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-xs font-bold text-neutral-300 hover:text-white flex items-center gap-1.5 cursor-pointer transition-all"
             >

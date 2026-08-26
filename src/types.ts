@@ -187,7 +187,7 @@ export interface AdminUserRecord {
   notes: string;
 }
 
-export interface ChatMessage {
+export interface AIChatMessage {
   id: string;
   sender: 'user' | 'bot';
   text: string;

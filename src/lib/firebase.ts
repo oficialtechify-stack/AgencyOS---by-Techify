@@ -494,11 +494,151 @@ export async function batchDeleteCollectionItems(uid: string, collectionName: st
   await batch.commit();
 }
 
-// Subscribe to ALL Users across the platform for Admin Panel
+// Default Agency Team Members
+export const AGENCY_REGISTERED_TEAM_MEMBERS: FirestoreUserProfile[] = [
+  {
+    uid: 'user-rick-marcos',
+    name: 'Marcos Henrique',
+    email: 'rickmarketing81@gmail.com',
+    agencyName: 'Techify Agência',
+    role: 'CEO & Diretor Executivo',
+    department: 'gestao',
+    leadershipRole: 'lider_geral',
+    workStatus: 'online',
+    plan: 'Agency',
+    status: 'active',
+    designRole: 'admin',
+    canEditDesigns: true,
+    canCreateDesigns: true,
+    canApproveDesigns: true,
+    canPublishPosts: true,
+    canDeleteDesigns: true,
+    userType: 'employee',
+    trialStartDate: Date.now(),
+    trialEndsAt: Date.now() + 14 * 86400000,
+    createdAt: new Date().toISOString(),
+    allowedModules: ['dashboard', 'designer', 'studio-agency', 'social-hub', 'marketing', 'prospection', 'kanban', 'agenda', 'kpis', 'fluxo-caixa', 'maps-scraper', 'relatorios', 'chat', 'ponto'],
+  },
+  {
+    uid: 'user-vitoria-ellen',
+    name: 'Vitoria Ellen da Silva',
+    email: 'vitoriajob02@gmail.com',
+    agencyName: 'Techify Agência',
+    role: 'Lider de Designer',
+    department: 'design',
+    leadershipRole: 'lider_geral',
+    workStatus: 'online',
+    plan: 'Gratuito / Equipe',
+    status: 'active',
+    designRole: 'lider',
+    canEditDesigns: true,
+    canCreateDesigns: true,
+    canApproveDesigns: true,
+    canPublishPosts: true,
+    canDeleteDesigns: true,
+    userType: 'employee',
+    tempPasswordHint: 'AgOS@D3LPuH',
+    trialStartDate: Date.now(),
+    trialEndsAt: Date.now() + 14 * 86400000,
+    createdAt: new Date().toISOString(),
+    allowedModules: ['dashboard', 'designer', 'studio-agency', 'social-hub', 'kanban', 'agenda', 'relatorios', 'chat', 'ponto'],
+  },
+  {
+    uid: 'user-lucas-marketing',
+    name: 'Lucas Lider do marketing',
+    email: 'lucassgabriell876@gmail.com',
+    agencyName: 'Techify Agência',
+    role: 'Gestor de Tráfego',
+    department: 'marketing',
+    leadershipRole: 'lider_marketing',
+    workStatus: 'online',
+    plan: 'Gratuito / Equipe',
+    status: 'active',
+    designRole: 'lider',
+    canEditDesigns: true,
+    canCreateDesigns: true,
+    canApproveDesigns: true,
+    canPublishPosts: true,
+    canDeleteDesigns: false,
+    userType: 'employee',
+    tempPasswordHint: 'lucasgmail',
+    trialStartDate: Date.now(),
+    trialEndsAt: Date.now() + 14 * 86400000,
+    createdAt: new Date().toISOString(),
+    allowedModules: ['dashboard', 'marketing', 'campanhas', 'social-hub', 'relatorios', 'chat', 'ponto'],
+  },
+  {
+    uid: 'user-sabrina-suellen',
+    name: 'Sabrina Suellen',
+    email: 'suellensabrina36@gmail.com',
+    agencyName: 'Techify Agência',
+    role: 'Closer / SDR de Prospecção',
+    department: 'prospeccao',
+    leadershipRole: 'lider_prospeccao',
+    workStatus: 'online',
+    plan: 'Gratuito / Equipe',
+    status: 'active',
+    designRole: 'funcionario',
+    canEditDesigns: false,
+    canCreateDesigns: true,
+    canApproveDesigns: false,
+    canPublishPosts: true,
+    canDeleteDesigns: false,
+    userType: 'employee',
+    tempPasswordHint: '123456',
+    trialStartDate: Date.now(),
+    trialEndsAt: Date.now() + 14 * 86400000,
+    createdAt: new Date().toISOString(),
+    allowedModules: ['dashboard', 'prospection', 'maps-scraper', 'agenda', 'relatorios', 'chat', 'ponto'],
+  },
+];
+
+let hasSeededTeamInDb = false;
+
+// Ensure that all registered agency team members are written to Firestore as real documents
+export async function ensureAgencyTeamInFirestore() {
+  if (hasSeededTeamInDb) return;
+  hasSeededTeamInDb = true;
+  try {
+    const usersRef = collection(db, 'users');
+    const existingSnap = await getDocs(usersRef);
+    const existingEmails = new Set<string>();
+    existingSnap.forEach((d) => {
+      const u = d.data();
+      if (u && u.email) {
+        existingEmails.add(u.email.toLowerCase().trim());
+      }
+    });
+
+    const batch = writeBatch(db);
+    let writesCount = 0;
+
+    for (const member of AGENCY_REGISTERED_TEAM_MEMBERS) {
+      const email = member.email.toLowerCase().trim();
+      if (!existingEmails.has(email)) {
+        const memberRef = doc(db, 'users', member.uid);
+        batch.set(memberRef, sanitizeFirestorePayload(member), { merge: true });
+        writesCount++;
+      }
+    }
+
+    if (writesCount > 0) {
+      await batch.commit();
+      console.log(`✅ ${writesCount} membros da equipe sincronizados no Firestore com sucesso.`);
+    }
+  } catch (err) {
+    console.warn('Sincronização de equipe no Firestore:', err);
+  }
+}
+
+// Subscribe to ALL Users across the platform for Admin Panel and Chat
 export function subscribeAllUsers(
   onData: (users: FirestoreUserProfile[]) => void,
   onError?: (err: any) => void
 ) {
+  // Proactively ensure team is initialized in Firestore
+  ensureAgencyTeamInFirestore().catch((e) => console.warn(e));
+
   const usersRef = collection(db, 'users');
   return onSnapshot(
     usersRef,
@@ -507,10 +647,27 @@ export function subscribeAllUsers(
       snapshot.forEach((docSnap) => {
         users.push({ uid: docSnap.id, ...docSnap.data() } as FirestoreUserProfile);
       });
-      onData(users);
+
+      if (users.length === 0) {
+        onData(AGENCY_REGISTERED_TEAM_MEMBERS);
+      } else {
+        // Merge registered team with live Firestore users by email
+        const emailMap = new Map<string, FirestoreUserProfile>();
+        for (const def of AGENCY_REGISTERED_TEAM_MEMBERS) {
+          emailMap.set(def.email.toLowerCase().trim(), def);
+        }
+        for (const u of users) {
+          if (u.email) {
+            const existing = emailMap.get(u.email.toLowerCase().trim());
+            emailMap.set(u.email.toLowerCase().trim(), { ...existing, ...u });
+          }
+        }
+        onData(Array.from(emailMap.values()));
+      }
     },
     (err) => {
       console.error('Error fetching all users:', err);
+      onData(AGENCY_REGISTERED_TEAM_MEMBERS);
       if (onError) onError(err);
     }
   );

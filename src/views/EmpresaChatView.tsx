@@ -102,83 +102,16 @@ const DEFAULT_CHANNELS: ChatChannel[] = [
   },
 ];
 
-// Sample default users if no team members registered yet
-const DEFAULT_TEAM_MEMBERS: FirestoreUserProfile[] = [
-  {
-    uid: 'user-rick',
-    name: 'Marcos Henrique (Rick)',
-    email: 'rickmarketing81@gmail.com',
-    agencyName: 'Techify Agência',
-    role: 'CEO & Diretor Executivo',
-    department: 'gestao',
-    leadershipRole: 'lider_geral',
-    workStatus: 'online',
-    plan: 'Agency',
-    status: 'active',
-    trialStartDate: Date.now(),
-    trialEndsAt: Date.now() + 14 * 86400000,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    uid: 'user-mkt',
-    name: 'Larissa Alencar',
-    email: 'marketing@techify.com',
-    agencyName: 'Techify Agência',
-    role: 'Líder de Marketing & Growth',
-    department: 'marketing',
-    leadershipRole: 'lider_marketing',
-    workStatus: 'online',
-    plan: 'Agency',
-    status: 'active',
-    trialStartDate: Date.now(),
-    trialEndsAt: Date.now() + 14 * 86400000,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    uid: 'user-design',
-    name: 'Lucas Designer',
-    email: 'designer@techify.com',
-    agencyName: 'Techify Agência',
-    role: 'Lead UI/UX & Criativos',
-    department: 'design',
-    leadershipRole: 'lider_design',
-    workStatus: 'online',
-    plan: 'Agency',
-    status: 'active',
-    trialStartDate: Date.now(),
-    trialEndsAt: Date.now() + 14 * 86400000,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    uid: 'user-sdr',
-    name: 'Gabriel Closer',
-    email: 'prospeccao@techify.com',
-    agencyName: 'Techify Agência',
-    role: 'SDR & Especialista Comercial',
-    department: 'prospeccao',
-    leadershipRole: 'lider_prospeccao',
-    workStatus: 'online',
-    plan: 'Agency',
-    status: 'active',
-    trialStartDate: Date.now(),
-    trialEndsAt: Date.now() + 14 * 86400000,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    uid: 'user-trafego',
-    name: 'Renan Performance',
-    email: 'trafego@techify.com',
-    agencyName: 'Techify Agência',
-    role: 'Gestor de Tráfego Pago Sênior',
-    department: 'trafego',
-    workStatus: 'online',
-    plan: 'Agency',
-    status: 'active',
-    trialStartDate: Date.now(),
-    trialEndsAt: Date.now() + 14 * 86400000,
-    createdAt: new Date().toISOString(),
-  },
-];
+// Helper to infer department when not explicitly populated
+export function inferUserDepartment(u: Partial<FirestoreUserProfile>): 'gestao' | 'marketing' | 'design' | 'prospeccao' | 'trafego' {
+  if (u.department) return u.department as any;
+  const role = ((u.role || '') + ' ' + (u.leadershipRole || '')).toLowerCase();
+  if (role.includes('marketing')) return 'marketing';
+  if (role.includes('design') || role.includes('criativ') || role.includes('arte')) return 'design';
+  if (role.includes('prospec') || role.includes('sdr') || role.includes('closer') || role.includes('comercial')) return 'prospeccao';
+  if (role.includes('tráfego') || role.includes('trafego') || role.includes('gestor') || role.includes('performance') || role.includes('ads')) return 'trafego';
+  return 'gestao';
+}
 
 export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
   currentUser,
@@ -198,8 +131,8 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
   // Merge system channels with custom user channels
   const effectiveChannels = [...DEFAULT_CHANNELS, ...channels];
 
-  // Merge team members
-  const teamList = allUsers.length > 0 ? allUsers : DEFAULT_TEAM_MEMBERS;
+  // Only registered team members from Firestore
+  const teamList = (allUsers || []).filter((u) => u && u.email && u.status !== 'inactive');
 
   // Active channel / DM selection
   const [activeChannelId, setActiveChannelId] = useState<string>('grp_geral');
@@ -272,11 +205,16 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
     }
   };
 
-  // Scroll to bottom on new message
+  // Scroll to bottom on new message and mark as read only when unread messages exist
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    onMarkChannelAsRead(activeChannelId);
-  }, [messages, activeChannelId]);
+    const hasUnread = messages.some(
+      (m) => m.channelId === activeChannelId && (!myEmail || !m.readBy?.[myEmail])
+    );
+    if (hasUnread) {
+      onMarkChannelAsRead(activeChannelId);
+    }
+  }, [messages.length, activeChannelId]);
 
   // Handle switching to direct message with a user
   const handleSelectDirectChat = (targetUser: FirestoreUserProfile) => {
@@ -428,14 +366,23 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
     setSelectedMemberEmails([]);
   };
 
-  // Filter contacts by sector
+  // Filter contacts by sector (only registered users from Firestore)
   const filteredUsers = teamList.filter((u) => {
-    if (u.email.toLowerCase() === myEmail) return false; // don't list self in contacts
-    if (sectorFilter !== 'all' && u.department !== sectorFilter) return false;
+    if (!u.email || !u.name) return false;
+    if (u.email.toLowerCase().trim() === myEmail) return false; // don't list self in contacts
+    const dept = inferUserDepartment(u);
+    if (sectorFilter !== 'all') {
+      if (sectorFilter === 'trafego') {
+        const role = (u.role || '').toLowerCase();
+        if (dept !== 'trafego' && !role.includes('tráfego') && !role.includes('trafego') && !role.includes('gestor')) return false;
+      } else if (dept !== sectorFilter) {
+        return false;
+      }
+    }
     if (searchTerm.trim()) {
       const q = searchTerm.toLowerCase();
-      const matchName = u.name.toLowerCase().includes(q);
-      const matchEmail = u.email.toLowerCase().includes(q);
+      const matchName = (u.name || '').toLowerCase().includes(q);
+      const matchEmail = (u.email || '').toLowerCase().includes(q);
       const matchRole = (u.role || '').toLowerCase().includes(q);
       if (!matchName && !matchEmail && !matchRole) return false;
     }
@@ -446,11 +393,11 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
   const activeChannelObj = effectiveChannels.find((c) => c.id === activeChannelId);
 
   return (
-    <div className="h-[calc(100vh-4rem)] bg-[#070707] text-white flex flex-col md:flex-row overflow-hidden font-sans">
+    <div className="h-full w-full bg-[#070707] text-white flex flex-col md:flex-row overflow-hidden font-sans">
       {/* LEFT SIDEBAR: Channels & Team List with Live TimeClock Presence */}
       <div className="w-full md:w-80 lg:w-88 bg-[#0a0a0a] border-r border-neutral-800 flex flex-col h-full shrink-0">
         {/* Sidebar Header */}
-        <div className="p-4 border-b border-neutral-800 space-y-3">
+        <div className="p-3.5 sm:p-4 border-b border-neutral-800 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-xl bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400">
@@ -558,63 +505,79 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
           <div className="space-y-1 pt-2 border-t border-neutral-800/80">
             <div className="px-2 text-[10px] font-black text-neutral-500 uppercase tracking-wider flex items-center justify-between">
               <span>Equipe & Status de Ponto</span>
-              <span className="text-[9px] font-normal">{filteredUsers.length} membros</span>
+              <span className="text-[9px] font-normal">{filteredUsers.length} {filteredUsers.length === 1 ? 'membro' : 'membros'}</span>
             </div>
 
-            {filteredUsers.map((user) => {
-              const timeClock = getUserTimeClockStatus(user.email);
-              const isDirectActive = activeRecipient?.email.toLowerCase() === user.email.toLowerCase();
+            {filteredUsers.length === 0 ? (
+              <div className="p-4 text-center text-neutral-500 text-xs border border-dashed border-neutral-800/80 rounded-2xl my-2 flex flex-col items-center justify-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-neutral-900 border border-neutral-800 flex items-center justify-center text-neutral-400">
+                  <Users className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="font-bold text-neutral-300 text-xs">Nenhum colega cadastrado</p>
+                  <p className="text-[10px] text-neutral-500 mt-0.5 leading-relaxed">
+                    {sectorFilter !== 'all'
+                      ? 'Nenhum membro ativo neste setor.'
+                      : 'Apenas colaboradores cadastrados na equipe aparecem aqui.'}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              filteredUsers.map((user) => {
+                const timeClock = getUserTimeClockStatus(user.email);
+                const isDirectActive = activeRecipient?.email.toLowerCase() === user.email.toLowerCase();
 
-              return (
-                <button
-                  key={user.uid || user.email}
-                  onClick={() => handleSelectDirectChat(user)}
-                  className={`w-full p-2.5 rounded-xl text-left transition-all cursor-pointer flex items-center justify-between ${
-                    isDirectActive
-                      ? 'bg-blue-600/20 border border-blue-500 text-white shadow-md'
-                      : 'hover:bg-neutral-900/80 text-neutral-300 border border-transparent'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="relative shrink-0">
-                      <div className="w-8 h-8 rounded-full bg-neutral-800 border border-neutral-700 overflow-hidden flex items-center justify-center">
-                        {user.avatarUrl ? (
-                          <img
-                            src={user.avatarUrl}
-                            alt={user.name}
-                            className="w-full h-full object-cover"
-                            referrerPolicy="no-referrer"
-                          />
-                        ) : (
-                          <User className="w-4 h-4 text-neutral-400" />
-                        )}
-                      </div>
-                      {/* Live presence indicator badge */}
-                      <span
-                        className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#0a0a0a] ${timeClock.dotColor}`}
-                      />
-                    </div>
-
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <strong className="text-xs font-bold text-white truncate block">
-                          {user.name}
-                        </strong>
-                      </div>
-                      <div className="text-[10px] text-neutral-400 truncate">
-                        {user.role || 'Especialista'}
-                      </div>
-                    </div>
-                  </div>
-
-                  <span
-                    className={`text-[9px] px-2 py-0.5 rounded-md border shrink-0 ${timeClock.badgeColor}`}
+                return (
+                  <button
+                    key={user.uid || user.email}
+                    onClick={() => handleSelectDirectChat(user)}
+                    className={`w-full p-2.5 rounded-xl text-left transition-all cursor-pointer flex items-center justify-between ${
+                      isDirectActive
+                        ? 'bg-blue-600/20 border border-blue-500 text-white shadow-md'
+                        : 'hover:bg-neutral-900/80 text-neutral-300 border border-transparent'
+                    }`}
                   >
-                    {timeClock.label}
-                  </span>
-                </button>
-              );
-            })}
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="relative shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-neutral-800 border border-neutral-700 overflow-hidden flex items-center justify-center">
+                          {user.avatarUrl ? (
+                            <img
+                              src={user.avatarUrl}
+                              alt={user.name}
+                              className="w-full h-full object-cover"
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <User className="w-4 h-4 text-neutral-400" />
+                          )}
+                        </div>
+                        {/* Live presence indicator badge */}
+                        <span
+                          className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#0a0a0a] ${timeClock.dotColor}`}
+                        />
+                      </div>
+
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <strong className="text-xs font-bold text-white truncate block">
+                            {user.name}
+                          </strong>
+                        </div>
+                        <div className="text-[10px] text-neutral-400 truncate">
+                          {user.role || 'Especialista'}
+                        </div>
+                      </div>
+                    </div>
+
+                    <span
+                      className={`text-[9px] px-2 py-0.5 rounded-md border shrink-0 ${timeClock.badgeColor}`}
+                    >
+                      {timeClock.label}
+                    </span>
+                  </button>
+                );
+              })
+            )}
           </div>
         </div>
       </div>
@@ -1098,28 +1061,34 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
               </div>
 
               <div>
-                <label className="text-xs font-bold text-neutral-300 block mb-1">Selecionar Membros</label>
+                <label className="text-xs font-bold text-neutral-300 block mb-1">Selecionar Membros da Equipe</label>
                 <div className="max-h-40 overflow-y-auto space-y-1 p-2 rounded-xl bg-neutral-900 border border-neutral-800 custom-scrollbar">
-                  {teamList.map((u) => (
-                    <label
-                      key={u.email}
-                      className="flex items-center gap-2 p-1.5 hover:bg-neutral-800 rounded-lg cursor-pointer text-xs text-neutral-300"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedMemberEmails.includes(u.email)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedMemberEmails((prev) => [...prev, u.email]);
-                          } else {
-                            setSelectedMemberEmails((prev) => prev.filter((em) => em !== u.email));
-                          }
-                        }}
-                        className="rounded border-neutral-700 text-blue-600 focus:ring-0"
-                      />
-                      <span>{u.name} ({u.role || u.department})</span>
-                    </label>
-                  ))}
+                  {teamList.filter((u) => u.email.toLowerCase().trim() !== myEmail).length === 0 ? (
+                    <p className="text-xs text-neutral-500 p-2 text-center">Nenhum outro membro cadastrado na agência ainda.</p>
+                  ) : (
+                    teamList
+                      .filter((u) => u.email.toLowerCase().trim() !== myEmail)
+                      .map((u) => (
+                        <label
+                          key={u.email}
+                          className="flex items-center gap-2 p-1.5 hover:bg-neutral-800 rounded-lg cursor-pointer text-xs text-neutral-300"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedMemberEmails.includes(u.email)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedMemberEmails((prev) => [...prev, u.email]);
+                              } else {
+                                setSelectedMemberEmails((prev) => prev.filter((em) => em !== u.email));
+                              }
+                            }}
+                            className="rounded border-neutral-700 text-blue-600 focus:ring-0"
+                          />
+                          <span>{u.name} ({u.role || u.department || 'Equipe'})</span>
+                        </label>
+                      ))
+                  )}
                 </div>
               </div>
 

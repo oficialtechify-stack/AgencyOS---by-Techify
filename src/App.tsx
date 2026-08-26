@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { ViewType, AppState, TimeClockRecord, ProspectionDemand, ProspectionClosedContract } from './types';
+import {
+  ViewType,
+  AppState,
+  TimeClockRecord,
+  ProspectionDemand,
+  ProspectionClosedContract,
+  ChatMessage,
+  ChatChannel,
+  TechifyPackageOption,
+} from './types';
 import { loadState, saveState } from './lib/storage';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import {
@@ -7,6 +16,7 @@ import {
   FirestoreUserProfile,
   subscribeToUserProfile,
   subscribeToUserCollection,
+  subscribeAllUsers,
   getOrCreateUserProfile,
   addCollectionItem,
   deleteCollectionItem,
@@ -37,6 +47,8 @@ import { KPIsView } from './views/KPIsView';
 import { FluxoCaixaView } from './views/FluxoCaixaView';
 import { MapsScraperView } from './views/MapsScraperView';
 import { ProspectionView } from './views/ProspectionView';
+import { EmpresaChatView } from './views/EmpresaChatView';
+import { ProfileView } from './views/ProfileView';
 import { SocialHubView } from './views/SocialHubView';
 import { EstoqueView } from './views/EstoqueView';
 import { KanbanView } from './views/KanbanView';
@@ -61,6 +73,7 @@ export default function App() {
   // Firebase Auth & Realtime Firestore State
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<FirestoreUserProfile | null>(null);
+  const [allUsers, setAllUsers] = useState<FirestoreUserProfile[]>([]);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>('login');
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -85,6 +98,12 @@ export default function App() {
       });
       unsubs = [];
     };
+
+    // Global all users subscription for chat and team recognition
+    const unsubAllUsers = subscribeAllUsers((users) => {
+      setAllUsers(users);
+    });
+    unsubs.push(unsubAllUsers);
 
     let activeDataUnsubs: (() => void)[] = [];
 
@@ -164,6 +183,15 @@ export default function App() {
       const unsubProspectionContracts = subscribeToUserCollection(dataOwnerUid, 'prospectionContracts', (prospectionContracts) => {
         setState((prev) => ({ ...prev, prospectionContracts }));
       });
+      const unsubTechifyPackages = subscribeToUserCollection(dataOwnerUid, 'techifyPackages', (techifyPackages) => {
+        setState((prev) => ({ ...prev, techifyPackages }));
+      });
+      const unsubChatMessages = subscribeToUserCollection(dataOwnerUid, 'chatMessages', (chatMessages) => {
+        setState((prev) => ({ ...prev, chatMessages }));
+      });
+      const unsubChatChannels = subscribeToUserCollection(dataOwnerUid, 'chatChannels', (chatChannels) => {
+        setState((prev) => ({ ...prev, chatChannels }));
+      });
 
       activeDataUnsubs.push(
         unsubKPIs,
@@ -189,7 +217,10 @@ export default function App() {
         unsubLeadershipNotices,
         unsubSchedules,
         unsubProspectionDemands,
-        unsubProspectionContracts
+        unsubProspectionContracts,
+        unsubTechifyPackages,
+        unsubChatMessages,
+        unsubChatChannels
       );
     };
 
@@ -1248,6 +1279,167 @@ export default function App() {
     }
   };
 
+  // Chat Handlers
+  const handleSendMessage = async (msgData: Omit<ChatMessage, 'id' | 'createdAt'>) => {
+    const newMsg: ChatMessage = {
+      ...msgData,
+      id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      createdAt: new Date().toISOString(),
+    };
+    setState((prev) => ({
+      ...prev,
+      chatMessages: [...(prev.chatMessages || []), newMsg],
+    }));
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await addCollectionItem(targetUid, 'chatMessages', newMsg);
+    }
+  };
+
+  const handleDeleteChatMessage = async (msgId: string) => {
+    setState((prev) => ({
+      ...prev,
+      chatMessages: (prev.chatMessages || []).map((m) =>
+        m.id === msgId ? { ...m, isDeleted: true, text: 'Mensagem apagada' } : m
+      ),
+    }));
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await updateCollectionItem(targetUid, 'chatMessages', msgId, {
+        isDeleted: true,
+        text: 'Mensagem apagada',
+      });
+    }
+  };
+
+  const handleCreateChatChannel = async (channelData: Omit<ChatChannel, 'id' | 'createdAt'>) => {
+    const newChannel: ChatChannel = {
+      ...channelData,
+      id: `chan-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      createdAt: new Date().toISOString(),
+    };
+    setState((prev) => ({
+      ...prev,
+      chatChannels: [...(prev.chatChannels || []), newChannel],
+    }));
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await addCollectionItem(targetUid, 'chatChannels', newChannel);
+    }
+  };
+
+  const handleMarkChannelAsRead = async (channelId: string) => {
+    const myEmail = userProfile?.email || user?.email;
+    if (!myEmail) return;
+    const nowIso = new Date().toISOString();
+
+    const currentMsgs = state.chatMessages || [];
+    const unreadMsgs = currentMsgs.filter(
+      (m) => m.channelId === channelId && !m.readBy?.[myEmail]
+    );
+
+    if (unreadMsgs.length === 0) return;
+
+    setState((prev) => {
+      const msgs = prev.chatMessages || [];
+      const hasUnread = msgs.some((m) => m.channelId === channelId && !m.readBy?.[myEmail]);
+      if (!hasUnread) return prev;
+
+      return {
+        ...prev,
+        chatMessages: msgs.map((m) => {
+          if (m.channelId === channelId && !m.readBy?.[myEmail]) {
+            return {
+              ...m,
+              readBy: {
+                ...(m.readBy || {}),
+                [myEmail]: { readAt: nowIso, userName: userProfile?.name || 'Membro' },
+              },
+            };
+          }
+          return m;
+        }),
+      };
+    });
+
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      for (const msg of unreadMsgs) {
+        await updateCollectionItem(targetUid, 'chatMessages', msg.id, {
+          readBy: {
+            ...(msg.readBy || {}),
+            [myEmail]: { readAt: nowIso, userName: userProfile?.name || 'Membro' },
+          },
+        });
+      }
+    }
+  };
+
+  // Profile Update Handler
+  const handleUpdateUserProfile = async (data: Partial<FirestoreUserProfile>) => {
+    if (userProfile?.uid) {
+      setUserProfile((prev) => (prev ? { ...prev, ...data } : null));
+      await updateUserInFirestore(userProfile.uid, data);
+    }
+  };
+
+  // Packages CRUD
+  const handleSaveTechifyPackage = async (pkg: TechifyPackageOption) => {
+    setState((prev) => {
+      const existing = (prev.techifyPackages || []).find((p) => p.id === pkg.id);
+      if (existing) {
+        return {
+          ...prev,
+          techifyPackages: (prev.techifyPackages || []).map((p) => (p.id === pkg.id ? pkg : p)),
+        };
+      }
+      return {
+        ...prev,
+        techifyPackages: [...(prev.techifyPackages || []), pkg],
+      };
+    });
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await addCollectionItem(targetUid, 'techifyPackages', pkg);
+    }
+  };
+
+  const handleDeleteTechifyPackage = async (id: string) => {
+    setState((prev) => ({
+      ...prev,
+      techifyPackages: (prev.techifyPackages || []).filter((p) => p.id !== id),
+    }));
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await deleteCollectionItem(targetUid, 'techifyPackages', id);
+    }
+  };
+
+  const handleSharePackageInChat = async (pkg: TechifyPackageOption) => {
+    if (!userProfile) return;
+    const shareMessage: Omit<ChatMessage, 'id' | 'createdAt'> = {
+      channelId: 'grp_prospeccao',
+      senderUid: userProfile.uid || 'usr',
+      senderName: userProfile.name || 'Membro Comercial',
+      senderEmail: userProfile.email || '',
+      senderAvatar: userProfile.avatarUrl,
+      senderDepartment: userProfile.department || 'prospeccao',
+      senderRole: userProfile.role || 'Especialista em Vendas',
+      text: `📦 Solução Oficial Techify: *${pkg.name}* (R$ ${pkg.suggestedPrice.toLocaleString('pt-BR')})`,
+      type: 'agency_share',
+      agencyShareData: {
+        type: 'package',
+        title: pkg.name,
+        subtitle: pkg.description,
+        value: `R$ ${pkg.suggestedPrice.toLocaleString('pt-BR')}`,
+        statusBadge: pkg.badge || 'Solução Techify',
+        targetView: 'prospection',
+      },
+    };
+    await handleSendMessage(shareMessage);
+    setView('chat');
+  };
+
   // Render Public Landing View
   if (state.activeView === 'landing') {
     return (
@@ -1317,10 +1509,10 @@ export default function App() {
 
         {/* Main Content View Area */}
         <main
-          className={`flex-1 h-full overflow-y-auto min-h-0 ${
-            state.activeView === 'studio-agency'
-              ? 'p-0 max-w-none w-full overflow-x-hidden'
-              : 'p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full'
+          className={`flex-1 h-full min-h-0 ${
+            state.activeView === 'studio-agency' || state.activeView === 'chat'
+              ? 'p-0 max-w-none w-full overflow-hidden'
+              : 'p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full overflow-y-auto'
           }`}
         >
           {!hasModuleAccess(state.activeView, userProfile) ? (
@@ -1370,10 +1562,39 @@ export default function App() {
                 />
               )}
 
+              {state.activeView === 'chat' && (
+                <EmpresaChatView
+                  currentUser={userProfile}
+                  userProfile={userProfile}
+                  allUsers={allUsers}
+                  messages={state.chatMessages || []}
+                  channels={state.chatChannels || []}
+                  timeClockRecords={state.timeClockRecords || []}
+                  prospectionDemands={state.prospectionDemands || []}
+                  prospectionContracts={state.prospectionContracts || []}
+                  techifyPackages={state.techifyPackages || []}
+                  onSendMessage={handleSendMessage}
+                  onDeleteMessage={handleDeleteChatMessage}
+                  onCreateChannel={handleCreateChatChannel}
+                  onMarkChannelAsRead={handleMarkChannelAsRead}
+                />
+              )}
+
+              {state.activeView === 'profile' && (
+                <ProfileView
+                  userProfile={userProfile}
+                  timeClockRecords={state.timeClockRecords || []}
+                  onUpdateProfile={handleUpdateUserProfile}
+                  onNavigateToChat={() => setView('chat')}
+                  onNavigateToPonto={() => setView('ponto')}
+                />
+              )}
+
               {state.activeView === 'prospection' && (
                 <ProspectionView
                   demands={state.prospectionDemands || []}
                   contracts={state.prospectionContracts || []}
+                  packages={state.techifyPackages || []}
                   currentUser={userProfile}
                   onAddDemand={handleAddProspectionDemand}
                   onUpdateDemand={handleUpdateProspectionDemand}
@@ -1382,6 +1603,9 @@ export default function App() {
                   onAddContract={handleAddProspectionContract}
                   onUpdateContract={handleUpdateProspectionContract}
                   onDeleteContract={handleDeleteProspectionContract}
+                  onSavePackage={handleSaveTechifyPackage}
+                  onDeletePackage={handleDeleteTechifyPackage}
+                  onShareInChat={handleSharePackageInChat}
                 />
               )}
 

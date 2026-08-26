@@ -268,12 +268,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* User Profile Footer */}
         <div className="p-3 px-4 border-t border-neutral-800 bg-[#0a0a0a] flex items-center justify-between">
-          <div className="flex items-center gap-2.5 overflow-hidden">
-            <div className="w-8 h-8 rounded-full bg-neutral-900 border border-neutral-700 flex items-center justify-center text-xs font-bold text-white shrink-0">
-              <UserIcon className="w-4 h-4 text-white" />
+          <button
+            type="button"
+            onClick={() => handleNav('profile')}
+            className="flex items-center gap-2.5 overflow-hidden text-left hover:opacity-80 transition-opacity cursor-pointer group flex-1 mr-2"
+            title="Ver Meu Perfil & Crachá Digital"
+          >
+            <div className="w-8 h-8 rounded-full bg-neutral-900 border border-neutral-700 flex items-center justify-center text-xs font-bold text-white shrink-0 overflow-hidden">
+              {profile.avatarUrl ? (
+                <img
+                  src={profile.avatarUrl}
+                  alt={profile.name}
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <UserIcon className="w-4 h-4 text-white" />
+              )}
             </div>
             <div className="truncate">
-              <div className="text-xs font-bold text-white truncate flex items-center gap-1">
+              <div className="text-xs font-bold text-white truncate flex items-center gap-1 group-hover:text-purple-400 transition-colors">
                 <span>{profile.name || 'Marcos Henrique'}</span>
                 {isMaster && (
                   <span className="text-[9px] bg-white text-black px-1 rounded font-black">
@@ -285,7 +299,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {profile.email || 'rickmarketing81@gmail.com'}
               </div>
             </div>
-          </div>
+          </button>
           <button
             onClick={handleExit}
             title="Sair / Encerrar Sessão"

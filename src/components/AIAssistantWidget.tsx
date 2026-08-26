@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Bot, X, Send, Sparkles } from 'lucide-react';
-import { ChatMessage } from '../types';
+import { AIChatMessage } from '../types';
 
 interface AIAssistantWidgetProps {
   systemContext?: any;
@@ -8,7 +8,7 @@ interface AIAssistantWidgetProps {
 
 export const AIAssistantWidget: React.FC<AIAssistantWidgetProps> = ({ systemContext = {} }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([
+  const [messages, setMessages] = useState<AIChatMessage[]>([
     {
       id: 'm1',
       sender: 'bot',
@@ -24,7 +24,7 @@ export const AIAssistantWidget: React.FC<AIAssistantWidgetProps> = ({ systemCont
     const userMsg = input.trim();
     setInput('');
 
-    const newMsg: ChatMessage = {
+    const newMsg: AIChatMessage = {
       id: Date.now().toString(),
       sender: 'user',
       text: userMsg,
@@ -42,7 +42,7 @@ export const AIAssistantWidget: React.FC<AIAssistantWidgetProps> = ({ systemCont
       });
       const data = await res.json();
 
-      const botReply: ChatMessage = {
+      const botReply: AIChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: 'bot',
         text: data.text || 'Processado com sucesso.',
@@ -50,7 +50,7 @@ export const AIAssistantWidget: React.FC<AIAssistantWidgetProps> = ({ systemCont
       };
       setMessages((prev) => [...prev, botReply]);
     } catch (e) {
-      const errorReply: ChatMessage = {
+      const errorReply: AIChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: 'bot',
         text: 'Desculpe, ocorreu uma falha ao comunicar com o servidor da IA.',
