@@ -41,6 +41,7 @@ import {
   Target,
   MapPin,
   Rocket,
+  Loader2,
 } from 'lucide-react';
 import { ViewType } from '../types';
 import {
@@ -81,6 +82,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
   const [addUserTypeSelection, setAddUserTypeSelection] = useState<'employee' | 'client'>('employee');
   const [editingUser, setEditingUser] = useState<FirestoreUserProfile | null>(null);
   const [permissionsModalUser, setPermissionsModalUser] = useState<FirestoreUserProfile | null>(null);
+  const [isSavingPermissions, setIsSavingPermissions] = useState(false);
   const [deletingUser, setDeletingUser] = useState<FirestoreUserProfile | null>(null);
 
   // New User Form State
@@ -464,27 +466,41 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
   };
 
   const handleSavePermissions = async () => {
-    if (!permissionsModalUser) return;
+    if (!permissionsModalUser || isSavingPermissions) return;
+    setIsSavingPermissions(true);
 
     try {
+      const extraFields = {
+        allowedModules: currentSelectedModules,
+        designRole: permDesignRole,
+        leadershipRole: permLeadershipRole,
+        canEditDesigns: permCanEditDesigns,
+        canCreateDesigns: permCanCreateDesigns,
+        canApproveDesigns: permCanApproveDesigns,
+        canPublishPosts: permCanPublishPosts,
+        canDeleteDesigns: permCanDeleteDesigns,
+      };
+
       await updateUserPermissionsInFirestore(
         permissionsModalUser.uid,
         currentSelectedModules,
-        {
-          designRole: permDesignRole,
-          leadershipRole: permLeadershipRole,
-          canEditDesigns: permCanEditDesigns,
-          canCreateDesigns: permCanCreateDesigns,
-          canApproveDesigns: permCanApproveDesigns,
-          canPublishPosts: permCanPublishPosts,
-          canDeleteDesigns: permCanDeleteDesigns,
-        }
+        extraFields
       );
-      showToast(`Permissões e acessos de ${permissionsModalUser.email} atualizados com sucesso!`);
+
+      // Optimistic update of local users state
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.uid === permissionsModalUser.uid ? { ...u, ...extraFields } : u
+        )
+      );
+
+      showToast(`Permissões e acessos de ${permissionsModalUser.name || permissionsModalUser.email} atualizados com sucesso!`);
       setPermissionsModalUser(null);
     } catch (err) {
       console.error('Erro ao atualizar permissões:', err);
       showToast('Erro ao salvar permissões no banco de dados.');
+    } finally {
+      setIsSavingPermissions(false);
     }
   };
 
@@ -2177,18 +2193,24 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-neutral-800">
                 <button
                   type="button"
+                  disabled={isSavingPermissions}
                   onClick={() => setPermissionsModalUser(null)}
-                  className="px-4 py-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-neutral-300 font-bold cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-neutral-300 font-bold cursor-pointer disabled:opacity-50"
                 >
                   Cancelar
                 </button>
                 <button
                   type="button"
+                  disabled={isSavingPermissions}
                   onClick={handleSavePermissions}
-                  className="px-5 py-2 rounded-xl bg-white hover:bg-neutral-200 text-black font-black flex items-center gap-2 shadow-md cursor-pointer"
+                  className="px-5 py-2 rounded-xl bg-white hover:bg-neutral-200 text-black font-black flex items-center gap-2 shadow-md cursor-pointer transition-all disabled:opacity-50"
                 >
-                  <Check className="w-4 h-4 stroke-[3]" />
-                  Salvar Permissões
+                  {isSavingPermissions ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-black" />
+                  ) : (
+                    <Check className="w-4 h-4 stroke-[3]" />
+                  )}
+                  <span>{isSavingPermissions ? 'Salvando...' : 'Salvar Permissões'}</span>
                 </button>
               </div>
             </div>

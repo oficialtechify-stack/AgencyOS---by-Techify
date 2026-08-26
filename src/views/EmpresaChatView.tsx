@@ -39,7 +39,7 @@ import {
   ProspectionClosedContract,
   TechifyPackageOption,
 } from '../types';
-import { FirestoreUserProfile } from '../lib/firebase';
+import { FirestoreUserProfile, AGENCY_REGISTERED_TEAM_MEMBERS } from '../lib/firebase';
 import { TECHIFY_PACKAGES } from '../data/techifyPackages';
 
 interface EmpresaChatViewProps {
@@ -131,8 +131,22 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
   // Merge system channels with custom user channels
   const effectiveChannels = [...DEFAULT_CHANNELS, ...channels];
 
-  // Only registered team members from Firestore
-  const teamList = (allUsers || []).filter((u) => u && u.email && u.status !== 'inactive');
+  // Resilient team list: merges registered system members with live Firestore users
+  const teamList = React.useMemo(() => {
+    const map = new Map<string, FirestoreUserProfile>();
+    for (const def of AGENCY_REGISTERED_TEAM_MEMBERS) {
+      if (def && def.email) {
+        map.set(def.email.toLowerCase().trim(), def);
+      }
+    }
+    for (const u of (allUsers || [])) {
+      if (u && u.email) {
+        const existing = map.get(u.email.toLowerCase().trim());
+        map.set(u.email.toLowerCase().trim(), { ...existing, ...u });
+      }
+    }
+    return Array.from(map.values()).filter((u) => u && u.email && u.status !== 'blocked' && u.status !== 'cancelled');
+  }, [allUsers]);
 
   // Active channel / DM selection
   const [activeChannelId, setActiveChannelId] = useState<string>('grp_geral');
@@ -375,6 +389,15 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
       if (sectorFilter === 'trafego') {
         const role = (u.role || '').toLowerCase();
         if (dept !== 'trafego' && !role.includes('tráfego') && !role.includes('trafego') && !role.includes('gestor')) return false;
+      } else if (sectorFilter === 'marketing') {
+        const role = (u.role || '').toLowerCase();
+        if (dept !== 'marketing' && !role.includes('marketing') && !role.includes('mkt')) return false;
+      } else if (sectorFilter === 'design') {
+        const role = (u.role || '').toLowerCase();
+        if (dept !== 'design' && !role.includes('design') && !role.includes('designer') && !role.includes('arte')) return false;
+      } else if (sectorFilter === 'prospeccao') {
+        const role = (u.role || '').toLowerCase();
+        if (dept !== 'prospeccao' && !role.includes('prospec') && !role.includes('sdr') && !role.includes('closer') && !role.includes('comercial')) return false;
       } else if (dept !== sectorFilter) {
         return false;
       }
@@ -527,6 +550,14 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
                 const timeClock = getUserTimeClockStatus(user.email);
                 const isDirectActive = activeRecipient?.email.toLowerCase() === user.email.toLowerCase();
 
+                // Compute deterministic DM channel ID to check unread messages
+                const targetEmail = (user.email || '').toLowerCase().trim();
+                const pair = [myEmail, targetEmail].sort();
+                const dmChanId = `dm_${pair[0].replace(/[^a-zA-Z0-9]/g, '_')}_${pair[1].replace(/[^a-zA-Z0-9]/g, '_')}`;
+                const unreadInDM = messages.filter(
+                  (m) => m.channelId === dmChanId && (!m.readBy || !m.readBy[myEmail])
+                ).length;
+
                 return (
                   <button
                     key={user.uid || user.email}
@@ -569,11 +600,18 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
                       </div>
                     </div>
 
-                    <span
-                      className={`text-[9px] px-2 py-0.5 rounded-md border shrink-0 ${timeClock.badgeColor}`}
-                    >
-                      {timeClock.label}
-                    </span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {unreadInDM > 0 && (
+                        <span className="px-1.5 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-black shrink-0 animate-pulse">
+                          {unreadInDM}
+                        </span>
+                      )}
+                      <span
+                        className={`text-[9px] px-2 py-0.5 rounded-md border shrink-0 ${timeClock.badgeColor}`}
+                      >
+                        {timeClock.label}
+                      </span>
+                    </div>
                   </button>
                 );
               })

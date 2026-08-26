@@ -42,6 +42,8 @@ import {
   DesignBriefingDemand,
   DesignPackage,
   DesignComment,
+  ChatMessage,
+  ChatChannel,
 } from '../types';
 
 // Initialize Firebase
@@ -673,6 +675,109 @@ export function subscribeAllUsers(
   );
 }
 
+// Global Agency Chat Messages Subscription (Realtime, shared across entire team)
+export function subscribeAgencyChatMessages(
+  onData: (messages: ChatMessage[]) => void,
+  onError?: (err: any) => void
+) {
+  const chatRef = collection(db, 'agencyChatMessages');
+  return onSnapshot(
+    chatRef,
+    (snapshot) => {
+      const messages: ChatMessage[] = [];
+      snapshot.forEach((docSnap) => {
+        messages.push({ id: docSnap.id, ...docSnap.data() } as ChatMessage);
+      });
+      // Sort chronologically
+      messages.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+      onData(messages);
+    },
+    (err) => {
+      console.error('Erro ao subscrever mensagens do chat da agência:', err);
+      if (onError) onError(err);
+    }
+  );
+}
+
+// Global Agency Chat Channels Subscription
+export function subscribeAgencyChatChannels(
+  onData: (channels: ChatChannel[]) => void,
+  onError?: (err: any) => void
+) {
+  const chanRef = collection(db, 'agencyChatChannels');
+  return onSnapshot(
+    chanRef,
+    (snapshot) => {
+      const channels: ChatChannel[] = [];
+      snapshot.forEach((docSnap) => {
+        channels.push({ id: docSnap.id, ...docSnap.data() } as ChatChannel);
+      });
+      onData(channels);
+    },
+    (err) => {
+      console.error('Erro ao subscrever canais do chat da agência:', err);
+      if (onError) onError(err);
+    }
+  );
+}
+
+// Send Chat Message to Global Firestore Collection
+export async function sendAgencyChatMessage(message: ChatMessage) {
+  const msgRef = doc(db, 'agencyChatMessages', message.id);
+  const cleanData = sanitizeFirestorePayload(message);
+  await setDoc(msgRef, cleanData, { merge: true });
+}
+
+// Soft Delete Chat Message in Global Firestore
+export async function deleteAgencyChatMessage(msgId: string) {
+  const msgRef = doc(db, 'agencyChatMessages', msgId);
+  await setDoc(msgRef, { isDeleted: true, text: 'Mensagem apagada' }, { merge: true });
+}
+
+// Create or Update Global Chat Channel in Firestore
+export async function createAgencyChatChannel(channel: ChatChannel) {
+  const chanRef = doc(db, 'agencyChatChannels', channel.id);
+  const cleanData = sanitizeFirestorePayload(channel);
+  await setDoc(chanRef, cleanData, { merge: true });
+}
+
+// Mark channel messages as read
+export async function markAgencyChatChannelAsRead(channelId: string, userEmail: string, userName: string) {
+  if (!channelId || !userEmail) return;
+  try {
+    const chatRef = collection(db, 'agencyChatMessages');
+    const q = query(chatRef, where('channelId', '==', channelId));
+    const snap = await getDocs(q);
+    const nowIso = new Date().toISOString();
+    const batch = writeBatch(db);
+    let count = 0;
+
+    snap.forEach((d) => {
+      const data = d.data() as ChatMessage;
+      if (!data.readBy || !data.readBy[userEmail]) {
+        const docRef = doc(db, 'agencyChatMessages', d.id);
+        batch.set(
+          docRef,
+          {
+            readBy: {
+              ...(data.readBy || {}),
+              [userEmail]: { readAt: nowIso, userName },
+            },
+          },
+          { merge: true }
+        );
+        count++;
+      }
+    });
+
+    if (count > 0) {
+      await batch.commit();
+    }
+  } catch (err) {
+    console.warn('Erro ao marcar mensagens como lidas:', err);
+  }
+}
+
 // Helper to resolve the primary Agency Owner UID for employees
 export async function resolvePrimaryAgencyOwnerUid(): Promise<string | null> {
   try {
@@ -887,7 +992,7 @@ export async function updateUserPermissionsInFirestore(
       sanitized[key] = val;
     }
   }
-  await updateDoc(userRef, sanitized);
+  await setDoc(userRef, sanitized, { merge: true });
 }
 
 // Update existing user profile in Firestore
@@ -899,7 +1004,7 @@ export async function updateUserInFirestore(uid: string, data: Partial<Firestore
       sanitizedData[key] = val;
     }
   }
-  await updateDoc(userRef, sanitizedData);
+  await setDoc(userRef, sanitizedData, { merge: true });
 }
 
 // Auth Session Management (Supporting both Firebase Auth & Firestore Admin-Created Users)

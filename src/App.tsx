@@ -17,6 +17,13 @@ import {
   subscribeToUserProfile,
   subscribeToUserCollection,
   subscribeAllUsers,
+  subscribeAgencyChatMessages,
+  subscribeAgencyChatChannels,
+  sendAgencyChatMessage,
+  deleteAgencyChatMessage,
+  createAgencyChatChannel,
+  markAgencyChatChannelAsRead,
+  AGENCY_REGISTERED_TEAM_MEMBERS,
   getOrCreateUserProfile,
   addCollectionItem,
   deleteCollectionItem,
@@ -73,7 +80,7 @@ export default function App() {
   // Firebase Auth & Realtime Firestore State
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<FirestoreUserProfile | null>(null);
-  const [allUsers, setAllUsers] = useState<FirestoreUserProfile[]>([]);
+  const [allUsers, setAllUsers] = useState<FirestoreUserProfile[]>(AGENCY_REGISTERED_TEAM_MEMBERS);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>('login');
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -104,6 +111,18 @@ export default function App() {
       setAllUsers(users);
     });
     unsubs.push(unsubAllUsers);
+
+    // Global Agency Chat Messages Subscription (Realtime, shared across entire team)
+    const unsubGlobalChatMessages = subscribeAgencyChatMessages((chatMessages) => {
+      setState((prev) => ({ ...prev, chatMessages }));
+    });
+    unsubs.push(unsubGlobalChatMessages);
+
+    // Global Agency Chat Channels Subscription
+    const unsubGlobalChatChannels = subscribeAgencyChatChannels((chatChannels) => {
+      setState((prev) => ({ ...prev, chatChannels }));
+    });
+    unsubs.push(unsubGlobalChatChannels);
 
     let activeDataUnsubs: (() => void)[] = [];
 
@@ -186,12 +205,6 @@ export default function App() {
       const unsubTechifyPackages = subscribeToUserCollection(dataOwnerUid, 'techifyPackages', (techifyPackages) => {
         setState((prev) => ({ ...prev, techifyPackages }));
       });
-      const unsubChatMessages = subscribeToUserCollection(dataOwnerUid, 'chatMessages', (chatMessages) => {
-        setState((prev) => ({ ...prev, chatMessages }));
-      });
-      const unsubChatChannels = subscribeToUserCollection(dataOwnerUid, 'chatChannels', (chatChannels) => {
-        setState((prev) => ({ ...prev, chatChannels }));
-      });
 
       activeDataUnsubs.push(
         unsubKPIs,
@@ -218,9 +231,7 @@ export default function App() {
         unsubSchedules,
         unsubProspectionDemands,
         unsubProspectionContracts,
-        unsubTechifyPackages,
-        unsubChatMessages,
-        unsubChatChannels
+        unsubTechifyPackages
       );
     };
 
@@ -1279,7 +1290,7 @@ export default function App() {
     }
   };
 
-  // Chat Handlers
+  // Chat Handlers (Global Firestore & Realtime Sync)
   const handleSendMessage = async (msgData: Omit<ChatMessage, 'id' | 'createdAt'>) => {
     const newMsg: ChatMessage = {
       ...msgData,
@@ -1290,9 +1301,14 @@ export default function App() {
       ...prev,
       chatMessages: [...(prev.chatMessages || []), newMsg],
     }));
+
+    // Send to global agency collection (accessible across all logged in team members)
+    await sendAgencyChatMessage(newMsg);
+
+    // Also persist to current workspace backup
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
-      await addCollectionItem(targetUid, 'chatMessages', newMsg);
+      addCollectionItem(targetUid, 'chatMessages', newMsg).catch((e) => console.warn(e));
     }
   };
 
@@ -1303,12 +1319,15 @@ export default function App() {
         m.id === msgId ? { ...m, isDeleted: true, text: 'Mensagem apagada' } : m
       ),
     }));
+
+    await deleteAgencyChatMessage(msgId);
+
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
-      await updateCollectionItem(targetUid, 'chatMessages', msgId, {
+      updateCollectionItem(targetUid, 'chatMessages', msgId, {
         isDeleted: true,
         text: 'Mensagem apagada',
-      });
+      }).catch((e) => console.warn(e));
     }
   };
 
@@ -1322,9 +1341,12 @@ export default function App() {
       ...prev,
       chatChannels: [...(prev.chatChannels || []), newChannel],
     }));
+
+    await createAgencyChatChannel(newChannel);
+
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
-      await addCollectionItem(targetUid, 'chatChannels', newChannel);
+      addCollectionItem(targetUid, 'chatChannels', newChannel).catch((e) => console.warn(e));
     }
   };
 
@@ -1332,13 +1354,7 @@ export default function App() {
     const myEmail = userProfile?.email || user?.email;
     if (!myEmail) return;
     const nowIso = new Date().toISOString();
-
-    const currentMsgs = state.chatMessages || [];
-    const unreadMsgs = currentMsgs.filter(
-      (m) => m.channelId === channelId && !m.readBy?.[myEmail]
-    );
-
-    if (unreadMsgs.length === 0) return;
+    const userName = userProfile?.name || 'Membro';
 
     setState((prev) => {
       const msgs = prev.chatMessages || [];
@@ -1353,7 +1369,7 @@ export default function App() {
               ...m,
               readBy: {
                 ...(m.readBy || {}),
-                [myEmail]: { readAt: nowIso, userName: userProfile?.name || 'Membro' },
+                [myEmail]: { readAt: nowIso, userName },
               },
             };
           }
@@ -1362,17 +1378,7 @@ export default function App() {
       };
     });
 
-    const targetUid = getWorkspaceTargetUid();
-    if (targetUid) {
-      for (const msg of unreadMsgs) {
-        await updateCollectionItem(targetUid, 'chatMessages', msg.id, {
-          readBy: {
-            ...(msg.readBy || {}),
-            [myEmail]: { readAt: nowIso, userName: userProfile?.name || 'Membro' },
-          },
-        });
-      }
-    }
+    await markAgencyChatChannelAsRead(channelId, myEmail, userName);
   };
 
   // Profile Update Handler
