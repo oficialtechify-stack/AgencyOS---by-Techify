@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import { ViewMode, UserProfile } from '../types';
 import { hasModuleAccess, isUserMasterAdmin } from '../lib/permissions';
-import { FirestoreUserProfile } from '../lib/firebase';
+import { FirestoreUserProfile, cleanAvatarUrl } from '../lib/firebase';
 
 interface SidebarProps {
   currentView?: ViewMode;
@@ -275,9 +275,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
             title="Ver Meu Perfil & Crachá Digital"
           >
             <div className="w-8 h-8 rounded-full bg-neutral-900 border border-neutral-700 flex items-center justify-center text-xs font-bold text-white shrink-0 overflow-hidden">
-              {profile.avatarUrl ? (
+              {cleanAvatarUrl(profile.avatarUrl) ? (
                 <img
-                  src={profile.avatarUrl}
+                  src={cleanAvatarUrl(profile.avatarUrl)}
                   alt={profile.name}
                   className="w-full h-full object-cover"
                   referrerPolicy="no-referrer"

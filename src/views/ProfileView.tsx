@@ -21,7 +21,7 @@ import {
   Globe,
   Share2,
 } from 'lucide-react';
-import { FirestoreUserProfile } from '../lib/firebase';
+import { FirestoreUserProfile, cleanAvatarUrl } from '../lib/firebase';
 import { TimeClockRecord } from '../types';
 import { compressAvatarImage } from '../lib/imageCompressor';
 
@@ -42,7 +42,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 }) => {
   const [name, setName] = useState(userProfile?.name || '');
   const [email, setEmail] = useState(userProfile?.email || '');
-  const [avatarUrl, setAvatarUrl] = useState(userProfile?.avatarUrl || '');
+  const [avatarUrl, setAvatarUrl] = useState(cleanAvatarUrl(userProfile?.avatarUrl) || '');
   const [phone, setPhone] = useState(userProfile?.phone || '');
   const [whatsapp, setWhatsapp] = useState(userProfile?.whatsapp || '');
   const [instagram, setInstagram] = useState(userProfile?.instagram || '');
@@ -62,9 +62,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     if (userProfile) {
       if (userProfile.name) setName(userProfile.name);
       if (userProfile.email) setEmail(userProfile.email);
-      if (userProfile.avatarUrl !== undefined && userProfile.avatarUrl !== '') {
-        setAvatarUrl(userProfile.avatarUrl);
-      }
+      setAvatarUrl(cleanAvatarUrl(userProfile.avatarUrl));
       if (userProfile.phone !== undefined) setPhone(userProfile.phone);
       if (userProfile.whatsapp !== undefined) setWhatsapp(userProfile.whatsapp);
       if (userProfile.instagram !== undefined) setInstagram(userProfile.instagram);

@@ -497,11 +497,28 @@ export async function batchDeleteCollectionItems(uid: string, collectionName: st
 }
 
 // Default Agency Team Members
+// Helper to sanitize avatar URL and remove fake/mock placeholders
+export function cleanAvatarUrl(url?: string | null): string {
+  if (!url || typeof url !== 'string') return '';
+  const trimmed = url.trim();
+  // Strip fake unsplash photos seeded previously
+  if (trimmed.includes('images.unsplash.com/photo-1539571696357') ||
+      trimmed.includes('images.unsplash.com/photo-1534528741775') ||
+      trimmed.includes('images.unsplash.com/photo-1507003211169') ||
+      trimmed.includes('images.unsplash.com/photo-1573496359142')) {
+    return '';
+  }
+  return trimmed;
+}
+
 export const AGENCY_REGISTERED_TEAM_MEMBERS: FirestoreUserProfile[] = [
   {
     uid: 'user-rick-marcos',
     name: 'Marcos Henrique',
     email: 'rickmarketing81@gmail.com',
+    avatarUrl: '',
+    instagram: 'rickzinxx_',
+    bio: 'CEO & Fundador da Techify AgencyOS • Direção executiva e tecnologia.',
     agencyName: 'Techify Agência',
     role: 'CEO & Diretor Executivo',
     department: 'gestao',
@@ -525,6 +542,9 @@ export const AGENCY_REGISTERED_TEAM_MEMBERS: FirestoreUserProfile[] = [
     uid: 'user-vitoria-ellen',
     name: 'Vitoria Ellen da Silva',
     email: 'vitoriajob02@gmail.com',
+    avatarUrl: '',
+    instagram: 'vitoria.design',
+    bio: 'Líder de Design & Criativos • Especialista em identidade visual e criativos de alta conversão.',
     agencyName: 'Techify Agência',
     role: 'Lider de Designer',
     department: 'design',
@@ -549,6 +569,9 @@ export const AGENCY_REGISTERED_TEAM_MEMBERS: FirestoreUserProfile[] = [
     uid: 'user-lucas-marketing',
     name: 'Lucas Lider do marketing',
     email: 'lucassgabriell876@gmail.com',
+    avatarUrl: '',
+    instagram: 'lucas.mkt',
+    bio: 'Líder de Marketing & Gestão de Tráfego Pago • Escala de campanhas Meta & Google Ads.',
     agencyName: 'Techify Agência',
     role: 'Gestor de Tráfego',
     department: 'marketing',
@@ -573,6 +596,9 @@ export const AGENCY_REGISTERED_TEAM_MEMBERS: FirestoreUserProfile[] = [
     uid: 'user-sabrina-suellen',
     name: 'Sabrina Suellen',
     email: 'suellensabrina36@gmail.com',
+    avatarUrl: '',
+    instagram: 'sabrina.sdr',
+    bio: 'Closer & SDR Comercial • Prospecção ativa B2B e fechamento de novos clientes.',
     agencyName: 'Techify Agência',
     role: 'Closer / SDR de Prospecção',
     department: 'prospeccao',
@@ -604,20 +630,31 @@ export async function ensureAgencyTeamInFirestore() {
   try {
     const usersRef = collection(db, 'users');
     const existingSnap = await getDocs(usersRef);
-    const existingEmails = new Set<string>();
-    existingSnap.forEach((d) => {
-      const u = d.data();
-      if (u && u.email) {
-        existingEmails.add(u.email.toLowerCase().trim());
-      }
-    });
-
+    const existingDocsByEmail = new Map<string, { id: string; avatarUrl?: string }>();
+    
     const batch = writeBatch(db);
     let writesCount = 0;
 
+    existingSnap.forEach((d) => {
+      const u = d.data();
+      if (u && u.email) {
+        const cleanAv = cleanAvatarUrl(u.avatarUrl);
+        // If doc in DB has a fake unsplash photo from before, clean it in DB
+        if (u.avatarUrl && u.avatarUrl !== cleanAv) {
+          batch.set(doc(db, 'users', d.id), { avatarUrl: '' }, { merge: true });
+          writesCount++;
+        }
+        existingDocsByEmail.set(u.email.toLowerCase().trim(), {
+          id: d.id,
+          avatarUrl: cleanAv,
+        });
+      }
+    });
+
     for (const member of AGENCY_REGISTERED_TEAM_MEMBERS) {
       const email = member.email.toLowerCase().trim();
-      if (!existingEmails.has(email)) {
+      const existingDoc = existingDocsByEmail.get(email);
+      if (!existingDoc) {
         const memberRef = doc(db, 'users', member.uid);
         batch.set(memberRef, sanitizeFirestorePayload(member), { merge: true });
         writesCount++;
@@ -626,7 +663,7 @@ export async function ensureAgencyTeamInFirestore() {
 
     if (writesCount > 0) {
       await batch.commit();
-      console.log(`✅ ${writesCount} membros da equipe sincronizados no Firestore com sucesso.`);
+      console.log(`✅ Sincronização de equipe no Firestore realizada (fotos reais validadas).`);
     }
   } catch (err) {
     console.warn('Sincronização de equipe no Firestore:', err);
@@ -647,7 +684,12 @@ export function subscribeAllUsers(
     (snapshot) => {
       const users: FirestoreUserProfile[] = [];
       snapshot.forEach((docSnap) => {
-        users.push({ uid: docSnap.id, ...docSnap.data() } as FirestoreUserProfile);
+        const rawData = docSnap.data() as FirestoreUserProfile;
+        users.push({
+          ...rawData,
+          uid: docSnap.id,
+          avatarUrl: cleanAvatarUrl(rawData.avatarUrl),
+        });
       });
 
       if (users.length === 0) {
@@ -664,10 +706,19 @@ export function subscribeAllUsers(
           if (u.email) {
             const key = u.email.toLowerCase().trim();
             const existing = emailMap.get(key);
+            const realAvatar = cleanAvatarUrl(u.avatarUrl) || cleanAvatarUrl(existing?.avatarUrl) || '';
             emailMap.set(key, {
               ...existing,
               ...u,
-              avatarUrl: (u.avatarUrl && u.avatarUrl.trim()) || existing?.avatarUrl || '',
+              avatarUrl: realAvatar,
+              instagram: (u.instagram && u.instagram.trim()) || existing?.instagram || '',
+              bio: (u.bio && u.bio.trim()) || existing?.bio || '',
+              role: (u.role && u.role.trim()) || existing?.role || '',
+              department: u.department || existing?.department || 'gestao',
+              name: (u.name && u.name.trim()) || existing?.name || '',
+              agencyName: (u.agencyName && u.agencyName.trim()) || existing?.agencyName || 'Techify Agência',
+              workStatus: u.workStatus || existing?.workStatus || 'online',
+              customStatus: u.customStatus || existing?.customStatus || '',
             });
           } else if (u.uid) {
             emailMap.set(u.uid, u);

@@ -39,8 +39,10 @@ import {
   ProspectionClosedContract,
   TechifyPackageOption,
 } from '../types';
-import { FirestoreUserProfile, AGENCY_REGISTERED_TEAM_MEMBERS } from '../lib/firebase';
+import { FirestoreUserProfile, AGENCY_REGISTERED_TEAM_MEMBERS, cleanAvatarUrl } from '../lib/firebase';
 import { TECHIFY_PACKAGES } from '../data/techifyPackages';
+import { UserBadgeModal } from '../components/UserBadgeModal';
+import { compressAvatarImage } from '../lib/imageCompressor';
 
 interface EmpresaChatViewProps {
   currentUser?: UserProfile | null;
@@ -136,20 +138,35 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
     const map = new Map<string, FirestoreUserProfile>();
     for (const def of AGENCY_REGISTERED_TEAM_MEMBERS) {
       if (def && def.email) {
-        map.set(def.email.toLowerCase().trim(), def);
+        map.set(def.email.toLowerCase().trim(), {
+          ...def,
+          avatarUrl: cleanAvatarUrl(def.avatarUrl),
+        });
       }
     }
     for (const u of (allUsers || [])) {
       if (u && u.email) {
         const key = u.email.toLowerCase().trim();
         const existing = map.get(key);
+        const realAvatar = cleanAvatarUrl(u.avatarUrl) || cleanAvatarUrl(existing?.avatarUrl) || '';
         map.set(key, {
           ...existing,
           ...u,
-          avatarUrl: (u.avatarUrl && u.avatarUrl.trim()) || existing?.avatarUrl || '',
+          avatarUrl: realAvatar,
+          instagram: (u.instagram && u.instagram.trim()) || existing?.instagram || '',
+          bio: (u.bio && u.bio.trim()) || existing?.bio || '',
+          role: (u.role && u.role.trim()) || existing?.role || '',
+          name: (u.name && u.name.trim()) || existing?.name || '',
+          department: u.department || existing?.department || 'gestao',
+          agencyName: (u.agencyName && u.agencyName.trim()) || existing?.agencyName || 'Techify Agência',
+          workStatus: u.workStatus || existing?.workStatus || 'online',
+          customStatus: u.customStatus || existing?.customStatus || '',
         });
       } else if (u && u.uid) {
-        map.set(u.uid, u);
+        map.set(u.uid, {
+          ...u,
+          avatarUrl: cleanAvatarUrl(u.avatarUrl),
+        });
       }
     }
     return Array.from(map.values()).filter((u) => u && u.email && u.status !== 'blocked' && u.status !== 'cancelled');
@@ -169,6 +186,7 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isCreateGroupModalOpen, setIsCreateGroupModalOpen] = useState(false);
   const [previewMediaUrl, setPreviewMediaUrl] = useState<{ url: string; type: 'image' | 'video' } | null>(null);
+  const [inspectedUser, setInspectedUser] = useState<FirestoreUserProfile | null>(null);
 
   // New group state
   const [newGroupName, setNewGroupName] = useState('');
@@ -186,10 +204,14 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
   const myDepartment = userProfile?.department || 'marketing';
 
   // Helper to compute user's time clock status for today
-  const todayStr = new Date().toISOString().split('T')[0];
   const getUserTimeClockStatus = (userEmail: string) => {
+    const d = new Date();
+    const localToday = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const isoToday = d.toISOString().split('T')[0];
+    const targetEmail = (userEmail || '').toLowerCase().trim();
+
     const userTodayRecords = timeClockRecords
-      .filter((r) => r.date === todayStr && (r.userEmail || '').toLowerCase().trim() === userEmail.toLowerCase().trim())
+      .filter((r) => (r.date === localToday || r.date === isoToday) && (r.userEmail || '').toLowerCase().trim() === targetEmail)
       .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
 
     if (userTodayRecords.length === 0) {
@@ -219,7 +241,7 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
     } else {
       return {
         status: 'working',
-        label: 'Presente no Trabalho 🟢',
+        label: 'Presente 🟢',
         dotColor: 'bg-emerald-400 animate-pulse',
         badgeColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30 font-bold',
       };
@@ -321,18 +343,28 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
   };
 
   // File upload handler
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-      const dataUrl = ev.target?.result as string;
-      if (!dataUrl) return;
-
+    try {
+      let dataUrl: string;
       let msgType: 'image' | 'video' | 'file' = 'file';
-      if (file.type.startsWith('image/')) msgType = 'image';
-      else if (file.type.startsWith('video/')) msgType = 'video';
+
+      if (file.type.startsWith('image/')) {
+        msgType = 'image';
+        dataUrl = await compressAvatarImage(file, 1200, 0.85);
+      } else {
+        if (file.type.startsWith('video/')) msgType = 'video';
+        dataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (ev) => resolve(ev.target?.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
+
+      if (!dataUrl) return;
 
       const formatSize = (bytes: number) => {
         if (bytes < 1024) return bytes + ' B';
@@ -362,9 +394,11 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
           },
         },
       });
-    };
-    reader.readAsDataURL(file);
-    e.target.value = '';
+    } catch (err) {
+      console.error('Erro ao enviar arquivo no chat:', err);
+    } finally {
+      e.target.value = '';
+    }
   };
 
   // Create custom group
@@ -566,18 +600,25 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
                 ).length;
 
                 return (
-                  <button
+                  <div
                     key={user.uid || user.email}
                     onClick={() => handleSelectDirectChat(user)}
-                    className={`w-full p-2.5 rounded-xl text-left transition-all cursor-pointer flex items-center justify-between ${
+                    className={`w-full p-2.5 rounded-xl text-left transition-all cursor-pointer flex items-center justify-between group ${
                       isDirectActive
                         ? 'bg-blue-600/20 border border-blue-500 text-white shadow-md'
                         : 'hover:bg-neutral-900/80 text-neutral-300 border border-transparent'
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="relative shrink-0">
-                        <div className="w-8 h-8 rounded-full bg-neutral-800 border border-neutral-700 overflow-hidden flex items-center justify-center">
+                      <div
+                        className="relative shrink-0 cursor-pointer"
+                        title="Ver Crachá Oficial"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setInspectedUser(user);
+                        }}
+                      >
+                        <div className="w-8 h-8 rounded-full bg-neutral-800 border border-neutral-700 overflow-hidden flex items-center justify-center hover:border-purple-500 transition-colors">
                           {user.avatarUrl ? (
                             <img
                               src={user.avatarUrl}
@@ -597,7 +638,7 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
 
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <strong className="text-xs font-bold text-white truncate block">
+                          <strong className="text-xs font-bold text-white truncate block group-hover:text-blue-400 transition-colors">
                             {user.name}
                           </strong>
                         </div>
@@ -613,13 +654,19 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
                           {unreadInDM}
                         </span>
                       )}
-                      <span
-                        className={`text-[9px] px-2 py-0.5 rounded-md border shrink-0 ${timeClock.badgeColor}`}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setInspectedUser(user);
+                        }}
+                        title="Ver Crachá Oficial do Colaborador"
+                        className={`text-[9px] px-2 py-0.5 rounded-md border shrink-0 hover:bg-white/10 transition-colors cursor-pointer ${timeClock.badgeColor}`}
                       >
                         {timeClock.label}
-                      </span>
+                      </button>
                     </div>
-                  </button>
+                  </div>
                 );
               })
             )}
@@ -633,9 +680,13 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
         <div className="p-3.5 px-5 border-b border-neutral-800 bg-[#0a0a0a] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             {activeRecipient ? (
-              <div className="flex items-center gap-3 min-w-0">
+              <div
+                onClick={() => setInspectedUser(activeRecipient)}
+                className="flex items-center gap-3 min-w-0 cursor-pointer group"
+                title="Clique para ver o crachá oficial completo"
+              >
                 <div className="relative">
-                  <div className="w-9 h-9 rounded-full bg-neutral-800 border border-neutral-700 overflow-hidden flex items-center justify-center">
+                  <div className="w-9 h-9 rounded-full bg-neutral-800 border border-neutral-700 overflow-hidden flex items-center justify-center group-hover:border-purple-500 transition-colors">
                     {activeRecipient.avatarUrl ? (
                       <img
                         src={activeRecipient.avatarUrl}
@@ -655,7 +706,7 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
                 </div>
                 <div className="min-w-0">
                   <h3 className="text-xs sm:text-sm font-black text-white truncate flex items-center gap-2">
-                    <span>{activeRecipient.name}</span>
+                    <span className="group-hover:text-purple-400 transition-colors">{activeRecipient.name}</span>
                     <span
                       className={`text-[10px] px-2 py-0.2 rounded border ${
                         getUserTimeClockStatus(activeRecipient.email).badgeColor
@@ -664,8 +715,9 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
                       {getUserTimeClockStatus(activeRecipient.email).label}
                     </span>
                   </h3>
-                  <p className="text-[10px] text-neutral-400 truncate">
-                    {activeRecipient.role || 'Colaborador'} • {activeRecipient.email}
+                  <p className="text-[10px] text-neutral-400 truncate flex items-center gap-1">
+                    <span>{activeRecipient.role || 'Colaborador'}</span>
+                    <span className="text-purple-400 font-bold">• Ver Crachá 🪪</span>
                   </p>
                 </div>
               </div>
@@ -687,6 +739,17 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {activeRecipient && (
+              <button
+                type="button"
+                onClick={() => setInspectedUser(activeRecipient)}
+                className="px-3 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-neutral-300 hover:text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                title="Visualizar Crachá Oficial"
+              >
+                <User className="w-3.5 h-3.5 text-purple-400" />
+                <span className="hidden sm:inline">Crachá</span>
+              </button>
+            )}
             <button
               onClick={() => setIsShareModalOpen(true)}
               className="px-3 py-1.5 rounded-xl bg-purple-600/20 hover:bg-purple-600 border border-purple-500/30 text-purple-300 hover:text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
@@ -730,13 +793,35 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
               );
               const effectiveSenderAvatar = senderUser?.avatarUrl || msg.senderAvatar;
 
+              const handleOpenSenderBadge = () => {
+                if (senderUser) {
+                  setInspectedUser(senderUser);
+                } else {
+                  setInspectedUser({
+                    uid: msg.senderUid || `user-${msg.senderEmail}`,
+                    name: msg.senderName,
+                    email: msg.senderEmail,
+                    avatarUrl: effectiveSenderAvatar,
+                    role: msg.senderRole || 'Colaborador Techify',
+                    department: msg.senderDepartment || 'geral',
+                    agencyName: userProfile?.agencyName || 'Techify Agência',
+                    workStatus: 'online',
+                  } as FirestoreUserProfile);
+                }
+              };
+
               return (
                 <div
                   key={msg.id}
                   className={`flex gap-3 group ${isMine ? 'justify-end' : 'justify-start'}`}
                 >
                   {!isMine && (
-                    <div className="w-8 h-8 rounded-full bg-neutral-800 border border-neutral-700 overflow-hidden shrink-0 flex items-center justify-center text-xs font-bold text-white mt-1">
+                    <button
+                      type="button"
+                      onClick={handleOpenSenderBadge}
+                      title={`Ver Crachá Oficial de ${msg.senderName}`}
+                      className="w-8 h-8 rounded-full bg-neutral-800 border border-neutral-700 hover:border-purple-500 overflow-hidden shrink-0 flex items-center justify-center text-xs font-bold text-white mt-1 cursor-pointer transition-colors"
+                    >
                       {effectiveSenderAvatar ? (
                         <img
                           src={effectiveSenderAvatar}
@@ -747,13 +832,20 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
                       ) : (
                         msg.senderName?.[0] || 'U'
                       )}
-                    </div>
+                    </button>
                   )}
 
                   <div className={`max-w-[85%] sm:max-w-md md:max-w-lg space-y-1`}>
                     {!isMine && (
                       <div className="flex items-center gap-1.5 px-1">
-                        <span className="text-[11px] font-bold text-white">{msg.senderName}</span>
+                        <button
+                          type="button"
+                          onClick={handleOpenSenderBadge}
+                          className="text-[11px] font-bold text-white hover:text-purple-400 transition-colors cursor-pointer text-left"
+                          title="Ver Crachá Oficial"
+                        >
+                          {msg.senderName}
+                        </button>
                         {msg.senderRole && (
                           <span className="text-[9px] text-neutral-400">({msg.senderRole})</span>
                         )}
@@ -1183,6 +1275,16 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
             />
           </div>
         </div>
+      )}
+
+      {/* MODAL 4: Official Team Member Badge & Digital ID Card */}
+      {inspectedUser && (
+        <UserBadgeModal
+          user={inspectedUser}
+          onClose={() => setInspectedUser(null)}
+          onStartChat={(target) => handleSelectDirectChat(target)}
+          timeClockRecords={timeClockRecords}
+        />
       )}
     </div>
   );
