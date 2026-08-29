@@ -133,7 +133,7 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
   // Merge system channels with custom user channels
   const effectiveChannels = [...DEFAULT_CHANNELS, ...channels];
 
-  // Resilient team list: merges registered system members with live Firestore users
+  // Resilient team list: merges registered system members with live Firestore users and current profile
   const teamList = React.useMemo(() => {
     const map = new Map<string, FirestoreUserProfile>();
     for (const def of AGENCY_REGISTERED_TEAM_MEMBERS) {
@@ -169,8 +169,20 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
         });
       }
     }
+
+    // Merge active userProfile to reflect instant local edits
+    if (userProfile && userProfile.email) {
+      const key = userProfile.email.toLowerCase().trim();
+      const existing = map.get(key);
+      map.set(key, {
+        ...existing,
+        ...userProfile,
+        avatarUrl: cleanAvatarUrl(userProfile.avatarUrl) || cleanAvatarUrl(existing?.avatarUrl) || '',
+      });
+    }
+
     return Array.from(map.values()).filter((u) => u && u.email && u.status !== 'blocked' && u.status !== 'cancelled');
-  }, [allUsers]);
+  }, [allUsers, userProfile]);
 
   // Active channel / DM selection
   const [activeChannelId, setActiveChannelId] = useState<string>('grp_geral');
@@ -199,53 +211,73 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
 
   const myEmail = (userProfile?.email || currentUser?.email || 'rickmarketing81@gmail.com').toLowerCase().trim();
   const myName = userProfile?.name || currentUser?.name || 'Colaborador Techify';
-  const myAvatar = userProfile?.avatarUrl || '';
+  const myAvatar = cleanAvatarUrl(userProfile?.avatarUrl) || '';
   const myRole = userProfile?.role || 'Membro da Equipe';
   const myDepartment = userProfile?.department || 'marketing';
 
-  // Helper to compute user's time clock status for today
-  const getUserTimeClockStatus = (userEmail: string) => {
+  // Helper to compute user's online & time clock status in realtime
+  const getUserTimeClockStatus = (userEmail: string, userWorkStatus?: string) => {
     const d = new Date();
     const localToday = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const isoToday = d.toISOString().split('T')[0];
     const targetEmail = (userEmail || '').toLowerCase().trim();
+    const isMe = targetEmail === myEmail;
 
     const userTodayRecords = timeClockRecords
       .filter((r) => (r.date === localToday || r.date === isoToday) && (r.userEmail || '').toLowerCase().trim() === targetEmail)
       .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
 
-    if (userTodayRecords.length === 0) {
-      return {
-        status: 'offline',
-        label: 'Fora do Expediente',
-        dotColor: 'bg-neutral-500',
-        badgeColor: 'text-neutral-400 bg-neutral-900 border-neutral-800',
-      };
-    }
+    const lastPunch = userTodayRecords.length > 0 ? userTodayRecords[userTodayRecords.length - 1] : null;
 
-    const lastPunch = userTodayRecords[userTodayRecords.length - 1];
-    if (lastPunch.type === 'lunch_start') {
+    if (lastPunch?.type === 'lunch_start') {
       return {
         status: 'lunch',
         label: 'Almoçando 🍽️',
         dotColor: 'bg-amber-400 animate-pulse',
         badgeColor: 'text-amber-400 bg-amber-500/10 border-amber-500/30 font-bold',
       };
-    } else if (lastPunch.type === 'exit') {
+    } else if (lastPunch?.type === 'exit') {
       return {
         status: 'offline',
         label: 'Expediente Encerrado',
         dotColor: 'bg-neutral-500',
         badgeColor: 'text-neutral-400 bg-neutral-900 border-neutral-800',
       };
-    } else {
+    }
+
+    if (userWorkStatus === 'busy') {
+      return {
+        status: 'busy',
+        label: 'Ocupado 🔴',
+        dotColor: 'bg-rose-500 animate-pulse',
+        badgeColor: 'text-rose-400 bg-rose-500/10 border-rose-500/30 font-bold',
+      };
+    }
+
+    if (userWorkStatus === 'away') {
+      return {
+        status: 'away',
+        label: 'Ausente 🟡',
+        dotColor: 'bg-amber-400',
+        badgeColor: 'text-amber-400 bg-amber-500/10 border-amber-500/30 font-bold',
+      };
+    }
+
+    if (isMe || lastPunch || userWorkStatus === 'online' || userWorkStatus === 'working' || !userWorkStatus) {
       return {
         status: 'working',
-        label: 'Presente 🟢',
+        label: 'Online 🟢',
         dotColor: 'bg-emerald-400 animate-pulse',
         badgeColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30 font-bold',
       };
     }
+
+    return {
+      status: 'offline',
+      label: 'Fora do Expediente',
+      dotColor: 'bg-neutral-500',
+      badgeColor: 'text-neutral-400 bg-neutral-900 border-neutral-800',
+    };
   };
 
   // Scroll to bottom on new message and mark as read only when unread messages exist
@@ -588,7 +620,7 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
               </div>
             ) : (
               filteredUsers.map((user) => {
-                const timeClock = getUserTimeClockStatus(user.email);
+                const timeClock = getUserTimeClockStatus(user.email, user.workStatus);
                 const isDirectActive = activeRecipient?.email.toLowerCase() === user.email.toLowerCase();
 
                 // Compute deterministic DM channel ID to check unread messages
@@ -598,6 +630,15 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
                 const unreadInDM = messages.filter(
                   (m) => m.channelId === dmChanId && (!m.readBy || !m.readBy[myEmail])
                 ).length;
+
+                const avatarSrc = cleanAvatarUrl(user.avatarUrl);
+                const initials = (user.name || user.email || 'U')
+                  .trim()
+                  .split(/\s+/)
+                  .slice(0, 2)
+                  .map((n) => n[0])
+                  .join('')
+                  .toUpperCase();
 
                 return (
                   <div
@@ -619,15 +660,17 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
                         }}
                       >
                         <div className="w-8 h-8 rounded-full bg-neutral-800 border border-neutral-700 overflow-hidden flex items-center justify-center hover:border-purple-500 transition-colors">
-                          {user.avatarUrl ? (
+                          {avatarSrc ? (
                             <img
-                              src={user.avatarUrl}
+                              src={avatarSrc}
                               alt={user.name}
                               className="w-full h-full object-cover"
                               referrerPolicy="no-referrer"
                             />
                           ) : (
-                            <User className="w-4 h-4 text-neutral-400" />
+                            <span className="text-[11px] font-black text-purple-200">
+                              {initials}
+                            </span>
                           )}
                         </div>
                         {/* Live presence indicator badge */}
@@ -687,20 +730,28 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
               >
                 <div className="relative">
                   <div className="w-9 h-9 rounded-full bg-neutral-800 border border-neutral-700 overflow-hidden flex items-center justify-center group-hover:border-purple-500 transition-colors">
-                    {activeRecipient.avatarUrl ? (
+                    {cleanAvatarUrl(activeRecipient.avatarUrl) ? (
                       <img
-                        src={activeRecipient.avatarUrl}
+                        src={cleanAvatarUrl(activeRecipient.avatarUrl)}
                         alt={activeRecipient.name}
                         className="w-full h-full object-cover"
                         referrerPolicy="no-referrer"
                       />
                     ) : (
-                      <User className="w-5 h-5 text-neutral-400" />
+                      <span className="text-xs font-black text-purple-200">
+                        {(activeRecipient.name || activeRecipient.email || 'U')
+                          .trim()
+                          .split(/\s+/)
+                          .slice(0, 2)
+                          .map((n) => n[0])
+                          .join('')
+                          .toUpperCase()}
+                      </span>
                     )}
                   </div>
                   <span
                     className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#0a0a0a] ${
-                      getUserTimeClockStatus(activeRecipient.email).dotColor
+                      getUserTimeClockStatus(activeRecipient.email, activeRecipient.workStatus).dotColor
                     }`}
                   />
                 </div>
@@ -709,10 +760,10 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
                     <span className="group-hover:text-purple-400 transition-colors">{activeRecipient.name}</span>
                     <span
                       className={`text-[10px] px-2 py-0.2 rounded border ${
-                        getUserTimeClockStatus(activeRecipient.email).badgeColor
+                        getUserTimeClockStatus(activeRecipient.email, activeRecipient.workStatus).badgeColor
                       }`}
                     >
-                      {getUserTimeClockStatus(activeRecipient.email).label}
+                      {getUserTimeClockStatus(activeRecipient.email, activeRecipient.workStatus).label}
                     </span>
                   </h3>
                   <p className="text-[10px] text-neutral-400 truncate flex items-center gap-1">
@@ -791,7 +842,14 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
               const senderUser = teamList.find(
                 (u) => (u.email || '').toLowerCase().trim() === (msg.senderEmail || '').toLowerCase().trim()
               );
-              const effectiveSenderAvatar = senderUser?.avatarUrl || msg.senderAvatar;
+              const effectiveSenderAvatar = cleanAvatarUrl(senderUser?.avatarUrl) || cleanAvatarUrl(msg.senderAvatar);
+              const senderInitials = (msg.senderName || msg.senderEmail || 'U')
+                .trim()
+                .split(/\s+/)
+                .slice(0, 2)
+                .map((n) => n[0])
+                .join('')
+                .toUpperCase();
 
               const handleOpenSenderBadge = () => {
                 if (senderUser) {
@@ -830,7 +888,9 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
                           referrerPolicy="no-referrer"
                         />
                       ) : (
-                        msg.senderName?.[0] || 'U'
+                        <span className="text-[11px] font-black text-purple-200">
+                          {senderInitials}
+                        </span>
                       )}
                     </button>
                   )}

@@ -100,15 +100,56 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       // Compress and optimize image to 360x360 JPEG with high quality (~25KB payload)
       const compressedDataUrl = await compressAvatarImage(file, 360, 0.85);
       setAvatarUrl(compressedDataUrl);
+      
+      // Auto-save immediately to Firestore for realtime sync across all users and devices
+      await onUpdateProfile({
+        name: name.trim(),
+        avatarUrl: compressedDataUrl,
+        phone: phone.trim(),
+        whatsapp: whatsapp.trim(),
+        instagram: instagram.trim(),
+        role: role.trim(),
+        department,
+        bio: bio.trim(),
+        workStatus,
+        customStatus: customStatus.trim(),
+      });
+
       setFeedback({
         type: 'success',
-        text: 'Foto carregada e otimizada com sucesso! Clique em "Salvar Alterações" para gravar no sistema.',
+        text: 'Foto de perfil salva e atualizada com sucesso! Visível para todos os colaboradores no Chat e Sistema.',
       });
+      setTimeout(() => setFeedback(null), 5000);
     } catch (err: any) {
       console.error('Erro ao processar foto:', err);
       setFeedback({ type: 'error', text: 'Não foi possível carregar esta imagem. Tente outro formato.' });
     } finally {
       setIsProcessingPhoto(false);
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    setAvatarUrl('');
+    try {
+      await onUpdateProfile({
+        name: name.trim(),
+        avatarUrl: '',
+        phone: phone.trim(),
+        whatsapp: whatsapp.trim(),
+        instagram: instagram.trim(),
+        role: role.trim(),
+        department,
+        bio: bio.trim(),
+        workStatus,
+        customStatus: customStatus.trim(),
+      });
+      setFeedback({
+        type: 'success',
+        text: 'Foto de perfil removida com sucesso.',
+      });
+      setTimeout(() => setFeedback(null), 4000);
+    } catch (err: any) {
+      setFeedback({ type: 'error', text: 'Erro ao remover foto de perfil.' });
     }
   };
 
@@ -294,8 +335,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   {avatarUrl && (
                     <button
                       type="button"
-                      onClick={() => setAvatarUrl('')}
-                      className="px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-bold transition-all cursor-pointer"
+                      onClick={handleRemovePhoto}
+                      className="px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-red-300 text-xs font-bold transition-all cursor-pointer"
                     >
                       Remover
                     </button>
