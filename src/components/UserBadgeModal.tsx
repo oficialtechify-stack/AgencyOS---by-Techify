@@ -13,7 +13,7 @@ import {
   Check,
   Copy,
 } from 'lucide-react';
-import { FirestoreUserProfile, cleanAvatarUrl } from '../lib/firebase';
+import { FirestoreUserProfile, cleanAvatarUrl, resolveUserAvatar } from '../lib/firebase';
 import { TimeClockRecord } from '../types';
 
 interface UserBadgeModalProps {
@@ -177,9 +177,9 @@ export const UserBadgeModal: React.FC<UserBadgeModalProps> = ({
             {/* Avatar Frame with Glowing Border */}
             <div className="relative group shrink-0">
               <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-neutral-800 border-2 border-purple-500/50 overflow-hidden flex items-center justify-center shadow-xl shadow-purple-900/20">
-                {cleanAvatarUrl(user.avatarUrl) ? (
+                {resolveUserAvatar(user) ? (
                   <img
-                    src={cleanAvatarUrl(user.avatarUrl)}
+                    src={resolveUserAvatar(user)}
                     alt={user.name || 'Colaborador'}
                     className="w-full h-full object-cover"
                     referrerPolicy="no-referrer"

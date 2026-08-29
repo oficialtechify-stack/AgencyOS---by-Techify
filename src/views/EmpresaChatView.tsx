@@ -39,7 +39,12 @@ import {
   ProspectionClosedContract,
   TechifyPackageOption,
 } from '../types';
-import { FirestoreUserProfile, AGENCY_REGISTERED_TEAM_MEMBERS, cleanAvatarUrl } from '../lib/firebase';
+import {
+  FirestoreUserProfile,
+  AGENCY_REGISTERED_TEAM_MEMBERS,
+  cleanAvatarUrl,
+  resolveUserAvatar,
+} from '../lib/firebase';
 import { TECHIFY_PACKAGES } from '../data/techifyPackages';
 import { UserBadgeModal } from '../components/UserBadgeModal';
 import { compressAvatarImage } from '../lib/imageCompressor';
@@ -136,52 +141,66 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
   // Resilient team list: merges registered system members with live Firestore users and current profile
   const teamList = React.useMemo(() => {
     const map = new Map<string, FirestoreUserProfile>();
-    for (const def of AGENCY_REGISTERED_TEAM_MEMBERS) {
-      if (def && def.email) {
-        map.set(def.email.toLowerCase().trim(), {
-          ...def,
-          avatarUrl: cleanAvatarUrl(def.avatarUrl),
-        });
-      }
-    }
-    for (const u of (allUsers || [])) {
-      if (u && u.email) {
-        const key = u.email.toLowerCase().trim();
-        const existing = map.get(key);
-        const realAvatar = cleanAvatarUrl(u.avatarUrl) || cleanAvatarUrl(existing?.avatarUrl) || '';
-        map.set(key, {
-          ...existing,
-          ...u,
-          avatarUrl: realAvatar,
-          instagram: (u.instagram && u.instagram.trim()) || existing?.instagram || '',
-          bio: (u.bio && u.bio.trim()) || existing?.bio || '',
-          role: (u.role && u.role.trim()) || existing?.role || '',
-          name: (u.name && u.name.trim()) || existing?.name || '',
-          department: u.department || existing?.department || 'gestao',
-          agencyName: (u.agencyName && u.agencyName.trim()) || existing?.agencyName || 'Techify Agência',
-          workStatus: u.workStatus || existing?.workStatus || 'online',
-          customStatus: u.customStatus || existing?.customStatus || '',
-        });
-      } else if (u && u.uid) {
-        map.set(u.uid, {
-          ...u,
-          avatarUrl: cleanAvatarUrl(u.avatarUrl),
-        });
-      }
-    }
 
-    // Merge active userProfile to reflect instant local edits
-    if (userProfile && userProfile.email) {
-      const key = userProfile.email.toLowerCase().trim();
-      const existing = map.get(key);
+    // 1. First add all live Firestore users (allUsers)
+    for (const u of (allUsers || [])) {
+      if (!u) continue;
+      const key = (u.email ? u.email.toLowerCase().trim() : '') || u.uid || `usr_${Math.random()}`;
+      const avatar = resolveUserAvatar(u);
+      const resolvedName =
+        (u.name && u.name.trim()) ||
+        (u as any).displayName ||
+        (u as any).fullName ||
+        (u.email ? u.email.split('@')[0] : 'Colaborador');
+
       map.set(key, {
-        ...existing,
-        ...userProfile,
-        avatarUrl: cleanAvatarUrl(userProfile.avatarUrl) || cleanAvatarUrl(existing?.avatarUrl) || '',
+        ...u,
+        avatarUrl: avatar,
+        name: resolvedName,
+        email: u.email || '',
+        role: u.role || 'Membro da Equipe',
+        department: u.department || 'gestao',
+        agencyName: u.agencyName || 'Techify Agência',
+        workStatus: u.workStatus || 'online',
+        status: u.status || 'active',
       });
     }
 
-    return Array.from(map.values()).filter((u) => u && u.email && u.status !== 'blocked' && u.status !== 'cancelled');
+    // 2. Add registered agency default team members if not already populated
+    for (const def of AGENCY_REGISTERED_TEAM_MEMBERS) {
+      if (!def) continue;
+      const emailKey = (def.email || '').toLowerCase().trim();
+      const existing = map.get(emailKey) || (def.uid ? map.get(def.uid) : undefined);
+      if (existing) {
+        map.set(emailKey, {
+          ...def,
+          ...existing,
+          avatarUrl: resolveUserAvatar(existing) || resolveUserAvatar(def),
+          name: existing.name || def.name,
+          email: existing.email || def.email,
+        });
+      } else if (emailKey) {
+        map.set(emailKey, {
+          ...def,
+          avatarUrl: resolveUserAvatar(def),
+        });
+      }
+    }
+
+    // 3. Merge active userProfile to reflect instant local edits
+    if (userProfile) {
+      const key = (userProfile.email ? userProfile.email.toLowerCase().trim() : '') || userProfile.uid;
+      if (key) {
+        const existing = map.get(key);
+        map.set(key, {
+          ...existing,
+          ...userProfile,
+          avatarUrl: resolveUserAvatar(userProfile) || resolveUserAvatar(existing),
+        });
+      }
+    }
+
+    return Array.from(map.values()).filter((u) => u && u.status !== 'blocked' && u.status !== 'cancelled');
   }, [allUsers, userProfile]);
 
   // Active channel / DM selection
@@ -211,17 +230,21 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
 
   const myEmail = (userProfile?.email || currentUser?.email || 'rickmarketing81@gmail.com').toLowerCase().trim();
   const myName = userProfile?.name || currentUser?.name || 'Colaborador Techify';
-  const myAvatar = cleanAvatarUrl(userProfile?.avatarUrl) || '';
+  const myAvatar = resolveUserAvatar(userProfile) || resolveUserAvatar(currentUser);
   const myRole = userProfile?.role || 'Membro da Equipe';
   const myDepartment = userProfile?.department || 'marketing';
 
   // Helper to compute user's online & time clock status in realtime
-  const getUserTimeClockStatus = (userEmail: string, userWorkStatus?: string) => {
+  const getUserTimeClockStatus = (userOrEmail: FirestoreUserProfile | string, userWorkStatus?: string) => {
+    const targetEmail = (typeof userOrEmail === 'object' ? userOrEmail.email : userOrEmail || '').toLowerCase().trim();
+    const isMe = targetEmail === myEmail;
+    const directUser = typeof userOrEmail === 'object' ? userOrEmail : teamList.find((u) => (u.email || '').toLowerCase().trim() === targetEmail);
+    const effectiveStatus = directUser?.workStatus || userWorkStatus || (directUser as any)?.status;
+    const isExplicitlyOffline = (directUser as any)?.status === 'offline' || (directUser as any)?.isOnline === false;
+
     const d = new Date();
     const localToday = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const isoToday = d.toISOString().split('T')[0];
-    const targetEmail = (userEmail || '').toLowerCase().trim();
-    const isMe = targetEmail === myEmail;
 
     const userTodayRecords = timeClockRecords
       .filter((r) => (r.date === localToday || r.date === isoToday) && (r.userEmail || '').toLowerCase().trim() === targetEmail)
@@ -245,7 +268,7 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
       };
     }
 
-    if (userWorkStatus === 'busy') {
+    if (effectiveStatus === 'busy') {
       return {
         status: 'busy',
         label: 'Ocupado 🔴',
@@ -254,7 +277,7 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
       };
     }
 
-    if (userWorkStatus === 'away') {
+    if (effectiveStatus === 'away') {
       return {
         status: 'away',
         label: 'Ausente 🟡',
@@ -263,7 +286,16 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
       };
     }
 
-    if (isMe || lastPunch || userWorkStatus === 'online' || userWorkStatus === 'working' || !userWorkStatus) {
+    if (isExplicitlyOffline && !isMe) {
+      return {
+        status: 'offline',
+        label: 'Offline',
+        dotColor: 'bg-neutral-600',
+        badgeColor: 'text-neutral-400 bg-neutral-900 border-neutral-800',
+      };
+    }
+
+    if (isMe || (directUser as any)?.status === 'online' || (directUser as any)?.isOnline === true || effectiveStatus === 'online' || effectiveStatus === 'working' || !effectiveStatus) {
       return {
         status: 'working',
         label: 'Online 🟢',
@@ -453,35 +485,40 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
     setSelectedMemberEmails([]);
   };
 
-  // Filter contacts by sector (only registered users from Firestore)
+  // Filter contacts by sector (all registered users from Firestore)
   const filteredUsers = teamList.filter((u) => {
-    if (!u.email || !u.name) return false;
-    if (u.email.toLowerCase().trim() === myEmail) return false; // don't list self in contacts
-    const dept = inferUserDepartment(u);
+    if (!u.email && !u.name && !u.uid) return false;
+    
+    // Sector filtering (with fallback matching by department, role, or leadership)
     if (sectorFilter !== 'all') {
+      const dept = inferUserDepartment(u);
+      const role = (u.role || '').toLowerCase();
+      const uDept = (u.department || dept || '').toLowerCase();
+
       if (sectorFilter === 'trafego') {
-        const role = (u.role || '').toLowerCase();
-        if (dept !== 'trafego' && !role.includes('tráfego') && !role.includes('trafego') && !role.includes('gestor')) return false;
+        if (uDept !== 'trafego' && !role.includes('tráfego') && !role.includes('trafego') && !role.includes('gestor') && !role.includes('ads') && !role.includes('performance')) return false;
       } else if (sectorFilter === 'marketing') {
-        const role = (u.role || '').toLowerCase();
-        if (dept !== 'marketing' && !role.includes('marketing') && !role.includes('mkt')) return false;
+        if (uDept !== 'marketing' && !role.includes('marketing') && !role.includes('mkt') && !role.includes('conteúdo') && !role.includes('social')) return false;
       } else if (sectorFilter === 'design') {
-        const role = (u.role || '').toLowerCase();
-        if (dept !== 'design' && !role.includes('design') && !role.includes('designer') && !role.includes('arte')) return false;
+        if (uDept !== 'design' && !role.includes('design') && !role.includes('designer') && !role.includes('arte') && !role.includes('vídeo') && !role.includes('motion')) return false;
       } else if (sectorFilter === 'prospeccao') {
-        const role = (u.role || '').toLowerCase();
-        if (dept !== 'prospeccao' && !role.includes('prospec') && !role.includes('sdr') && !role.includes('closer') && !role.includes('comercial')) return false;
-      } else if (dept !== sectorFilter) {
+        if (uDept !== 'prospeccao' && !role.includes('prospec') && !role.includes('sdr') && !role.includes('closer') && !role.includes('comercial') && !role.includes('vendas')) return false;
+      } else if (uDept !== sectorFilter && !role.includes(sectorFilter)) {
         return false;
       }
     }
+
+    // Search query matching
     if (searchTerm.trim()) {
-      const q = searchTerm.toLowerCase();
+      const q = searchTerm.toLowerCase().trim();
       const matchName = (u.name || '').toLowerCase().includes(q);
       const matchEmail = (u.email || '').toLowerCase().includes(q);
       const matchRole = (u.role || '').toLowerCase().includes(q);
-      if (!matchName && !matchEmail && !matchRole) return false;
+      const matchDept = (u.department || '').toLowerCase().includes(q);
+      const matchAgency = (u.agencyName || '').toLowerCase().includes(q);
+      if (!matchName && !matchEmail && !matchRole && !matchDept && !matchAgency) return false;
     }
+
     return true;
   });
 
@@ -620,7 +657,7 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
               </div>
             ) : (
               filteredUsers.map((user) => {
-                const timeClock = getUserTimeClockStatus(user.email, user.workStatus);
+                const timeClock = getUserTimeClockStatus(user, user.workStatus);
                 const isDirectActive = activeRecipient?.email.toLowerCase() === user.email.toLowerCase();
 
                 // Compute deterministic DM channel ID to check unread messages
@@ -631,7 +668,7 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
                   (m) => m.channelId === dmChanId && (!m.readBy || !m.readBy[myEmail])
                 ).length;
 
-                const avatarSrc = cleanAvatarUrl(user.avatarUrl);
+                const avatarSrc = resolveUserAvatar(user);
                 const initials = (user.name || user.email || 'U')
                   .trim()
                   .split(/\s+/)
@@ -730,9 +767,9 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
               >
                 <div className="relative">
                   <div className="w-9 h-9 rounded-full bg-neutral-800 border border-neutral-700 overflow-hidden flex items-center justify-center group-hover:border-purple-500 transition-colors">
-                    {cleanAvatarUrl(activeRecipient.avatarUrl) ? (
+                    {resolveUserAvatar(activeRecipient) ? (
                       <img
-                        src={cleanAvatarUrl(activeRecipient.avatarUrl)}
+                        src={resolveUserAvatar(activeRecipient)}
                         alt={activeRecipient.name}
                         className="w-full h-full object-cover"
                         referrerPolicy="no-referrer"
@@ -751,7 +788,7 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
                   </div>
                   <span
                     className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#0a0a0a] ${
-                      getUserTimeClockStatus(activeRecipient.email, activeRecipient.workStatus).dotColor
+                      getUserTimeClockStatus(activeRecipient, activeRecipient.workStatus).dotColor
                     }`}
                   />
                 </div>
@@ -760,10 +797,10 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
                     <span className="group-hover:text-purple-400 transition-colors">{activeRecipient.name}</span>
                     <span
                       className={`text-[10px] px-2 py-0.2 rounded border ${
-                        getUserTimeClockStatus(activeRecipient.email, activeRecipient.workStatus).badgeColor
+                        getUserTimeClockStatus(activeRecipient, activeRecipient.workStatus).badgeColor
                       }`}
                     >
-                      {getUserTimeClockStatus(activeRecipient.email, activeRecipient.workStatus).label}
+                      {getUserTimeClockStatus(activeRecipient, activeRecipient.workStatus).label}
                     </span>
                   </h3>
                   <p className="text-[10px] text-neutral-400 truncate flex items-center gap-1">
@@ -842,7 +879,7 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
               const senderUser = teamList.find(
                 (u) => (u.email || '').toLowerCase().trim() === (msg.senderEmail || '').toLowerCase().trim()
               );
-              const effectiveSenderAvatar = cleanAvatarUrl(senderUser?.avatarUrl) || cleanAvatarUrl(msg.senderAvatar);
+              const effectiveSenderAvatar = resolveUserAvatar(senderUser) || resolveUserAvatar(msg.senderAvatar);
               const senderInitials = (msg.senderName || msg.senderEmail || 'U')
                 .trim()
                 .split(/\s+/)

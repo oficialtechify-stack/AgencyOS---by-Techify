@@ -54,6 +54,7 @@ import {
   deleteUserFromFirestore,
   AGENCY_REGISTERED_TEAM_MEMBERS,
   cleanAvatarUrl,
+  resolveUserAvatar,
 } from '../lib/firebase';
 import { compressAvatarImage } from '../lib/imageCompressor';
 import {
@@ -940,9 +941,9 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
                         <td className="p-3.5">
                           <div className="flex items-center gap-2.5">
                             <div className="w-8 h-8 rounded-full bg-neutral-900 border border-neutral-700 overflow-hidden flex items-center justify-center shrink-0">
-                              {cleanAvatarUrl(user.avatarUrl) ? (
+                              {resolveUserAvatar(user) ? (
                                 <img
-                                  src={cleanAvatarUrl(user.avatarUrl)}
+                                  src={resolveUserAvatar(user)}
                                   alt={user.name || user.email}
                                   className="w-full h-full object-cover"
                                   referrerPolicy="no-referrer"
@@ -1235,9 +1236,9 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
                         <td className="p-3.5">
                           <div className="flex items-center gap-2.5">
                             <div className="w-8 h-8 rounded-full bg-neutral-900 border border-neutral-700 overflow-hidden flex items-center justify-center shrink-0">
-                              {cleanAvatarUrl(user.avatarUrl) ? (
+                              {resolveUserAvatar(user) ? (
                                 <img
-                                  src={cleanAvatarUrl(user.avatarUrl)}
+                                  src={resolveUserAvatar(user)}
                                   alt={user.agencyName || user.name || user.email}
                                   className="w-full h-full object-cover"
                                   referrerPolicy="no-referrer"

@@ -501,14 +501,30 @@ export async function batchDeleteCollectionItems(uid: string, collectionName: st
 export function cleanAvatarUrl(url?: string | null): string {
   if (!url || typeof url !== 'string') return '';
   const trimmed = url.trim();
-  // Strip fake unsplash photos seeded previously
-  if (trimmed.includes('images.unsplash.com/photo-1539571696357') ||
-      trimmed.includes('images.unsplash.com/photo-1534528741775') ||
-      trimmed.includes('images.unsplash.com/photo-1507003211169') ||
-      trimmed.includes('images.unsplash.com/photo-1573496359142')) {
-    return '';
-  }
+  if (!trimmed || trimmed === 'null' || trimmed === 'undefined' || trimmed === '""') return '';
   return trimmed;
+}
+
+// Universal avatar extractor that checks every possible image field on a user document
+export function resolveUserAvatar(userOrUrl?: any): string {
+  if (!userOrUrl) return '';
+  if (typeof userOrUrl === 'string') {
+    return cleanAvatarUrl(userOrUrl);
+  }
+  if (typeof userOrUrl === 'object') {
+    const candidate =
+      userOrUrl.avatarUrl ||
+      userOrUrl.photoURL ||
+      userOrUrl.photoUrl ||
+      userOrUrl.avatar ||
+      userOrUrl.imageUrl ||
+      userOrUrl.picture ||
+      userOrUrl.profilePicture ||
+      userOrUrl.photo ||
+      '';
+    return cleanAvatarUrl(candidate);
+  }
+  return '';
 }
 
 export const AGENCY_REGISTERED_TEAM_MEMBERS: FirestoreUserProfile[] = [
@@ -619,6 +635,33 @@ export const AGENCY_REGISTERED_TEAM_MEMBERS: FirestoreUserProfile[] = [
     createdAt: new Date().toISOString(),
     allowedModules: ['dashboard', 'prospection', 'maps-scraper', 'agenda', 'relatorios', 'chat', 'ponto'],
   },
+  {
+    uid: 'user-marcos-design',
+    name: 'MARCOS HENRIQUE',
+    email: 'aigerakabane81983521523@gmail.com',
+    avatarUrl: '',
+    instagram: 'marcos.design',
+    bio: 'Líder Geral & Design • Gestão de projetos criativos e branding.',
+    agencyName: 'Techify Agência',
+    role: 'Líder Geral',
+    department: 'design',
+    leadershipRole: 'lider_design',
+    workStatus: 'online',
+    plan: 'Gratuito / Equipe',
+    status: 'active',
+    designRole: 'lider',
+    canEditDesigns: true,
+    canCreateDesigns: true,
+    canApproveDesigns: true,
+    canPublishPosts: true,
+    canDeleteDesigns: false,
+    userType: 'employee',
+    tempPasswordHint: '12345678',
+    trialStartDate: Date.now(),
+    trialEndsAt: Date.now() + 14 * 86400000,
+    createdAt: new Date().toISOString(),
+    allowedModules: ['dashboard', 'designer', 'studio-agency', 'social-hub', 'marketing', 'prospection', 'kanban', 'agenda', 'kpis', 'fluxo-caixa', 'maps-scraper', 'relatorios', 'chat', 'ponto'],
+  },
 ];
 
 let hasSeededTeamInDb = false;
@@ -638,12 +681,7 @@ export async function ensureAgencyTeamInFirestore() {
     existingSnap.forEach((d) => {
       const u = d.data();
       if (u && u.email) {
-        const cleanAv = cleanAvatarUrl(u.avatarUrl);
-        // If doc in DB has a fake unsplash photo from before, clean it in DB
-        if (u.avatarUrl && u.avatarUrl !== cleanAv) {
-          batch.set(doc(db, 'users', d.id), { avatarUrl: '' }, { merge: true });
-          writesCount++;
-        }
+        const cleanAv = resolveUserAvatar(u);
         existingDocsByEmail.set(u.email.toLowerCase().trim(), {
           id: d.id,
           avatarUrl: cleanAv,
@@ -663,7 +701,7 @@ export async function ensureAgencyTeamInFirestore() {
 
     if (writesCount > 0) {
       await batch.commit();
-      console.log(`✅ Sincronização de equipe no Firestore realizada (fotos reais validadas).`);
+      console.log(`✅ Sincronização de equipe no Firestore realizada (${writesCount} registros atualizados).`);
     }
   } catch (err) {
     console.warn('Sincronização de equipe no Firestore:', err);
@@ -682,53 +720,81 @@ export function subscribeAllUsers(
   return onSnapshot(
     usersRef,
     (snapshot) => {
-      const users: FirestoreUserProfile[] = [];
+      const liveUsers: FirestoreUserProfile[] = [];
       snapshot.forEach((docSnap) => {
-        const rawData = docSnap.data() as FirestoreUserProfile;
-        users.push({
+        const rawData = docSnap.data() as any;
+        const avatar = resolveUserAvatar(rawData);
+        const resolvedName =
+          (rawData.name && rawData.name.trim()) ||
+          (rawData.displayName && rawData.displayName.trim()) ||
+          (rawData.fullName && rawData.fullName.trim()) ||
+          (rawData.agencyName && rawData.agencyName.trim()) ||
+          (rawData.email ? rawData.email.split('@')[0] : 'Colaborador');
+        const resolvedEmail = (rawData.email || rawData.userEmail || '').trim();
+
+        liveUsers.push({
           ...rawData,
           uid: docSnap.id,
-          avatarUrl: cleanAvatarUrl(rawData.avatarUrl),
+          id: docSnap.id,
+          avatarUrl: avatar,
+          name: resolvedName,
+          email: resolvedEmail,
+          role: rawData.role || 'Membro da Equipe',
+          department: rawData.department || 'gestao',
+          agencyName: rawData.agencyName || 'Techify Agência',
+          workStatus: rawData.workStatus || 'online',
+          status: rawData.status || 'active',
         });
       });
 
-      if (users.length === 0) {
-        onData(AGENCY_REGISTERED_TEAM_MEMBERS);
-      } else {
-        // Merge registered team with live Firestore users by email
-        const emailMap = new Map<string, FirestoreUserProfile>();
-        for (const def of AGENCY_REGISTERED_TEAM_MEMBERS) {
-          if (def && def.email) {
-            emailMap.set(def.email.toLowerCase().trim(), def);
-          }
+      // Merge map: index by normalized email AND by document id (uid)
+      const userMap = new Map<string, FirestoreUserProfile>();
+
+      // 1. Add all Firestore documents directly (ensuring NO database record is lost)
+      for (const u of liveUsers) {
+        const idKey = u.uid || (u as any).id;
+        const emailKey = u.email ? u.email.toLowerCase().trim() : '';
+        if (emailKey) {
+          userMap.set(emailKey, u);
+        } else if (idKey) {
+          userMap.set(idKey, u);
         }
-        for (const u of users) {
-          if (u.email) {
-            const key = u.email.toLowerCase().trim();
-            const existing = emailMap.get(key);
-            const realAvatar = cleanAvatarUrl(u.avatarUrl) || cleanAvatarUrl(existing?.avatarUrl) || '';
-            emailMap.set(key, {
-              ...existing,
-              ...u,
-              avatarUrl: realAvatar,
-              instagram: (u.instagram && u.instagram.trim()) || existing?.instagram || '',
-              bio: (u.bio && u.bio.trim()) || existing?.bio || '',
-              role: (u.role && u.role.trim()) || existing?.role || '',
-              department: u.department || existing?.department || 'gestao',
-              name: (u.name && u.name.trim()) || existing?.name || '',
-              agencyName: (u.agencyName && u.agencyName.trim()) || existing?.agencyName || 'Techify Agência',
-              workStatus: u.workStatus || existing?.workStatus || 'online',
-              customStatus: u.customStatus || existing?.customStatus || '',
-            });
-          } else if (u.uid) {
-            emailMap.set(u.uid, u);
-          }
-        }
-        onData(Array.from(emailMap.values()));
       }
+
+      // 2. Add registered agency team defaults if not already present
+      for (const def of AGENCY_REGISTERED_TEAM_MEMBERS) {
+        if (!def) continue;
+        const emailKey = (def.email || '').toLowerCase().trim();
+        const existing = emailKey ? userMap.get(emailKey) : undefined;
+        if (existing) {
+          // Merge defaults with live database values, giving priority to live DB data
+          const realAvatar = resolveUserAvatar(existing) || resolveUserAvatar(def);
+          userMap.set(emailKey, {
+            ...def,
+            ...existing,
+            avatarUrl: realAvatar,
+            name: existing.name || def.name,
+            email: existing.email || def.email,
+            role: existing.role || def.role,
+            department: existing.department || def.department,
+            instagram: existing.instagram || def.instagram || '',
+            bio: existing.bio || def.bio || '',
+            workStatus: existing.workStatus || def.workStatus || 'online',
+            customStatus: existing.customStatus || def.customStatus || '',
+          });
+        } else if (emailKey) {
+          userMap.set(emailKey, {
+            ...def,
+            avatarUrl: resolveUserAvatar(def),
+          });
+        }
+      }
+
+      const finalUsers = Array.from(userMap.values());
+      onData(finalUsers.length > 0 ? finalUsers : AGENCY_REGISTERED_TEAM_MEMBERS);
     },
     (err) => {
-      console.error('Error fetching all users:', err);
+      console.error('Error fetching all users from Firestore:', err);
       onData(AGENCY_REGISTERED_TEAM_MEMBERS);
       if (onError) onError(err);
     }
@@ -1362,3 +1428,9 @@ export async function logoutUser() {
     console.warn('Erro ao deslogar do Firebase Auth:', e);
   }
 }
+
+// Real-time hooks exports
+export { useChatUsers } from '../hooks/useChatUsers';
+export { usePresence } from '../hooks/usePresence';
+export { useMessages } from '../hooks/useMessages';
+

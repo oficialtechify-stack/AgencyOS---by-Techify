@@ -35,6 +35,7 @@ import {
   getStoredSession,
   logoutUser,
 } from './lib/firebase';
+import { usePresence } from './hooks/usePresence';
 
 // Components
 import { Sidebar } from './components/Sidebar';
@@ -86,6 +87,9 @@ export default function App() {
   const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>('login');
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showPunchModal, setShowPunchModal] = useState(false);
+
+  // Real-time Firebase Presence (Online/Offline status tracking)
+  usePresence(user?.uid || userProfile?.uid, user?.email || userProfile?.email);
 
   // Sync with localStorage as fallback
   useEffect(() => {
