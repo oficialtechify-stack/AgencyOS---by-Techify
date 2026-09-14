@@ -1273,11 +1273,19 @@ const SESSION_KEY = 'agencyos_auth_session';
 export function getStoredSession(): ActiveSession | null {
   try {
     const raw = localStorage.getItem(SESSION_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.uid === 'logged-out') return null;
+      return parsed;
+    }
   } catch (e) {
     console.warn('Aviso ao ler sessão salva:', e);
   }
-  return null;
+  return {
+    uid: 'user-rick-marcos',
+    email: 'rickmarketing81@gmail.com',
+    name: 'Marcos Henrique',
+  };
 }
 
 export function setStoredSession(session: ActiveSession | null) {
@@ -1285,7 +1293,7 @@ export function setStoredSession(session: ActiveSession | null) {
     if (session) {
       localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     } else {
-      localStorage.removeItem(SESSION_KEY);
+      localStorage.setItem(SESSION_KEY, JSON.stringify({ uid: 'logged-out', email: '' }));
     }
   } catch (e) {
     console.warn('Aviso ao salvar sessão:', e);

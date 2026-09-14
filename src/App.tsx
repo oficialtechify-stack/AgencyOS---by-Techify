@@ -46,7 +46,7 @@ import { AuthModal } from './components/AuthModal';
 import { TrialPaywallOverlay } from './components/TrialPaywallOverlay';
 import { EmailVerificationGuard } from './components/EmailVerificationGuard';
 import { LockedModuleView } from './components/LockedModuleView';
-import { hasModuleAccess, ALL_OPERATIONAL_MODULE_IDS, ALL_MODULE_IDS } from './lib/permissions';
+import { hasModuleAccess, isUserMasterAdmin, ALL_OPERATIONAL_MODULE_IDS, ALL_MODULE_IDS } from './lib/permissions';
 
 // Views
 import { LandingView } from './views/LandingView';
@@ -284,6 +284,11 @@ export default function App() {
         let hasResolvedOwner = false;
         const unsubProfile = subscribeToUserProfile(activeUid, async (p) => {
           if (p) {
+            // Guarantee Master Admin has full module access including admin
+            if (isUserMasterAdmin(p, p.email)) {
+              p.allowedModules = ALL_MODULE_IDS;
+              p.role = p.role || 'CEO & Administrador Master';
+            }
             setUserProfile(p);
             
             // Check if user is an employee
@@ -318,18 +323,20 @@ export default function App() {
               initDataSubscriptions(targetWorkspace);
             }
           } else if (activeUserObj) {
+            const isMaster = isUserMasterAdmin(null, activeUserObj.email);
             // Default active profile state if doc is not initialized
             setUserProfile({
               uid: activeUid!,
-              name: activeUserObj.displayName || activeUserObj.email?.split('@')[0] || 'Usuário',
-              email: activeUserObj.email || '',
-              agencyName: 'Agência Digital',
-              plan: 'Pro',
+              name: activeUserObj.displayName || activeUserObj.email?.split('@')[0] || 'Marcos Henrique',
+              email: activeUserObj.email || 'rickmarketing81@gmail.com',
+              agencyName: 'Techify Agência',
+              plan: 'Agency',
               status: 'active',
+              role: isMaster ? 'CEO & Administrador Master' : 'Especialista Digital',
               trialStartDate: Date.now(),
               trialEndsAt: Date.now() + 14 * 24 * 60 * 60 * 1000,
               createdAt: new Date().toLocaleDateString('pt-BR'),
-              allowedModules: ALL_OPERATIONAL_MODULE_IDS,
+              allowedModules: isMaster ? ALL_MODULE_IDS : ALL_OPERATIONAL_MODULE_IDS,
             });
             if (activeUid !== lastSubscribedDataUid) {
               lastSubscribedDataUid = activeUid!;
@@ -1519,27 +1526,35 @@ export default function App() {
   }
 
   // Effective profile fallback ensuring rickmarketing81 always has master admin access
-  const effectiveProfile: FirestoreUserProfile = userProfile || {
-    uid: 'user-rick-marcos',
-    name: 'Marcos Henrique',
-    email: 'rickmarketing81@gmail.com',
-    agencyName: 'Techify Agência',
-    role: 'CEO & Administrador Master',
-    department: 'gestao',
-    leadershipRole: 'lider_geral',
-    workStatus: 'online',
-    plan: 'Agency',
-    status: 'active',
+  const effectiveProfile: FirestoreUserProfile = {
+    uid: userProfile?.uid || 'user-rick-marcos',
+    name: userProfile?.name || 'Marcos Henrique',
+    email: userProfile?.email || 'rickmarketing81@gmail.com',
+    agencyName: userProfile?.agencyName || 'Techify Agência',
+    role: userProfile?.role || 'CEO & Administrador Master',
+    department: userProfile?.department || 'gestao',
+    leadershipRole: userProfile?.leadershipRole || 'lider_geral',
+    workStatus: userProfile?.workStatus || 'online',
+    plan: userProfile?.plan || 'Agency',
+    status: userProfile?.status || 'active',
     designRole: 'admin',
     canEditDesigns: true,
     canCreateDesigns: true,
     canApproveDesigns: true,
     canPublishPosts: true,
     canDeleteDesigns: true,
-    userType: 'owner',
-    createdAt: new Date().toISOString(),
+    userType: 'employee',
+    createdAt: userProfile?.createdAt || new Date().toISOString(),
     allowedModules: ALL_MODULE_IDS,
+    ...(userProfile || {}),
   };
+
+  const currentEmail = userProfile?.email || effectiveProfile.email || 'rickmarketing81@gmail.com';
+  const isMasterUser = isUserMasterAdmin(userProfile || effectiveProfile, currentEmail);
+  const isCurrentViewLocked =
+    isMasterUser
+      ? false
+      : !hasModuleAccess(state.activeView, userProfile || effectiveProfile, currentEmail);
 
   // Render Internal App Workspace
   return (
@@ -1610,7 +1625,7 @@ export default function App() {
               : 'p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full overflow-y-auto'
           }`}
         >
-          {!hasModuleAccess(state.activeView, userProfile || effectiveProfile) ? (
+          {isCurrentViewLocked ? (
             <LockedModuleView
               moduleId={state.activeView}
               userProfile={userProfile || effectiveProfile}

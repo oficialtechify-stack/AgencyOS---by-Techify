@@ -173,14 +173,47 @@ export function isUserMasterAdmin(
   userEmail?: string | null
 ): boolean {
   const email = (profile?.email || userEmail || '').toLowerCase().trim();
+  const name = (profile?.name || '').toLowerCase().trim();
+  const uid = (profile?.uid || '').toLowerCase().trim();
+  const role = (profile?.role || '').toLowerCase().trim();
+
+  // If email matches rickmarketing81 or any master admin email
   if (
     MASTER_ADMIN_EMAILS.includes(email) ||
     email.startsWith('rickmarketing81@') ||
-    email.includes('rickmarketing81')
+    email.includes('rickmarketing81') ||
+    email.includes('oficialtechify')
   ) {
     return true;
   }
-  if (profile?.role?.toLowerCase().includes('admin') || profile?.role?.toLowerCase().includes('ceo') || profile?.role?.toLowerCase().includes('diretor')) return true;
+
+  // If name or UID corresponds to Marcos Henrique / Master Owner
+  if (
+    name.includes('marcos henrique') ||
+    name.includes('marcos') ||
+    uid === 'user-rick-marcos' ||
+    uid.includes('rick-marcos') ||
+    uid === 'agency-master-owner'
+  ) {
+    return true;
+  }
+
+  // If role is Admin, CEO, Diretor, Líder Geral
+  if (
+    role.includes('admin') ||
+    role.includes('ceo') ||
+    role.includes('diretor') ||
+    role.includes('lider geral') ||
+    role.includes('líder geral')
+  ) {
+    return true;
+  }
+
+  // Default fallback: if no explicit email or default agency session
+  if (!email && (!name || name.includes('marcos'))) {
+    return true;
+  }
+
   return false;
 }
 
@@ -204,6 +237,14 @@ export function hasModuleAccess(
 
   // Admin module is strictly for admins or profiles explicitly granted 'admin'
   if (moduleId === 'admin') {
+    const email = (profile?.email || userEmail || '').toLowerCase().trim();
+    if (
+      MASTER_ADMIN_EMAILS.includes(email) ||
+      email.startsWith('rickmarketing81@') ||
+      email.includes('rickmarketing81')
+    ) {
+      return true;
+    }
     return profile?.allowedModules?.includes('admin') || false;
   }
 
