@@ -18,13 +18,6 @@ export const ALL_SYSTEM_MODULES: SystemModuleInfo[] = [
     iconName: 'LayoutDashboard',
   },
   {
-    id: 'chat',
-    name: 'Chat da Empresa & Equipe',
-    category: 'Principal',
-    description: 'Comunicação interna em tempo real, canais setoriais, status do ponto e compartilhamento',
-    iconName: 'MessageSquare',
-  },
-  {
     id: 'profile',
     name: 'Meu Perfil & Crachá',
     category: 'Principal',

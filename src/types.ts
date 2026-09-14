@@ -98,6 +98,10 @@ export interface AgendaEvent {
   type: 'Apresentação' | 'Alinhamento' | 'Fechamento' | 'Reunião' | 'Entrega' | 'Outro';
   meetUrl?: string;
   status?: string;
+  description?: string;
+  googleEventId?: string;
+  syncWithGoogle?: boolean;
+  htmlLink?: string;
 }
 
 export type CalendarEvent = AgendaEvent;
