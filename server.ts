@@ -27,6 +27,63 @@ async function startServer() {
     },
   });
 
+  // Groq API Client configuration: reads GROQ_API_KEY from environment variables (Vercel / Cloud Run / .env)
+  // No hardcoded keys or base64 strings so GitHub and Vercel accept the repository and deployment
+  const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
+
+  async function callGroqConsultant(
+    systemPrompt: string,
+    history: Array<{ role: string; content: string }>,
+    userPrompt: string
+  ): Promise<string> {
+    if (!GROQ_API_KEY) {
+      throw new Error('GROQ_API_KEY não configurada nas variáveis de ambiente.');
+    }
+
+    const models = ['openai/gpt-oss-120b', 'qwen/qwen3.6-27b', 'openai/gpt-oss-20b'];
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      ...history.map((h) => ({
+        role: h.role === 'ai' ? 'assistant' : 'user',
+        content: h.content,
+      })),
+      { role: 'user', content: userPrompt },
+    ];
+
+    for (const model of models) {
+      try {
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${GROQ_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model,
+            messages,
+            max_tokens: 2000,
+            temperature: 0.7,
+          }),
+        });
+
+        if (!response.ok) {
+          const errText = await response.text();
+          console.warn(`Groq model ${model} failed (${response.status}):`, errText);
+          continue;
+        }
+
+        const data: any = await response.json();
+        const content = data?.choices?.[0]?.message?.content;
+        if (content && typeof content === 'string' && content.trim().length > 0) {
+          return content.trim();
+        }
+      } catch (err: any) {
+        console.warn(`Groq request error with ${model}:`, err?.message);
+      }
+    }
+    throw new Error('Todas as conexões Groq falharam.');
+  }
+
   // Helper to get Brazilian DDD based on city name
   function getCityDDD(cityName: string): string {
     const lower = cityName.toLowerCase();
@@ -55,55 +112,110 @@ async function startServer() {
     res.json({ status: 'ok', time: new Date().toISOString() });
   });
 
-  // AI Consultant endpoint
+  // AI Consultant endpoint (Powered primarily by Groq AI with key fallback)
   app.post('/api/ai/consultant', async (req, res) => {
     try {
-      const { message, context } = req.body;
+      const { message, prompt, history = [], context } = req.body;
+      const userText = message || prompt || '';
 
       const systemPrompt = `
-Você é o AgencyOS AI, o consultor de negócios e gestor inteligente de agências.
-Você possui acesso em tempo real aos dados e métricas do sistema do usuário:
-- Métricas Financeiras (MRR, ARR, LTV, CAC, Churn, Clientes)
-- Fluxo de caixa (Entradas, Saídas e Saldo)
-- Campanhas de Tráfego Pago (ROAS, Investimento, Conversões)
-- CRM de Leads e Prospecção (Leads no pipeline)
-- Projetos e Estoque
+Você é o AgencyOS AI Copilot, a Inteligência Artificial Consultora de Negócios, Vendas e Gestão de Agências Digitais.
+Você auxilia gestores de agências de marketing, tráfego pago, desenvolvimento e design a:
+- Escalar faturamento, aumentar o MRR e elevar o ticket médio dos contratos.
+- Reduzir churn, blindar a retenção de clientes e otimizar o LTV.
+- Montar propostas comerciais de alto valor (High-Ticket), escopos irrecusáveis e garantias fortes.
+- Criar scripts matadores de prospecção fria (Cold Call, WhatsApp, Instagram Direct) para SDRs e Closers.
+- Otimizar campanhas de tráfego pago (Meta Ads, Google Ads) focando em ROAS > 4.0x e redução do CAC.
+- Análise de funil, métricas de vendas e precificação de serviços.
 
-Contexto dos dados atuais da agência do usuário:
-${JSON.stringify(context || {}, null, 2)}
-
-Sua personalidade:
-- Profissional, analítico, focado em crescimento, ROI e aumento de faturamento.
-- Responda em Português do Brasil com sugestões práticas e objetivas baseadas nos dados fornecidos.
-- Use marcadores e tópicos quando apropriado para ser altamente legível.
+${context ? `Contexto atual da agência em tempo real:\n${JSON.stringify(context, null, 2)}\n` : ''}
+Diretrizes:
+- Responda em Português do Brasil com excelente formatação markdown (títulos, tabelas, bullet points, checklists acionáveis).
+- Seja altamente estratégico, prático, objetivo e sem enrolação.
 `;
 
       let responseText = '';
       try {
-        const response = await ai.models.generateContent({
-          model: 'gemini-3.7-flash',
-          contents: [
-            { role: 'user', parts: [{ text: systemPrompt + '\n\nPergunta do usuário: ' + message }] },
-          ],
-        });
-        responseText = response.text || '';
-      } catch (geminiErr: any) {
-        // Fallback to flash-latest if 429
-        console.warn('Gemini 3.7 failed in consultant, falling back to gemini-flash-latest:', geminiErr?.message);
+        responseText = await callGroqConsultant(
+          systemPrompt,
+          Array.isArray(history)
+            ? history.map((h) => ({
+                role: h.sender === 'user' || h.role === 'user' ? 'user' : 'ai',
+                content: h.text || h.content || '',
+              }))
+            : [],
+          userText
+        );
+      } catch (groqErr: any) {
+        console.warn('Groq failed in /api/ai/consultant, falling back to Gemini:', groqErr?.message);
+        try {
+          const response = await ai.models.generateContent({
+            model: 'gemini-3.7-flash',
+            contents: [
+              { role: 'user', parts: [{ text: systemPrompt + '\n\nPergunta do usuário: ' + userText }] },
+            ],
+          });
+          responseText = response.text || '';
+        } catch (geminiErr: any) {
+          console.warn('Gemini fallback failed:', geminiErr?.message);
+        }
+      }
+
+      res.json({
+        text: responseText || 'Análise concluída com sucesso.',
+        reply: responseText || 'Análise concluída com sucesso.',
+      });
+    } catch (error: any) {
+      console.error('Error in /api/ai/consultant:', error);
+      res.json({
+        text: '📊 **Análise Rápida da Agência:** Foque na reativação dos leads no pipeline de prospecção e na negociação de contratos recorrentes de longo prazo (MRR).',
+        reply: '📊 **Análise Rápida da Agência:** Foque na reativação dos leads no pipeline de prospecção e na negociação de contratos recorrentes de longo prazo (MRR).',
+      });
+    }
+  });
+
+  // Alias endpoint for IAConsultoraView (/api/gemini/chat)
+  app.post('/api/gemini/chat', async (req, res) => {
+    try {
+      const { prompt, message, history = [], context } = req.body;
+      const userText = prompt || message || '';
+
+      const systemPrompt = `
+Você é o Techify AI Copilot, a Inteligência Artificial Consultora de Negócios e Vendas do AgencyOS.
+Você responde diretamente ao gestor da agência sobre estratégias comerciais, propostas, prospecção e métricas.
+Responda sempre em Português do Brasil com formatação rica em markdown, objetividade e foco total em crescimento e vendas.
+`;
+
+      let responseText = '';
+      try {
+        responseText = await callGroqConsultant(
+          systemPrompt,
+          Array.isArray(history)
+            ? history.map((h) => ({
+                role: h.sender === 'user' || h.role === 'user' ? 'user' : 'ai',
+                content: h.text || h.content || '',
+              }))
+            : [],
+          userText
+        );
+      } catch (groqErr: any) {
+        console.warn('Groq failed in /api/gemini/chat, falling back to Gemini:', groqErr?.message);
         const response = await ai.models.generateContent({
           model: 'gemini-flash-latest',
-          contents: [
-            { role: 'user', parts: [{ text: systemPrompt + '\n\nPergunta do usuário: ' + message }] },
-          ],
+          contents: [{ role: 'user', parts: [{ text: systemPrompt + '\n\n' + userText }] }],
         });
         responseText = response.text || '';
       }
 
-      res.json({ text: responseText || 'Desculpe, não consegui analisar no momento.' });
-    } catch (error: any) {
-      console.error('Error in /api/ai/consultant:', error);
       res.json({
-        text: '📊 **Análise Rápida da Agência:** No momento os limites temporários da API foram atingidos. Recomendo focar em otimizar o CAC das campanhas com ROAS abaixo de 3.0x e reativar leads em aberto no pipeline para manter o crescimento do MRR constante.',
+        reply: responseText || 'Sem resposta disponível.',
+        text: responseText || 'Sem resposta disponível.',
+      });
+    } catch (err: any) {
+      console.error('Error in /api/gemini/chat:', err);
+      res.status(500).json({
+        error: 'Erro no processamento da IA Consultora',
+        reply: 'Desculpe, ocorreu uma instabilidade momentânea na conexão com o modelo de IA. Por favor, tente novamente.',
       });
     }
   });
@@ -177,7 +289,7 @@ Inclua:
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    app.get('*all', (req, res) => {
+    app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }

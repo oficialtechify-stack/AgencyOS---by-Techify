@@ -59,16 +59,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
     if (onClose) onClose();
   };
 
-  const profile = userProfile || {
-    name: 'Marcos Henrique',
-    email: 'rickmarketing81@gmail.com',
-    plan: 'Pro',
-    status: 'active',
-    createdAt: '2026-01-01',
+  const effectiveProfile: any = {
+    name: userProfile?.name || 'Marcos Henrique',
+    email: userProfile?.email || 'rickmarketing81@gmail.com',
+    plan: (userProfile as any)?.plan || 'Agency',
+    status: (userProfile as any)?.status || 'active',
+    role: (userProfile as any)?.role || 'CEO & Administrador Master',
+    department: (userProfile as any)?.department || 'gestao',
+    allowedModules: (userProfile as any)?.allowedModules,
+    ...(userProfile || {}),
   };
 
-  const isMaster = isUserMasterAdmin(userProfile as any);
-  const canAccessAdmin = hasModuleAccess('admin', userProfile as any);
+  const effectiveEmail = effectiveProfile.email || 'rickmarketing81@gmail.com';
+  const isMaster = isUserMasterAdmin(effectiveProfile, effectiveEmail);
+  const canAccessAdmin = isMaster || hasModuleAccess('admin', effectiveProfile, effectiveEmail);
+
+  const profile = effectiveProfile;
 
   const handleExit = onLogout || (() => handleNav('landing'));
 
@@ -76,7 +82,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     {
       title: 'COMUNICAÇÃO & PESSOAS',
       items: [
-        { id: 'chat' as ViewMode, label: 'Chat da Empresa', icon: MessageSquare },
         { id: 'profile' as ViewMode, label: 'Meu Perfil', icon: UserCircle },
         { id: 'ponto' as ViewMode, label: 'Ponto Seguro', icon: Clock },
       ],
@@ -112,7 +117,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     {
       title: 'CRIAÇÃO & DESIGN',
       items: [
-        { id: 'studio-agency' as ViewMode, label: 'Studio Agency (Canva)', icon: Wand2 },
         { id: 'designer' as ViewMode, label: 'Área do Designer', icon: Palette },
         { id: 'social-hub' as ViewMode, label: 'Social Hub (Instagram & WhatsApp)', icon: Share2 },
       ],
