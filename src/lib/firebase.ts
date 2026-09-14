@@ -49,13 +49,11 @@ import {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-const rawDbId = (firebaseConfig as any).firestoreDatabaseId;
 export const db =
-  rawDbId &&
-  rawDbId !== '(default)' &&
-  typeof rawDbId === 'string' &&
-  rawDbId.trim() !== ''
-    ? getFirestore(app, rawDbId)
+  firebaseConfig.firestoreDatabaseId &&
+  firebaseConfig.firestoreDatabaseId !== '(default)' &&
+  firebaseConfig.firestoreDatabaseId.trim() !== ''
+    ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
     : getFirestore(app);
 
 export interface FirestoreUserProfile {
@@ -1476,67 +1474,20 @@ export async function sendUserVerificationEmail(userToVerify?: User | null) {
   await sendEmailVerification(targetUser);
 }
 
-// Scopes for Google Calendar & Workspace integration
-export const GOOGLE_CALENDAR_SCOPES = [
-  'https://www.googleapis.com/auth/calendar.events',
-];
-
-// In-memory token cache (Do NOT store in localStorage or sessionStorage)
-let cachedGoogleAccessToken: string | null = null;
-let isSigningInWithGoogle = false;
-
-export const getCachedGoogleAccessToken = (): string | null => {
-  return cachedGoogleAccessToken;
-};
-
-export const setCachedGoogleAccessToken = (token: string | null) => {
-  cachedGoogleAccessToken = token;
-};
-
-export async function loginWithGoogle(requestCalendarScope: boolean = true) {
+export async function loginWithGoogle() {
   const provider = new GoogleAuthProvider();
-  if (requestCalendarScope) {
-    GOOGLE_CALENDAR_SCOPES.forEach((scope) => provider.addScope(scope));
-  }
-  isSigningInWithGoogle = true;
-  try {
-    const res = await signInWithPopup(auth, provider);
-    const credential = GoogleAuthProvider.credentialFromResult(res);
-    if (credential?.accessToken) {
-      cachedGoogleAccessToken = credential.accessToken;
-    }
-    const profile = await getOrCreateUserProfile(res.user);
-    setStoredSession({
-      uid: profile.uid,
-      email: profile.email,
-      name: profile.name,
-    });
-    return { res, accessToken: cachedGoogleAccessToken };
-  } finally {
-    isSigningInWithGoogle = false;
-  }
-}
-
-export async function connectGoogleCalendar(): Promise<string | null> {
-  const provider = new GoogleAuthProvider();
-  GOOGLE_CALENDAR_SCOPES.forEach((scope) => provider.addScope(scope));
-  isSigningInWithGoogle = true;
-  try {
-    const res = await signInWithPopup(auth, provider);
-    const credential = GoogleAuthProvider.credentialFromResult(res);
-    if (credential?.accessToken) {
-      cachedGoogleAccessToken = credential.accessToken;
-      return credential.accessToken;
-    }
-    return null;
-  } finally {
-    isSigningInWithGoogle = false;
-  }
+  const res = await signInWithPopup(auth, provider);
+  const profile = await getOrCreateUserProfile(res.user);
+  setStoredSession({
+    uid: profile.uid,
+    email: profile.email,
+    name: profile.name,
+  });
+  return res;
 }
 
 export async function logoutUser() {
   setStoredSession(null);
-  cachedGoogleAccessToken = null;
   try {
     await signOut(auth);
   } catch (e) {

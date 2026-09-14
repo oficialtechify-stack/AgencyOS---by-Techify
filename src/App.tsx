@@ -56,6 +56,7 @@ import { KPIsView } from './views/KPIsView';
 import { FluxoCaixaView } from './views/FluxoCaixaView';
 import { MapsScraperView } from './views/MapsScraperView';
 import { ProspectionView } from './views/ProspectionView';
+import { EmpresaChatView } from './views/EmpresaChatView';
 import { ProfileView } from './views/ProfileView';
 import { SocialHubView } from './views/SocialHubView';
 import { EstoqueView } from './views/EstoqueView';
@@ -1483,7 +1484,7 @@ export default function App() {
       },
     };
     await handleSendMessage(shareMessage);
-    setView('prospection');
+    setView('chat');
   };
 
   // Render Public Landing View
@@ -1617,7 +1618,13 @@ export default function App() {
         />
 
         {/* Main Content View Area */}
-        <main className="flex-1 h-full min-h-0 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full overflow-y-auto">
+        <main
+          className={`flex-1 h-full min-h-0 ${
+            state.activeView === 'chat'
+              ? 'p-0 max-w-none w-full overflow-hidden'
+              : 'p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full overflow-y-auto'
+          }`}
+        >
           {isCurrentViewLocked ? (
             <LockedModuleView
               moduleId={state.activeView}
@@ -1665,11 +1672,30 @@ export default function App() {
                 />
               )}
 
+              {state.activeView === 'chat' && (
+                <EmpresaChatView
+                  currentUser={userProfile}
+                  userProfile={userProfile}
+                  allUsers={allUsers}
+                  messages={state.chatMessages || []}
+                  channels={state.chatChannels || []}
+                  timeClockRecords={state.timeClockRecords || []}
+                  prospectionDemands={state.prospectionDemands || []}
+                  prospectionContracts={state.prospectionContracts || []}
+                  techifyPackages={state.techifyPackages || []}
+                  onSendMessage={handleSendMessage}
+                  onDeleteMessage={handleDeleteChatMessage}
+                  onCreateChannel={handleCreateChatChannel}
+                  onMarkChannelAsRead={handleMarkChannelAsRead}
+                />
+              )}
+
               {state.activeView === 'profile' && (
                 <ProfileView
                   userProfile={userProfile}
                   timeClockRecords={state.timeClockRecords || []}
                   onUpdateProfile={handleUpdateUserProfile}
+                  onNavigateToChat={() => setView('chat')}
                   onNavigateToPonto={() => setView('ponto')}
                 />
               )}

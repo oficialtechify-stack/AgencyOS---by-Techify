@@ -82,6 +82,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     {
       title: 'COMUNICAÇÃO & PESSOAS',
       items: [
+        { id: 'chat' as ViewMode, label: 'Chat da Empresa', icon: MessageSquare },
         { id: 'profile' as ViewMode, label: 'Meu Perfil', icon: UserCircle },
         { id: 'ponto' as ViewMode, label: 'Ponto Seguro', icon: Clock },
       ],
