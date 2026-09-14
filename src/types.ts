@@ -9,7 +9,6 @@ export type ViewType =
   | 'marketing'
   | 'prospection'
   | 'designer'
-  | 'studio-agency'
   | 'kpis'
   | 'fluxo-caixa'
   | 'campanhas'

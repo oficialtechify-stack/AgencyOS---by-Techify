@@ -107,7 +107,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
     canApproveDesigns: true,
     canPublishPosts: true,
     canDeleteDesigns: true,
-    allowedModules: ['dashboard', 'designer', 'studio-agency', 'social-hub', 'kanban', 'agenda', 'relatorios'] as ViewType[],
+    allowedModules: ['dashboard', 'designer', 'social-hub', 'kanban', 'agenda', 'relatorios'] as ViewType[],
   });
 
   const [currentSelectedModules, setCurrentSelectedModules] = useState<ViewType[]>([
@@ -150,7 +150,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
         setLoading(false);
       },
       (error) => {
-        console.error('Erro na escuta de usuários:', error);
+        console.warn('Aviso na escuta de usuários:', error?.message || error);
         setUsers(
           INITIAL_DEMO_USERS.map((u, i) => ({
             ...u,
@@ -1745,7 +1745,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
                             leadership = 'lider_marketing';
                             dRole = 'lider';
                             approve = true;
-                            mods = ['dashboard', 'marketing', 'campanhas', 'social-hub', 'designer', 'studio-agency', 'calculadora-roi', 'relatorios', 'ia-consultora', 'agenda'];
+                            mods = ['dashboard', 'marketing', 'campanhas', 'social-hub', 'designer', 'calculadora-roi', 'relatorios', 'ia-consultora', 'agenda'];
                           } else if (r === 'Líder de Prospecção') {
                             leadership = 'lider_prospeccao';
                             dRole = 'lider';
@@ -1755,7 +1755,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
                             leadership = 'lider_design';
                             dRole = 'lider';
                             approve = true;
-                            mods = ['dashboard', 'designer', 'studio-agency', 'social-hub', 'kanban', 'agenda', 'relatorios'];
+                            mods = ['dashboard', 'designer', 'social-hub', 'kanban', 'agenda', 'relatorios'];
                           } else if (r === 'Gestor de Tráfego') {
                             leadership = 'membro';
                             dRole = 'designer';
@@ -1770,7 +1770,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
                             leadership = 'membro';
                             dRole = 'designer';
                             approve = false;
-                            mods = ['dashboard', 'designer', 'studio-agency', 'social-hub', 'kanban', 'agenda'];
+                            mods = ['dashboard', 'designer', 'social-hub', 'kanban', 'agenda'];
                           } else {
                             leadership = 'membro';
                             dRole = 'funcionario';
@@ -1825,12 +1825,12 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
                     <div className="flex flex-wrap gap-1.5">
                       {[
                         { label: '👑 Líder Geral', role: 'Líder Geral', leadership: 'lider_geral' as const, designRole: 'lider' as const, approve: true, mods: [...ALL_OPERATIONAL_MODULE_IDS] },
-                        { label: '🎯 Líder Marketing', role: 'Líder de Marketing', leadership: 'lider_marketing' as const, designRole: 'lider' as const, approve: true, mods: ['dashboard', 'marketing', 'campanhas', 'social-hub', 'designer', 'studio-agency', 'calculadora-roi', 'relatorios', 'ia-consultora', 'agenda'] as ViewType[] },
+                        { label: '🎯 Líder Marketing', role: 'Líder de Marketing', leadership: 'lider_marketing' as const, designRole: 'lider' as const, approve: true, mods: ['dashboard', 'marketing', 'campanhas', 'social-hub', 'designer', 'calculadora-roi', 'relatorios', 'ia-consultora', 'agenda'] as ViewType[] },
                         { label: '📍 Líder Prospecção', role: 'Líder de Prospecção', leadership: 'lider_prospeccao' as const, designRole: 'lider' as const, approve: false, mods: ['dashboard', 'maps-scraper', 'agenda', 'relatorios', 'campanhas', 'social-hub', 'ia-consultora', 'calculadora-roi'] as ViewType[] },
-                        { label: '🎨 Líder Design', role: 'Líder de Design', leadership: 'lider_design' as const, designRole: 'lider' as const, approve: true, mods: ['dashboard', 'designer', 'studio-agency', 'social-hub', 'kanban', 'agenda', 'relatorios'] as ViewType[] },
+                        { label: '🎨 Líder Design', role: 'Líder de Design', leadership: 'lider_design' as const, designRole: 'lider' as const, approve: true, mods: ['dashboard', 'designer', 'social-hub', 'kanban', 'agenda', 'relatorios'] as ViewType[] },
                         { label: '🚀 Gestor Tráfego', role: 'Gestor de Tráfego', leadership: 'membro' as const, designRole: 'designer' as const, approve: false, mods: ['dashboard', 'campanhas', 'marketing', 'calculadora-roi', 'relatorios', 'ia-consultora', 'agenda'] as ViewType[] },
                         { label: '💼 Closer / SDR', role: 'Closer / SDR de Prospecção', leadership: 'membro' as const, designRole: 'funcionario' as const, approve: false, mods: ['dashboard', 'maps-scraper', 'agenda', 'relatorios', 'ia-consultora'] as ViewType[] },
-                        { label: '🎨 Designer', role: 'Designer Gráfico', leadership: 'membro' as const, designRole: 'designer' as const, approve: false, mods: ['dashboard', 'designer', 'studio-agency', 'social-hub', 'kanban', 'agenda'] as ViewType[] },
+                        { label: '🎨 Designer', role: 'Designer Gráfico', leadership: 'membro' as const, designRole: 'designer' as const, approve: false, mods: ['dashboard', 'designer', 'social-hub', 'kanban', 'agenda'] as ViewType[] },
                       ].map((preset) => (
                         <button
                           key={preset.label}
@@ -2026,7 +2026,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
                       canApprove: true,
                       canPublish: true,
                       canDelete: true,
-                      mods: ['dashboard', 'marketing', 'campanhas', 'social-hub', 'designer', 'studio-agency', 'calculadora-roi', 'relatorios', 'ia-consultora', 'agenda'] as ViewType[],
+                      mods: ['dashboard', 'marketing', 'campanhas', 'social-hub', 'designer', 'calculadora-roi', 'relatorios', 'ia-consultora', 'agenda'] as ViewType[],
                     },
                     {
                       label: '📍 Líder de Prospecção',
@@ -2046,7 +2046,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
                       canApprove: true,
                       canPublish: true,
                       canDelete: true,
-                      mods: ['dashboard', 'designer', 'studio-agency', 'social-hub', 'kanban', 'agenda', 'relatorios'] as ViewType[],
+                      mods: ['dashboard', 'designer', 'social-hub', 'kanban', 'agenda', 'relatorios'] as ViewType[],
                     },
                     {
                       label: '🚀 Gestor de Tráfego',
@@ -2076,7 +2076,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
                       canApprove: false,
                       canPublish: true,
                       canDelete: false,
-                      mods: ['dashboard', 'designer', 'studio-agency', 'social-hub', 'kanban', 'agenda'] as ViewType[],
+                      mods: ['dashboard', 'designer', 'social-hub', 'kanban', 'agenda'] as ViewType[],
                     },
                   ].map((p) => (
                     <button

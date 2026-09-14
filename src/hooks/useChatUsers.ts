@@ -95,8 +95,14 @@ export function useChatUsers() {
         setLoading(false);
       },
       (err) => {
-        console.error('Erro ao buscar usuários em tempo real no Firestore:', err);
+        console.warn('[Chat] Aviso ao buscar usuários em tempo real no Firestore:', err?.message || err);
         setError(err as Error);
+        const fallbackUsers = AGENCY_REGISTERED_TEAM_MEMBERS.map((m) => ({
+          ...m,
+          id: m.uid,
+          photoURL: m.avatarUrl,
+        }));
+        setUsers(fallbackUsers as any);
         setLoading(false);
       }
     );

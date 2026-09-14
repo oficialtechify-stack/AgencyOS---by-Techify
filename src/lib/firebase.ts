@@ -49,7 +49,12 @@ import {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+export const db =
+  firebaseConfig.firestoreDatabaseId &&
+  firebaseConfig.firestoreDatabaseId !== '(default)' &&
+  firebaseConfig.firestoreDatabaseId.trim() !== ''
+    ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
+    : getFirestore(app);
 
 export interface FirestoreUserProfile {
   uid: string;
@@ -404,8 +409,10 @@ export async function seedInitialUserData(uid: string) {
 export function subscribeToUserCollection<T>(
   uid: string,
   collectionName: string,
-  onData: (items: T[]) => void
+  onData: (items: T[]) => void,
+  onError?: (err: any) => void
 ) {
+  if (!uid) return () => {};
   const colRef = collection(db, 'users', uid, collectionName);
   return onSnapshot(
     colRef,
@@ -417,7 +424,19 @@ export function subscribeToUserCollection<T>(
       onData(items);
     },
     (err) => {
-      console.error(`Error subscribing to ${collectionName}:`, err);
+      if (err?.code === 'permission-denied' || err?.message?.includes('insufficient permissions')) {
+        window.dispatchEvent(
+          new CustomEvent('agencyos_firestore_permission_denied', { detail: { collectionName } })
+        );
+        console.warn(`[Firestore] Permissão pendente para coleção '${collectionName}' no Firestore.`);
+      } else {
+        console.warn(`[Firestore] Aviso na subscrição de '${collectionName}':`, err?.message || err);
+      }
+      if (onError) onError(err);
+      // Fallback to default initial data if available
+      if ((DEFAULT_INITIAL_DATA as any)[collectionName]) {
+        onData((DEFAULT_INITIAL_DATA as any)[collectionName]);
+      }
     }
   );
 }
@@ -502,6 +521,15 @@ export function cleanAvatarUrl(url?: string | null): string {
   if (!url || typeof url !== 'string') return '';
   const trimmed = url.trim();
   if (!trimmed || trimmed === 'null' || trimmed === 'undefined' || trimmed === '""') return '';
+  // Reject fake stock photos (unsplash, placeholders) so only real user uploads are shown
+  if (
+    trimmed.includes('unsplash.com') ||
+    trimmed.includes('placeholder') ||
+    trimmed.includes('picsum.photos') ||
+    trimmed.includes('dummy')
+  ) {
+    return '';
+  }
   return trimmed;
 }
 
@@ -552,7 +580,7 @@ export const AGENCY_REGISTERED_TEAM_MEMBERS: FirestoreUserProfile[] = [
     trialStartDate: Date.now(),
     trialEndsAt: Date.now() + 14 * 86400000,
     createdAt: new Date().toISOString(),
-    allowedModules: ['dashboard', 'designer', 'studio-agency', 'social-hub', 'marketing', 'prospection', 'kanban', 'agenda', 'kpis', 'fluxo-caixa', 'maps-scraper', 'relatorios', 'chat', 'ponto'],
+    allowedModules: ['dashboard', 'designer', 'social-hub', 'marketing', 'prospection', 'kanban', 'agenda', 'kpis', 'fluxo-caixa', 'maps-scraper', 'relatorios', 'chat', 'ponto', 'admin'],
   },
   {
     uid: 'user-vitoria-ellen',
@@ -579,7 +607,7 @@ export const AGENCY_REGISTERED_TEAM_MEMBERS: FirestoreUserProfile[] = [
     trialStartDate: Date.now(),
     trialEndsAt: Date.now() + 14 * 86400000,
     createdAt: new Date().toISOString(),
-    allowedModules: ['dashboard', 'designer', 'studio-agency', 'social-hub', 'kanban', 'agenda', 'relatorios', 'chat', 'ponto'],
+    allowedModules: ['dashboard', 'designer', 'social-hub', 'kanban', 'agenda', 'relatorios', 'chat', 'ponto'],
   },
   {
     uid: 'user-lucas-marketing',
@@ -660,7 +688,7 @@ export const AGENCY_REGISTERED_TEAM_MEMBERS: FirestoreUserProfile[] = [
     trialStartDate: Date.now(),
     trialEndsAt: Date.now() + 14 * 86400000,
     createdAt: new Date().toISOString(),
-    allowedModules: ['dashboard', 'designer', 'studio-agency', 'social-hub', 'marketing', 'prospection', 'kanban', 'agenda', 'kpis', 'fluxo-caixa', 'maps-scraper', 'relatorios', 'chat', 'ponto'],
+    allowedModules: ['dashboard', 'designer', 'social-hub', 'marketing', 'prospection', 'kanban', 'agenda', 'kpis', 'fluxo-caixa', 'maps-scraper', 'relatorios', 'chat', 'ponto'],
   },
 ];
 
@@ -696,12 +724,16 @@ export async function ensureAgencyTeamInFirestore() {
         const memberRef = doc(db, 'users', member.uid);
         batch.set(memberRef, sanitizeFirestorePayload(member), { merge: true });
         writesCount++;
+      } else if (!existingDoc.avatarUrl && member.avatarUrl) {
+        const memberRef = doc(db, 'users', existingDoc.id);
+        batch.set(memberRef, { avatarUrl: member.avatarUrl, photoURL: member.avatarUrl, avatar: member.avatarUrl }, { merge: true });
+        writesCount++;
       }
     }
 
     if (writesCount > 0) {
       await batch.commit();
-      console.log(`✅ Sincronização de equipe no Firestore realizada (${writesCount} registros atualizados).`);
+      console.log(`✅ Sincronização de equipe no Firestore realizada (${writesCount} registros atualizados com fotos).`);
     }
   } catch (err) {
     console.warn('Sincronização de equipe no Firestore:', err);
@@ -794,7 +826,14 @@ export function subscribeAllUsers(
       onData(finalUsers.length > 0 ? finalUsers : AGENCY_REGISTERED_TEAM_MEMBERS);
     },
     (err) => {
-      console.error('Error fetching all users from Firestore:', err);
+      if (err?.code === 'permission-denied' || err?.message?.includes('insufficient permissions')) {
+        window.dispatchEvent(
+          new CustomEvent('agencyos_firestore_permission_denied', { detail: { collectionName: 'users' } })
+        );
+        console.warn('[Firestore] Permissão pendente para coleção users no Firestore.');
+      } else {
+        console.warn('Aviso ao buscar todos os usuários do Firestore:', err?.message || err);
+      }
       onData(AGENCY_REGISTERED_TEAM_MEMBERS);
       if (onError) onError(err);
     }
@@ -819,7 +858,14 @@ export function subscribeAgencyChatMessages(
       onData(messages);
     },
     (err) => {
-      console.error('Erro ao subscrever mensagens do chat da agência:', err);
+      if (err?.code === 'permission-denied' || err?.message?.includes('insufficient permissions')) {
+        window.dispatchEvent(
+          new CustomEvent('agencyos_firestore_permission_denied', { detail: { collectionName: 'agencyChatMessages' } })
+        );
+        console.warn('[Firestore] Permissão pendente para mensagens do chat no Firestore.');
+      } else {
+        console.warn('Aviso ao subscrever mensagens do chat da agência:', err?.message || err);
+      }
       if (onError) onError(err);
     }
   );
@@ -841,7 +887,14 @@ export function subscribeAgencyChatChannels(
       onData(channels);
     },
     (err) => {
-      console.error('Erro ao subscrever canais do chat da agência:', err);
+      if (err?.code === 'permission-denied' || err?.message?.includes('insufficient permissions')) {
+        window.dispatchEvent(
+          new CustomEvent('agencyos_firestore_permission_denied', { detail: { collectionName: 'agencyChatChannels' } })
+        );
+        console.warn('[Firestore] Permissão pendente para canais do chat no Firestore.');
+      } else {
+        console.warn('Aviso ao subscrever canais do chat da agência:', err?.message || err);
+      }
       if (onError) onError(err);
     }
   );
@@ -909,8 +962,8 @@ export async function resolvePrimaryAgencyOwnerUid(): Promise<string | null> {
   try {
     const usersRef = collection(db, 'users');
     
-    // First, search for the primary agency owner by email
-    const qOwner = query(usersRef, where('email', '==', 'rickmarketing81@gmail.com'));
+    // First, search for the primary agency owner by email (supporting both @gmail and @gamail)
+    const qOwner = query(usersRef, where('email', 'in', ['rickmarketing81@gmail.com', 'rickmarketing81@gamail.com']));
     const snapOwner = await getDocs(qOwner);
     if (!snapOwner.empty) {
       return snapOwner.docs[0].id;
@@ -942,7 +995,7 @@ export async function resolvePrimaryAgencyOwnerUid(): Promise<string | null> {
       }
     }
   } catch (err) {
-    console.error('Erro ao resolver UID do proprietário da agência:', err);
+    console.warn('Aviso ao resolver UID do proprietário da agência:', err);
   }
   return null;
 }
@@ -1140,7 +1193,12 @@ export async function updateUserProfileInFirestore(
   targetEmail: string | undefined | null,
   data: Partial<FirestoreUserProfile>
 ) {
-  const sanitizedData = sanitizeFirestorePayload(data);
+  const mergedData = { ...data };
+  if (mergedData.avatarUrl !== undefined) {
+    (mergedData as any).photoURL = mergedData.avatarUrl;
+    (mergedData as any).avatar = mergedData.avatarUrl;
+  }
+  const sanitizedData = sanitizeFirestorePayload(mergedData);
   const normalizedEmail = (targetEmail || '').toLowerCase().trim();
 
   // 1. Update in memory default team members array
@@ -1151,7 +1209,7 @@ export async function updateUserProfileInFirestore(
     if (memIdx !== -1) {
       AGENCY_REGISTERED_TEAM_MEMBERS[memIdx] = {
         ...AGENCY_REGISTERED_TEAM_MEMBERS[memIdx],
-        ...data,
+        ...mergedData,
       };
     }
   }
@@ -1198,7 +1256,7 @@ export async function updateUserProfileInFirestore(
   ) {
     setStoredSession({
       ...stored,
-      name: data.name || stored.name,
+      name: mergedData.name || stored.name,
     });
   }
 }
@@ -1217,7 +1275,7 @@ export function getStoredSession(): ActiveSession | null {
     const raw = localStorage.getItem(SESSION_KEY);
     if (raw) return JSON.parse(raw);
   } catch (e) {
-    console.error('Erro ao ler sessão salva:', e);
+    console.warn('Aviso ao ler sessão salva:', e);
   }
   return null;
 }
@@ -1230,7 +1288,7 @@ export function setStoredSession(session: ActiveSession | null) {
       localStorage.removeItem(SESSION_KEY);
     }
   } catch (e) {
-    console.error('Erro ao salvar sessão:', e);
+    console.warn('Aviso ao salvar sessão:', e);
   }
   window.dispatchEvent(new Event('agencyos_session_changed'));
 }

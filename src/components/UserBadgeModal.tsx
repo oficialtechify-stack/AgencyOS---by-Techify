@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   X,
   User,
@@ -12,8 +12,12 @@ import {
   Briefcase,
   Check,
   Copy,
+  Camera,
+  Loader2,
+  Trash2,
 } from 'lucide-react';
-import { FirestoreUserProfile, cleanAvatarUrl, resolveUserAvatar } from '../lib/firebase';
+import { FirestoreUserProfile, cleanAvatarUrl, resolveUserAvatar, updateUserProfileInFirestore } from '../lib/firebase';
+import { compressAvatarImage } from '../lib/imageCompressor';
 import { TimeClockRecord } from '../types';
 
 interface UserBadgeModalProps {
@@ -30,8 +34,46 @@ export const UserBadgeModal: React.FC<UserBadgeModalProps> = ({
   timeClockRecords = [],
 }) => {
   const [copiedEmail, setCopiedEmail] = React.useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [liveAvatar, setLiveAvatar] = useState<string>(resolveUserAvatar(user));
+
+  React.useEffect(() => {
+    setLiveAvatar(resolveUserAvatar(user));
+  }, [user]);
 
   if (!user) return null;
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    setIsUploadingPhoto(true);
+    try {
+      const compressed = await compressAvatarImage(file, 360, 0.85);
+      setLiveAvatar(compressed);
+      await updateUserProfileInFirestore(user.uid, user.email, {
+        avatarUrl: compressed,
+      });
+    } catch (err) {
+      console.error('Erro ao salvar foto de perfil real:', err);
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    if (!user) return;
+    setIsUploadingPhoto(true);
+    try {
+      setLiveAvatar('');
+      await updateUserProfileInFirestore(user.uid, user.email, {
+        avatarUrl: '',
+      });
+    } catch (err) {
+      console.error('Erro ao remover foto:', err);
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
 
   const handleCopyEmail = (email: string) => {
     navigator.clipboard.writeText(email);
@@ -176,10 +218,10 @@ export const UserBadgeModal: React.FC<UserBadgeModalProps> = ({
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5 text-center sm:text-left">
             {/* Avatar Frame with Glowing Border */}
             <div className="relative group shrink-0">
-              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-neutral-800 border-2 border-purple-500/50 overflow-hidden flex items-center justify-center shadow-xl shadow-purple-900/20">
-                {resolveUserAvatar(user) ? (
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-neutral-800 border-2 border-purple-500/50 overflow-hidden flex items-center justify-center shadow-xl shadow-purple-900/20 relative">
+                {liveAvatar ? (
                   <img
-                    src={resolveUserAvatar(user)}
+                    src={liveAvatar}
                     alt={user.name || 'Colaborador'}
                     className="w-full h-full object-cover"
                     referrerPolicy="no-referrer"
@@ -198,9 +240,43 @@ export const UserBadgeModal: React.FC<UserBadgeModalProps> = ({
                     <span className="text-[9px] text-neutral-400 mt-1 uppercase font-semibold">Sem Foto</span>
                   </div>
                 )}
+
+                {/* Upload Overlay */}
+                <label
+                  className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center cursor-pointer text-white text-[10px] font-bold p-1 text-center"
+                  title="Clique para enviar a foto real do colaborador"
+                >
+                  {isUploadingPhoto ? (
+                    <Loader2 className="w-5 h-5 animate-spin text-purple-400 mb-1" />
+                  ) : (
+                    <Camera className="w-5 h-5 text-purple-300 mb-1" />
+                  )}
+                  <span>{isUploadingPhoto ? 'Salvando...' : 'Trocar Foto'}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    disabled={isUploadingPhoto}
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                  />
+                </label>
               </div>
+
+              {/* Remove Photo quick button if photo exists */}
+              {liveAvatar && (
+                <button
+                  type="button"
+                  onClick={handleRemovePhoto}
+                  disabled={isUploadingPhoto}
+                  title="Remover foto"
+                  className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-red-600 hover:bg-red-500 border border-neutral-900 text-white flex items-center justify-center shadow-lg transition-transform hover:scale-110 cursor-pointer"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              )}
+
               {user.leadershipRole && user.leadershipRole !== 'membro' && (
-                <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-md bg-purple-600 text-white text-[9px] font-black uppercase tracking-wider shadow-md whitespace-nowrap">
+                <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-md bg-purple-600 text-white text-[9px] font-black uppercase tracking-wider shadow-md whitespace-nowrap z-10">
                   Líder
                 </span>
               )}

@@ -67,8 +67,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     createdAt: '2026-01-01',
   };
 
-  const isMaster = isUserMasterAdmin(userProfile as any);
-  const canAccessAdmin = hasModuleAccess('admin', userProfile as any);
+  const effectiveProfile = (userProfile as any) || profile;
+  const isMaster = isUserMasterAdmin(effectiveProfile, effectiveProfile?.email);
+  const canAccessAdmin = hasModuleAccess('admin', effectiveProfile, effectiveProfile?.email);
 
   const handleExit = onLogout || (() => handleNav('landing'));
 
@@ -112,7 +113,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     {
       title: 'CRIAÇÃO & DESIGN',
       items: [
-        { id: 'studio-agency' as ViewMode, label: 'Studio Agency (Canva)', icon: Wand2 },
         { id: 'designer' as ViewMode, label: 'Área do Designer', icon: Palette },
         { id: 'social-hub' as ViewMode, label: 'Social Hub (Instagram & WhatsApp)', icon: Share2 },
       ],
