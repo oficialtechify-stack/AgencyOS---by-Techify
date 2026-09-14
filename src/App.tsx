@@ -46,7 +46,7 @@ import { AuthModal } from './components/AuthModal';
 import { TrialPaywallOverlay } from './components/TrialPaywallOverlay';
 import { EmailVerificationGuard } from './components/EmailVerificationGuard';
 import { LockedModuleView } from './components/LockedModuleView';
-import { hasModuleAccess, isUserMasterAdmin, ALL_OPERATIONAL_MODULE_IDS, ALL_MODULE_IDS } from './lib/permissions';
+import { hasModuleAccess, ALL_OPERATIONAL_MODULE_IDS } from './lib/permissions';
 
 // Views
 import { LandingView } from './views/LandingView';
@@ -56,6 +56,7 @@ import { KPIsView } from './views/KPIsView';
 import { FluxoCaixaView } from './views/FluxoCaixaView';
 import { MapsScraperView } from './views/MapsScraperView';
 import { ProspectionView } from './views/ProspectionView';
+import { EmpresaChatView } from './views/EmpresaChatView';
 import { ProfileView } from './views/ProfileView';
 import { SocialHubView } from './views/SocialHubView';
 import { EstoqueView } from './views/EstoqueView';
@@ -67,6 +68,7 @@ import { CalculadoraROIView } from './views/CalculadoraROIView';
 import { IAConsultoraView } from './views/IAConsultoraView';
 import { AdminView } from './views/AdminView';
 import { DesignerHubView } from './views/DesignerHubView';
+import { StudioAgencyView } from './views/StudioAgencyView';
 import { MarketingHubView } from './views/MarketingHubView';
 import { PainelLiderancaView } from './views/PainelLiderancaView';
 import { PontoView } from './views/PontoView';
@@ -85,18 +87,6 @@ export default function App() {
   const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>('login');
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showPunchModal, setShowPunchModal] = useState(false);
-  const [firestorePermissionNotice, setFirestorePermissionNotice] = useState(false);
-  const [copiedRules, setCopiedRules] = useState(false);
-
-  useEffect(() => {
-    const handlePermissionDenied = () => {
-      setFirestorePermissionNotice(true);
-    };
-    window.addEventListener('agencyos_firestore_permission_denied', handlePermissionDenied);
-    return () => {
-      window.removeEventListener('agencyos_firestore_permission_denied', handlePermissionDenied);
-    };
-  }, []);
 
   // Real-time Firebase Presence (Online/Offline status tracking)
   usePresence(user?.uid || userProfile?.uid, user?.email || userProfile?.email);
@@ -283,11 +273,6 @@ export default function App() {
         let hasResolvedOwner = false;
         const unsubProfile = subscribeToUserProfile(activeUid, async (p) => {
           if (p) {
-            // Guarantee Master Admin has full module access including admin
-            if (isUserMasterAdmin(p, p.email)) {
-              p.allowedModules = ALL_MODULE_IDS;
-              p.role = p.role || 'CEO & Administrador Master';
-            }
             setUserProfile(p);
             
             // Check if user is an employee
@@ -322,20 +307,18 @@ export default function App() {
               initDataSubscriptions(targetWorkspace);
             }
           } else if (activeUserObj) {
-            const isMaster = isUserMasterAdmin(null, activeUserObj.email);
             // Default active profile state if doc is not initialized
             setUserProfile({
               uid: activeUid!,
-              name: activeUserObj.displayName || activeUserObj.email?.split('@')[0] || 'Marcos Henrique',
-              email: activeUserObj.email || 'rickmarketing81@gmail.com',
-              agencyName: 'Techify Agência',
-              plan: 'Agency',
+              name: activeUserObj.displayName || activeUserObj.email?.split('@')[0] || 'Usuário',
+              email: activeUserObj.email || '',
+              agencyName: 'Agência Digital',
+              plan: 'Pro',
               status: 'active',
-              role: isMaster ? 'CEO & Administrador Master' : 'Especialista Digital',
               trialStartDate: Date.now(),
               trialEndsAt: Date.now() + 14 * 24 * 60 * 60 * 1000,
               createdAt: new Date().toLocaleDateString('pt-BR'),
-              allowedModules: isMaster ? ALL_MODULE_IDS : ALL_OPERATIONAL_MODULE_IDS,
+              allowedModules: ALL_OPERATIONAL_MODULE_IDS,
             });
             if (activeUid !== lastSubscribedDataUid) {
               lastSubscribedDataUid = activeUid!;
@@ -375,8 +358,7 @@ export default function App() {
     Date.now() >= userProfile.trialEndsAt;
 
   const setView = (view: ViewType) => {
-    const targetView = (view as string) === 'studio-agency' ? 'designer' : view;
-    setState((prev) => ({ ...prev, activeView: targetView }));
+    setState((prev) => ({ ...prev, activeView: view }));
   };
 
   const handleOpenAuth = (mode: 'login' | 'signup') => {
@@ -1483,7 +1465,7 @@ export default function App() {
       },
     };
     await handleSendMessage(shareMessage);
-    setView('prospection');
+    setView('chat');
   };
 
   // Render Public Landing View
@@ -1524,44 +1506,13 @@ export default function App() {
     );
   }
 
-  // Effective profile fallback ensuring rickmarketing81 always has master admin access
-  const effectiveProfile: FirestoreUserProfile = {
-    uid: userProfile?.uid || 'user-rick-marcos',
-    name: userProfile?.name || 'Marcos Henrique',
-    email: userProfile?.email || 'rickmarketing81@gmail.com',
-    agencyName: userProfile?.agencyName || 'Techify Agência',
-    role: userProfile?.role || 'CEO & Administrador Master',
-    department: userProfile?.department || 'gestao',
-    leadershipRole: userProfile?.leadershipRole || 'lider_geral',
-    workStatus: userProfile?.workStatus || 'online',
-    plan: userProfile?.plan || 'Agency',
-    status: userProfile?.status || 'active',
-    designRole: 'admin',
-    canEditDesigns: true,
-    canCreateDesigns: true,
-    canApproveDesigns: true,
-    canPublishPosts: true,
-    canDeleteDesigns: true,
-    userType: 'employee',
-    createdAt: userProfile?.createdAt || new Date().toISOString(),
-    allowedModules: ALL_MODULE_IDS,
-    ...(userProfile || {}),
-  };
-
-  const currentEmail = userProfile?.email || effectiveProfile.email || 'rickmarketing81@gmail.com';
-  const isMasterUser = isUserMasterAdmin(userProfile || effectiveProfile, currentEmail);
-  const isCurrentViewLocked =
-    isMasterUser
-      ? false
-      : !hasModuleAccess(state.activeView, userProfile || effectiveProfile, currentEmail);
-
   // Render Internal App Workspace
   return (
     <div className="h-screen bg-[#06070a] text-gray-100 flex flex-col font-sans overflow-hidden selection:bg-[#22c55e] selection:text-black">
       {/* Top Header */}
       <HeaderNav
-        agencyName={effectiveProfile.agencyName || state.organization.agencyName}
-        userProfile={effectiveProfile}
+        agencyName={userProfile?.agencyName || state.organization.agencyName}
+        userProfile={userProfile}
         activeView={state.activeView}
         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         onOpenDocs={() => setShowDocsModal(true)}
@@ -1570,43 +1521,11 @@ export default function App() {
         onOpenPunchModal={() => setShowPunchModal(true)}
       />
 
-      {/* Firestore Permissions Notification Banner */}
-      {firestorePermissionNotice && (
-        <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 text-xs flex flex-wrap items-center justify-between gap-3 text-amber-200 z-30 shrink-0">
-          <div className="flex items-center gap-2">
-            <span className="inline-block w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-            <span>
-              <strong>Banco Conectado (agencyos-1c3fc):</strong> Operando com dados locais seguros. Para ativar a sincronização em tempo real no Firestore, libere as regras no Console do Firebase.
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                const rulesText = `rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    match /{document=**} {\n      allow read, write: if true;\n    }\n  }\n}`;
-                navigator.clipboard.writeText(rulesText);
-                setCopiedRules(true);
-                setTimeout(() => setCopiedRules(false), 3000);
-              }}
-              className="px-2.5 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-medium transition cursor-pointer border border-amber-500/30"
-            >
-              {copiedRules ? '✓ Regras Copiadas!' : 'Copiar Regras Firestore'}
-            </button>
-            <button
-              onClick={() => setFirestorePermissionNotice(false)}
-              className="text-amber-400/70 hover:text-amber-300 text-sm px-1.5 py-0.5 cursor-pointer"
-              title="Dispensar aviso"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      )}
-
       <div className="flex flex-1 relative overflow-hidden min-h-0">
         {/* Sidebar */}
         <Sidebar
           activeView={state.activeView}
-          userProfile={userProfile || effectiveProfile}
+          userProfile={userProfile}
           onSelectView={setView}
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
@@ -1617,11 +1536,17 @@ export default function App() {
         />
 
         {/* Main Content View Area */}
-        <main className="flex-1 h-full min-h-0 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full overflow-y-auto">
-          {isCurrentViewLocked ? (
+        <main
+          className={`flex-1 h-full min-h-0 ${
+            state.activeView === 'studio-agency' || state.activeView === 'chat'
+              ? 'p-0 max-w-none w-full overflow-hidden'
+              : 'p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full overflow-y-auto'
+          }`}
+        >
+          {!hasModuleAccess(state.activeView, userProfile) ? (
             <LockedModuleView
               moduleId={state.activeView}
-              userProfile={userProfile || effectiveProfile}
+              userProfile={userProfile}
               onNavigateHome={() => setView('dashboard')}
             />
           ) : (
@@ -1665,11 +1590,30 @@ export default function App() {
                 />
               )}
 
+              {state.activeView === 'chat' && (
+                <EmpresaChatView
+                  currentUser={userProfile}
+                  userProfile={userProfile}
+                  allUsers={allUsers}
+                  messages={state.chatMessages || []}
+                  channels={state.chatChannels || []}
+                  timeClockRecords={state.timeClockRecords || []}
+                  prospectionDemands={state.prospectionDemands || []}
+                  prospectionContracts={state.prospectionContracts || []}
+                  techifyPackages={state.techifyPackages || []}
+                  onSendMessage={handleSendMessage}
+                  onDeleteMessage={handleDeleteChatMessage}
+                  onCreateChannel={handleCreateChatChannel}
+                  onMarkChannelAsRead={handleMarkChannelAsRead}
+                />
+              )}
+
               {state.activeView === 'profile' && (
                 <ProfileView
                   userProfile={userProfile}
                   timeClockRecords={state.timeClockRecords || []}
                   onUpdateProfile={handleUpdateUserProfile}
+                  onNavigateToChat={() => setView('chat')}
                   onNavigateToPonto={() => setView('ponto')}
                 />
               )}
@@ -1802,6 +1746,16 @@ export default function App() {
                 />
               )}
 
+              {state.activeView === 'studio-agency' && (
+                <StudioAgencyView
+                  userProfile={userProfile}
+                  designProjects={state.designProjects}
+                  designFolders={state.designFolders}
+                  onAddProject={handleAddDesignProject}
+                  onNavigate={setView}
+                />
+              )}
+
               {state.activeView === 'lideranca' && (
                 <PainelLiderancaView
                   userProfile={userProfile}
@@ -1844,7 +1798,7 @@ export default function App() {
 
               {state.activeView === 'admin' && (
                 <AdminView
-                  currentUser={userProfile || effectiveProfile}
+                  currentUser={userProfile}
                 />
               )}
             </>

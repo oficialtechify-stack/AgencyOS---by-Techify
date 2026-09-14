@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bot, Send, Sparkles, Copy, Check, Zap, Trash2 } from 'lucide-react';
+import { Bot, Send, Sparkles, FileText, Target, CheckCircle2, Copy, Check } from 'lucide-react';
 
 interface Message {
   sender: 'user' | 'ai';
@@ -10,7 +10,7 @@ export const IAConsultoraView: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       sender: 'ai',
-      text: 'Olá! Sou a **Techify AI Copilot**, consultora executiva de negócios, marketing e vendas do AgencyOS, agora acelerada pelo motor Groq AI ultrarrápido.\n\nComo posso acelerar sua agência hoje? Selecione um dos modelos estratégicos abaixo ou envie sua dúvida sobre faturamento, prospecção, tráfego ou contratos.',
+      text: 'Olá! Sou a **Techify AI Copilot**, consultora de negócios e vendas do AgencyOS. Como posso ajudar sua agência hoje? Escolha um modelo rápido abaixo ou digite sua dúvida.',
     },
   ]);
   const [input, setInput] = useState('');
@@ -34,17 +34,17 @@ export const IAConsultoraView: React.FC = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Falha na resposta do servidor');
+        throw new Error('Falha na resposta do servidor Gemini API');
       }
 
       const data = await response.json();
-      setMessages([...newMessages, { sender: 'ai', text: data.reply || data.text || 'Sem resposta.' }]);
+      setMessages([...newMessages, { sender: 'ai', text: data.reply || 'Sem resposta.' }]);
     } catch (err: any) {
       setMessages([
         ...newMessages,
         {
           sender: 'ai',
-          text: `Erro ao consultar a IA: ${err.message || 'Verifique se a conexão está ativa.'}`,
+          text: `Erro ao consultar a IA: ${err.message || 'Verifique se a chave GEMINI_API_KEY está configurada.'}`,
         },
       ]);
     } finally {
@@ -56,15 +56,6 @@ export const IAConsultoraView: React.FC = () => {
     navigator.clipboard.writeText(text);
     setCopiedIndex(index);
     setTimeout(() => setCopiedIndex(null), 2000);
-  };
-
-  const handleClearChat = () => {
-    setMessages([
-      {
-        sender: 'ai',
-        text: 'Histórico limpo! Pronto para uma nova análise ou estratégia. Em que posso te ajudar?',
-      },
-    ]);
   };
 
   const templates = [
@@ -93,22 +84,14 @@ export const IAConsultoraView: React.FC = () => {
   return (
     <div className="space-y-6 text-neutral-200">
       {/* Header Banner */}
-      <div className="p-6 rounded-2xl bg-[#0e0e0e] border border-neutral-800 space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-neutral-300 font-bold text-xs">
-            <Bot className="w-4 h-4 text-emerald-400" />
-            <span>IA CONSULTORA & GERADOR DE CONTEÚDO AGENCYOS</span>
-          </div>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/60 border border-emerald-500/30 text-[11px] font-bold text-emerald-300">
-            <Zap className="w-3 h-3 text-emerald-400 fill-emerald-400" />
-            <span>Motor Groq AI Ultrarrápido Ativo</span>
-          </div>
+      <div className="p-6 rounded-2xl bg-[#0e0e0e] border border-neutral-800 space-y-2">
+        <div className="flex items-center gap-2 text-neutral-300 font-bold text-xs">
+          <Bot className="w-4 h-4" /> IA CONSULTORA & GERADOR DE CONTEÚDO AGENCYOS
         </div>
-
         <h2 className="text-xl font-black text-white">Techify AI Copilot 2.0</h2>
-        <p className="text-xs text-neutral-400 max-w-3xl">
-          Consultoria estratégica de alta velocidade alimentada pelo motor Groq AI de ultra-baixa latência.
-          Gere planos de escala de MRR, scripts matadores de vendas, propostas high-ticket e automações em segundos.
+        <p className="text-xs text-neutral-400">
+          Assistente inteligente alimentado pelo Google Gemini API para automação de propostas, copies,
+          scripts de prospecção e estratégias de crescimento.
         </p>
       </div>
 
@@ -122,7 +105,7 @@ export const IAConsultoraView: React.FC = () => {
             className="p-4 rounded-xl bg-neutral-900 border border-neutral-800 hover:border-neutral-700 text-left transition-all space-y-1.5 group disabled:opacity-50 cursor-pointer"
           >
             <div className="flex items-center gap-1.5 text-xs font-bold text-neutral-200 group-hover:underline">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <Sparkles className="w-3.5 h-3.5" />
               <span>{t.title}</span>
             </div>
             <p className="text-[11px] text-neutral-400 line-clamp-2">{t.prompt}</p>
@@ -131,24 +114,7 @@ export const IAConsultoraView: React.FC = () => {
       </div>
 
       {/* Chat Window */}
-      <div className="p-5 rounded-2xl bg-[#0e0e0e] border border-neutral-800 flex flex-col h-[520px]">
-        {/* Chat top header with clear action */}
-        <div className="flex items-center justify-between pb-3 border-b border-neutral-800/80 mb-3 text-xs text-neutral-400">
-          <span className="font-semibold text-neutral-300 flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            Canal Direto com o Copilot
-          </span>
-          {messages.length > 1 && (
-            <button
-              onClick={handleClearChat}
-              className="text-[11px] text-neutral-500 hover:text-neutral-300 flex items-center gap-1 cursor-pointer transition-colors"
-            >
-              <Trash2 className="w-3 h-3" />
-              <span>Limpar conversa</span>
-            </button>
-          )}
-        </div>
-
+      <div className="p-5 rounded-2xl bg-[#0e0e0e] border border-neutral-800 flex flex-col h-[500px]">
         {/* Messages list */}
         <div className="flex-1 overflow-y-auto space-y-4 pr-2">
           {messages.map((m, idx) => (
@@ -164,15 +130,7 @@ export const IAConsultoraView: React.FC = () => {
                 }`}
               >
                 <div className="flex items-center justify-between gap-2 border-b border-neutral-800 pb-1 text-[10px] text-neutral-400 font-bold">
-                  <span className="flex items-center gap-1">
-                    {m.sender === 'user' ? (
-                      'Você (Gestor)'
-                    ) : (
-                      <>
-                        <span className="text-emerald-400 font-black">⚡ Groq Copilot</span>
-                      </>
-                    )}
-                  </span>
+                  <span>{m.sender === 'user' ? 'Você (Gestor)' : 'Techify AI Copilot'}</span>
                   {m.sender === 'ai' && (
                     <button
                       onClick={() => handleCopy(m.text, idx)}
@@ -180,7 +138,7 @@ export const IAConsultoraView: React.FC = () => {
                     >
                       {copiedIndex === idx ? (
                         <>
-                          <Check className="w-3 h-3 text-emerald-400" /> Copiado
+                          <Check className="w-3 h-3" /> Copiado
                         </>
                       ) : (
                         <>
@@ -190,9 +148,7 @@ export const IAConsultoraView: React.FC = () => {
                     </button>
                   )}
                 </div>
-                <div className="whitespace-pre-wrap font-sans text-xs sm:text-[13px] text-neutral-200">
-                  {m.text}
-                </div>
+                <div className="whitespace-pre-wrap">{m.text}</div>
               </div>
             </div>
           ))}
@@ -200,8 +156,8 @@ export const IAConsultoraView: React.FC = () => {
           {loading && (
             <div className="flex justify-start">
               <div className="p-3 rounded-2xl bg-neutral-900 border border-neutral-800 text-xs text-neutral-300 flex items-center gap-2 font-bold animate-pulse">
-                <Sparkles className="w-4 h-4 text-emerald-400 animate-spin" />
-                <span>Processando insights estratégicos com Groq AI ultrarrápido...</span>
+                <Sparkles className="w-4 h-4 animate-spin" />
+                Processando insights com Gemini 2.5 Flash...
               </div>
             </div>
           )}
@@ -214,7 +170,7 @@ export const IAConsultoraView: React.FC = () => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-            placeholder="Pergunte sobre funis, propostas, metas de MRR, scripts de prospecção..."
+            placeholder="Digite o comando ou dúvida para a IA..."
             disabled={loading}
             className="flex-1 bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-700"
           />

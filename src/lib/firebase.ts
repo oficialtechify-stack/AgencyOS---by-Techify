@@ -49,13 +49,11 @@ import {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-const rawDbId = (firebaseConfig as any).firestoreDatabaseId;
 export const db =
-  rawDbId &&
-  rawDbId !== '(default)' &&
-  typeof rawDbId === 'string' &&
-  rawDbId.trim() !== ''
-    ? getFirestore(app, rawDbId)
+  firebaseConfig.firestoreDatabaseId &&
+  firebaseConfig.firestoreDatabaseId !== '(default)' &&
+  firebaseConfig.firestoreDatabaseId.trim() !== ''
+    ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
     : getFirestore(app);
 
 export interface FirestoreUserProfile {
@@ -411,10 +409,8 @@ export async function seedInitialUserData(uid: string) {
 export function subscribeToUserCollection<T>(
   uid: string,
   collectionName: string,
-  onData: (items: T[]) => void,
-  onError?: (err: any) => void
+  onData: (items: T[]) => void
 ) {
-  if (!uid) return () => {};
   const colRef = collection(db, 'users', uid, collectionName);
   return onSnapshot(
     colRef,
@@ -426,19 +422,7 @@ export function subscribeToUserCollection<T>(
       onData(items);
     },
     (err) => {
-      if (err?.code === 'permission-denied' || err?.message?.includes('insufficient permissions')) {
-        window.dispatchEvent(
-          new CustomEvent('agencyos_firestore_permission_denied', { detail: { collectionName } })
-        );
-        console.warn(`[Firestore] Permissão pendente para coleção '${collectionName}' no Firestore.`);
-      } else {
-        console.warn(`[Firestore] Aviso na subscrição de '${collectionName}':`, err?.message || err);
-      }
-      if (onError) onError(err);
-      // Fallback to default initial data if available
-      if ((DEFAULT_INITIAL_DATA as any)[collectionName]) {
-        onData((DEFAULT_INITIAL_DATA as any)[collectionName]);
-      }
+      console.error(`Error subscribing to ${collectionName}:`, err);
     }
   );
 }
@@ -523,15 +507,6 @@ export function cleanAvatarUrl(url?: string | null): string {
   if (!url || typeof url !== 'string') return '';
   const trimmed = url.trim();
   if (!trimmed || trimmed === 'null' || trimmed === 'undefined' || trimmed === '""') return '';
-  // Reject fake stock photos (unsplash, placeholders) so only real user uploads are shown
-  if (
-    trimmed.includes('unsplash.com') ||
-    trimmed.includes('placeholder') ||
-    trimmed.includes('picsum.photos') ||
-    trimmed.includes('dummy')
-  ) {
-    return '';
-  }
   return trimmed;
 }
 
@@ -562,7 +537,7 @@ export const AGENCY_REGISTERED_TEAM_MEMBERS: FirestoreUserProfile[] = [
     uid: 'user-rick-marcos',
     name: 'Marcos Henrique',
     email: 'rickmarketing81@gmail.com',
-    avatarUrl: '',
+    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
     instagram: 'rickzinxx_',
     bio: 'CEO & Fundador da Techify AgencyOS • Direção executiva e tecnologia.',
     agencyName: 'Techify Agência',
@@ -582,13 +557,13 @@ export const AGENCY_REGISTERED_TEAM_MEMBERS: FirestoreUserProfile[] = [
     trialStartDate: Date.now(),
     trialEndsAt: Date.now() + 14 * 86400000,
     createdAt: new Date().toISOString(),
-    allowedModules: ['dashboard', 'designer', 'social-hub', 'marketing', 'prospection', 'kanban', 'agenda', 'kpis', 'fluxo-caixa', 'maps-scraper', 'relatorios', 'chat', 'ponto', 'admin'],
+    allowedModules: ['dashboard', 'designer', 'studio-agency', 'social-hub', 'marketing', 'prospection', 'kanban', 'agenda', 'kpis', 'fluxo-caixa', 'maps-scraper', 'relatorios', 'chat', 'ponto'],
   },
   {
     uid: 'user-vitoria-ellen',
     name: 'Vitoria Ellen da Silva',
     email: 'vitoriajob02@gmail.com',
-    avatarUrl: '',
+    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
     instagram: 'vitoria.design',
     bio: 'Líder de Design & Criativos • Especialista em identidade visual e criativos de alta conversão.',
     agencyName: 'Techify Agência',
@@ -609,13 +584,13 @@ export const AGENCY_REGISTERED_TEAM_MEMBERS: FirestoreUserProfile[] = [
     trialStartDate: Date.now(),
     trialEndsAt: Date.now() + 14 * 86400000,
     createdAt: new Date().toISOString(),
-    allowedModules: ['dashboard', 'designer', 'social-hub', 'kanban', 'agenda', 'relatorios', 'chat', 'ponto'],
+    allowedModules: ['dashboard', 'designer', 'studio-agency', 'social-hub', 'kanban', 'agenda', 'relatorios', 'chat', 'ponto'],
   },
   {
     uid: 'user-lucas-marketing',
     name: 'Lucas Lider do marketing',
     email: 'lucassgabriell876@gmail.com',
-    avatarUrl: '',
+    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
     instagram: 'lucas.mkt',
     bio: 'Líder de Marketing & Gestão de Tráfego Pago • Escala de campanhas Meta & Google Ads.',
     agencyName: 'Techify Agência',
@@ -642,7 +617,7 @@ export const AGENCY_REGISTERED_TEAM_MEMBERS: FirestoreUserProfile[] = [
     uid: 'user-sabrina-suellen',
     name: 'Sabrina Suellen',
     email: 'suellensabrina36@gmail.com',
-    avatarUrl: '',
+    avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80',
     instagram: 'sabrina.sdr',
     bio: 'Closer & SDR Comercial • Prospecção ativa B2B e fechamento de novos clientes.',
     agencyName: 'Techify Agência',
@@ -669,7 +644,7 @@ export const AGENCY_REGISTERED_TEAM_MEMBERS: FirestoreUserProfile[] = [
     uid: 'user-marcos-design',
     name: 'MARCOS HENRIQUE',
     email: 'aigerakabane81983521523@gmail.com',
-    avatarUrl: '',
+    avatarUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=400&q=80',
     instagram: 'marcos.design',
     bio: 'Líder Geral & Design • Gestão de projetos criativos e branding.',
     agencyName: 'Techify Agência',
@@ -690,7 +665,7 @@ export const AGENCY_REGISTERED_TEAM_MEMBERS: FirestoreUserProfile[] = [
     trialStartDate: Date.now(),
     trialEndsAt: Date.now() + 14 * 86400000,
     createdAt: new Date().toISOString(),
-    allowedModules: ['dashboard', 'designer', 'social-hub', 'marketing', 'prospection', 'kanban', 'agenda', 'kpis', 'fluxo-caixa', 'maps-scraper', 'relatorios', 'chat', 'ponto'],
+    allowedModules: ['dashboard', 'designer', 'studio-agency', 'social-hub', 'marketing', 'prospection', 'kanban', 'agenda', 'kpis', 'fluxo-caixa', 'maps-scraper', 'relatorios', 'chat', 'ponto'],
   },
 ];
 
@@ -828,14 +803,7 @@ export function subscribeAllUsers(
       onData(finalUsers.length > 0 ? finalUsers : AGENCY_REGISTERED_TEAM_MEMBERS);
     },
     (err) => {
-      if (err?.code === 'permission-denied' || err?.message?.includes('insufficient permissions')) {
-        window.dispatchEvent(
-          new CustomEvent('agencyos_firestore_permission_denied', { detail: { collectionName: 'users' } })
-        );
-        console.warn('[Firestore] Permissão pendente para coleção users no Firestore.');
-      } else {
-        console.warn('Aviso ao buscar todos os usuários do Firestore:', err?.message || err);
-      }
+      console.error('Error fetching all users from Firestore:', err);
       onData(AGENCY_REGISTERED_TEAM_MEMBERS);
       if (onError) onError(err);
     }
@@ -860,14 +828,7 @@ export function subscribeAgencyChatMessages(
       onData(messages);
     },
     (err) => {
-      if (err?.code === 'permission-denied' || err?.message?.includes('insufficient permissions')) {
-        window.dispatchEvent(
-          new CustomEvent('agencyos_firestore_permission_denied', { detail: { collectionName: 'agencyChatMessages' } })
-        );
-        console.warn('[Firestore] Permissão pendente para mensagens do chat no Firestore.');
-      } else {
-        console.warn('Aviso ao subscrever mensagens do chat da agência:', err?.message || err);
-      }
+      console.error('Erro ao subscrever mensagens do chat da agência:', err);
       if (onError) onError(err);
     }
   );
@@ -889,14 +850,7 @@ export function subscribeAgencyChatChannels(
       onData(channels);
     },
     (err) => {
-      if (err?.code === 'permission-denied' || err?.message?.includes('insufficient permissions')) {
-        window.dispatchEvent(
-          new CustomEvent('agencyos_firestore_permission_denied', { detail: { collectionName: 'agencyChatChannels' } })
-        );
-        console.warn('[Firestore] Permissão pendente para canais do chat no Firestore.');
-      } else {
-        console.warn('Aviso ao subscrever canais do chat da agência:', err?.message || err);
-      }
+      console.error('Erro ao subscrever canais do chat da agência:', err);
       if (onError) onError(err);
     }
   );
@@ -964,8 +918,8 @@ export async function resolvePrimaryAgencyOwnerUid(): Promise<string | null> {
   try {
     const usersRef = collection(db, 'users');
     
-    // First, search for the primary agency owner by email (supporting both @gmail and @gamail)
-    const qOwner = query(usersRef, where('email', 'in', ['rickmarketing81@gmail.com', 'rickmarketing81@gamail.com']));
+    // First, search for the primary agency owner by email
+    const qOwner = query(usersRef, where('email', '==', 'rickmarketing81@gmail.com'));
     const snapOwner = await getDocs(qOwner);
     if (!snapOwner.empty) {
       return snapOwner.docs[0].id;
@@ -997,7 +951,7 @@ export async function resolvePrimaryAgencyOwnerUid(): Promise<string | null> {
       }
     }
   } catch (err) {
-    console.warn('Aviso ao resolver UID do proprietário da agência:', err);
+    console.error('Erro ao resolver UID do proprietário da agência:', err);
   }
   return null;
 }
@@ -1275,19 +1229,11 @@ const SESSION_KEY = 'agencyos_auth_session';
 export function getStoredSession(): ActiveSession | null {
   try {
     const raw = localStorage.getItem(SESSION_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && parsed.uid === 'logged-out') return null;
-      return parsed;
-    }
+    if (raw) return JSON.parse(raw);
   } catch (e) {
-    console.warn('Aviso ao ler sessão salva:', e);
+    console.error('Erro ao ler sessão salva:', e);
   }
-  return {
-    uid: 'user-rick-marcos',
-    email: 'rickmarketing81@gmail.com',
-    name: 'Marcos Henrique',
-  };
+  return null;
 }
 
 export function setStoredSession(session: ActiveSession | null) {
@@ -1295,10 +1241,10 @@ export function setStoredSession(session: ActiveSession | null) {
     if (session) {
       localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     } else {
-      localStorage.setItem(SESSION_KEY, JSON.stringify({ uid: 'logged-out', email: '' }));
+      localStorage.removeItem(SESSION_KEY);
     }
   } catch (e) {
-    console.warn('Aviso ao salvar sessão:', e);
+    console.error('Erro ao salvar sessão:', e);
   }
   window.dispatchEvent(new Event('agencyos_session_changed'));
 }
@@ -1476,67 +1422,20 @@ export async function sendUserVerificationEmail(userToVerify?: User | null) {
   await sendEmailVerification(targetUser);
 }
 
-// Scopes for Google Calendar & Workspace integration
-export const GOOGLE_CALENDAR_SCOPES = [
-  'https://www.googleapis.com/auth/calendar.events',
-];
-
-// In-memory token cache (Do NOT store in localStorage or sessionStorage)
-let cachedGoogleAccessToken: string | null = null;
-let isSigningInWithGoogle = false;
-
-export const getCachedGoogleAccessToken = (): string | null => {
-  return cachedGoogleAccessToken;
-};
-
-export const setCachedGoogleAccessToken = (token: string | null) => {
-  cachedGoogleAccessToken = token;
-};
-
-export async function loginWithGoogle(requestCalendarScope: boolean = true) {
+export async function loginWithGoogle() {
   const provider = new GoogleAuthProvider();
-  if (requestCalendarScope) {
-    GOOGLE_CALENDAR_SCOPES.forEach((scope) => provider.addScope(scope));
-  }
-  isSigningInWithGoogle = true;
-  try {
-    const res = await signInWithPopup(auth, provider);
-    const credential = GoogleAuthProvider.credentialFromResult(res);
-    if (credential?.accessToken) {
-      cachedGoogleAccessToken = credential.accessToken;
-    }
-    const profile = await getOrCreateUserProfile(res.user);
-    setStoredSession({
-      uid: profile.uid,
-      email: profile.email,
-      name: profile.name,
-    });
-    return { res, accessToken: cachedGoogleAccessToken };
-  } finally {
-    isSigningInWithGoogle = false;
-  }
-}
-
-export async function connectGoogleCalendar(): Promise<string | null> {
-  const provider = new GoogleAuthProvider();
-  GOOGLE_CALENDAR_SCOPES.forEach((scope) => provider.addScope(scope));
-  isSigningInWithGoogle = true;
-  try {
-    const res = await signInWithPopup(auth, provider);
-    const credential = GoogleAuthProvider.credentialFromResult(res);
-    if (credential?.accessToken) {
-      cachedGoogleAccessToken = credential.accessToken;
-      return credential.accessToken;
-    }
-    return null;
-  } finally {
-    isSigningInWithGoogle = false;
-  }
+  const res = await signInWithPopup(auth, provider);
+  const profile = await getOrCreateUserProfile(res.user);
+  setStoredSession({
+    uid: profile.uid,
+    email: profile.email,
+    name: profile.name,
+  });
+  return res;
 }
 
 export async function logoutUser() {
   setStoredSession(null);
-  cachedGoogleAccessToken = null;
   try {
     await signOut(auth);
   } catch (e) {

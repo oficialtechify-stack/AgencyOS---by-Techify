@@ -59,7 +59,7 @@ export function useMessages(channelId?: string) {
         setLoading(false);
       },
       (err) => {
-        console.warn(`[Chat] Aviso ao escutar mensagens do canal ${channelId}:`, err?.message || err);
+        console.error(`Erro ao escutar mensagens do canal ${channelId}:`, err);
         setError(err as Error);
         setLoading(false);
       }
