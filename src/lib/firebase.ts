@@ -521,15 +521,6 @@ export function cleanAvatarUrl(url?: string | null): string {
   if (!url || typeof url !== 'string') return '';
   const trimmed = url.trim();
   if (!trimmed || trimmed === 'null' || trimmed === 'undefined' || trimmed === '""') return '';
-  // Reject fake stock photos (unsplash, placeholders) so only real user uploads are shown
-  if (
-    trimmed.includes('unsplash.com') ||
-    trimmed.includes('placeholder') ||
-    trimmed.includes('picsum.photos') ||
-    trimmed.includes('dummy')
-  ) {
-    return '';
-  }
   return trimmed;
 }
 
@@ -560,7 +551,7 @@ export const AGENCY_REGISTERED_TEAM_MEMBERS: FirestoreUserProfile[] = [
     uid: 'user-rick-marcos',
     name: 'Marcos Henrique',
     email: 'rickmarketing81@gmail.com',
-    avatarUrl: '',
+    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
     instagram: 'rickzinxx_',
     bio: 'CEO & Fundador da Techify AgencyOS • Direção executiva e tecnologia.',
     agencyName: 'Techify Agência',
@@ -580,13 +571,13 @@ export const AGENCY_REGISTERED_TEAM_MEMBERS: FirestoreUserProfile[] = [
     trialStartDate: Date.now(),
     trialEndsAt: Date.now() + 14 * 86400000,
     createdAt: new Date().toISOString(),
-    allowedModules: ['dashboard', 'designer', 'social-hub', 'marketing', 'prospection', 'kanban', 'agenda', 'kpis', 'fluxo-caixa', 'maps-scraper', 'relatorios', 'chat', 'ponto', 'admin'],
+    allowedModules: ['dashboard', 'designer', 'studio-agency', 'social-hub', 'marketing', 'prospection', 'kanban', 'agenda', 'kpis', 'fluxo-caixa', 'maps-scraper', 'relatorios', 'chat', 'ponto'],
   },
   {
     uid: 'user-vitoria-ellen',
     name: 'Vitoria Ellen da Silva',
     email: 'vitoriajob02@gmail.com',
-    avatarUrl: '',
+    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
     instagram: 'vitoria.design',
     bio: 'Líder de Design & Criativos • Especialista em identidade visual e criativos de alta conversão.',
     agencyName: 'Techify Agência',
@@ -607,13 +598,13 @@ export const AGENCY_REGISTERED_TEAM_MEMBERS: FirestoreUserProfile[] = [
     trialStartDate: Date.now(),
     trialEndsAt: Date.now() + 14 * 86400000,
     createdAt: new Date().toISOString(),
-    allowedModules: ['dashboard', 'designer', 'social-hub', 'kanban', 'agenda', 'relatorios', 'chat', 'ponto'],
+    allowedModules: ['dashboard', 'designer', 'studio-agency', 'social-hub', 'kanban', 'agenda', 'relatorios', 'chat', 'ponto'],
   },
   {
     uid: 'user-lucas-marketing',
     name: 'Lucas Lider do marketing',
     email: 'lucassgabriell876@gmail.com',
-    avatarUrl: '',
+    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
     instagram: 'lucas.mkt',
     bio: 'Líder de Marketing & Gestão de Tráfego Pago • Escala de campanhas Meta & Google Ads.',
     agencyName: 'Techify Agência',
@@ -640,7 +631,7 @@ export const AGENCY_REGISTERED_TEAM_MEMBERS: FirestoreUserProfile[] = [
     uid: 'user-sabrina-suellen',
     name: 'Sabrina Suellen',
     email: 'suellensabrina36@gmail.com',
-    avatarUrl: '',
+    avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80',
     instagram: 'sabrina.sdr',
     bio: 'Closer & SDR Comercial • Prospecção ativa B2B e fechamento de novos clientes.',
     agencyName: 'Techify Agência',
@@ -667,7 +658,7 @@ export const AGENCY_REGISTERED_TEAM_MEMBERS: FirestoreUserProfile[] = [
     uid: 'user-marcos-design',
     name: 'MARCOS HENRIQUE',
     email: 'aigerakabane81983521523@gmail.com',
-    avatarUrl: '',
+    avatarUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=400&q=80',
     instagram: 'marcos.design',
     bio: 'Líder Geral & Design • Gestão de projetos criativos e branding.',
     agencyName: 'Techify Agência',
@@ -688,7 +679,7 @@ export const AGENCY_REGISTERED_TEAM_MEMBERS: FirestoreUserProfile[] = [
     trialStartDate: Date.now(),
     trialEndsAt: Date.now() + 14 * 86400000,
     createdAt: new Date().toISOString(),
-    allowedModules: ['dashboard', 'designer', 'social-hub', 'marketing', 'prospection', 'kanban', 'agenda', 'kpis', 'fluxo-caixa', 'maps-scraper', 'relatorios', 'chat', 'ponto'],
+    allowedModules: ['dashboard', 'designer', 'studio-agency', 'social-hub', 'marketing', 'prospection', 'kanban', 'agenda', 'kpis', 'fluxo-caixa', 'maps-scraper', 'relatorios', 'chat', 'ponto'],
   },
 ];
 
@@ -962,8 +953,8 @@ export async function resolvePrimaryAgencyOwnerUid(): Promise<string | null> {
   try {
     const usersRef = collection(db, 'users');
     
-    // First, search for the primary agency owner by email (supporting both @gmail and @gamail)
-    const qOwner = query(usersRef, where('email', 'in', ['rickmarketing81@gmail.com', 'rickmarketing81@gamail.com']));
+    // First, search for the primary agency owner by email
+    const qOwner = query(usersRef, where('email', '==', 'rickmarketing81@gmail.com'));
     const snapOwner = await getDocs(qOwner);
     if (!snapOwner.empty) {
       return snapOwner.docs[0].id;
@@ -1273,19 +1264,11 @@ const SESSION_KEY = 'agencyos_auth_session';
 export function getStoredSession(): ActiveSession | null {
   try {
     const raw = localStorage.getItem(SESSION_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && parsed.uid === 'logged-out') return null;
-      return parsed;
-    }
+    if (raw) return JSON.parse(raw);
   } catch (e) {
     console.warn('Aviso ao ler sessão salva:', e);
   }
-  return {
-    uid: 'user-rick-marcos',
-    email: 'rickmarketing81@gmail.com',
-    name: 'Marcos Henrique',
-  };
+  return null;
 }
 
 export function setStoredSession(session: ActiveSession | null) {
@@ -1293,7 +1276,7 @@ export function setStoredSession(session: ActiveSession | null) {
     if (session) {
       localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     } else {
-      localStorage.setItem(SESSION_KEY, JSON.stringify({ uid: 'logged-out', email: '' }));
+      localStorage.removeItem(SESSION_KEY);
     }
   } catch (e) {
     console.warn('Aviso ao salvar sessão:', e);

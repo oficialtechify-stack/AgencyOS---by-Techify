@@ -59,22 +59,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
     if (onClose) onClose();
   };
 
-  const effectiveProfile: any = {
-    name: userProfile?.name || 'Marcos Henrique',
-    email: userProfile?.email || 'rickmarketing81@gmail.com',
-    plan: (userProfile as any)?.plan || 'Agency',
-    status: (userProfile as any)?.status || 'active',
-    role: (userProfile as any)?.role || 'CEO & Administrador Master',
-    department: (userProfile as any)?.department || 'gestao',
-    allowedModules: (userProfile as any)?.allowedModules,
-    ...(userProfile || {}),
+  const profile = userProfile || {
+    name: 'Marcos Henrique',
+    email: 'rickmarketing81@gmail.com',
+    plan: 'Pro',
+    status: 'active',
+    createdAt: '2026-01-01',
   };
 
-  const effectiveEmail = effectiveProfile.email || 'rickmarketing81@gmail.com';
-  const isMaster = isUserMasterAdmin(effectiveProfile, effectiveEmail);
-  const canAccessAdmin = isMaster || hasModuleAccess('admin', effectiveProfile, effectiveEmail);
-
-  const profile = effectiveProfile;
+  const isMaster = isUserMasterAdmin(userProfile as any);
+  const canAccessAdmin = hasModuleAccess('admin', userProfile as any);
 
   const handleExit = onLogout || (() => handleNav('landing'));
 
@@ -118,6 +112,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     {
       title: 'CRIAÇÃO & DESIGN',
       items: [
+        { id: 'studio-agency' as ViewMode, label: 'Studio Agency (Canva)', icon: Wand2 },
         { id: 'designer' as ViewMode, label: 'Área do Designer', icon: Palette },
         { id: 'social-hub' as ViewMode, label: 'Social Hub (Instagram & WhatsApp)', icon: Share2 },
       ],

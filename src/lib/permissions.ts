@@ -102,6 +102,13 @@ export const ALL_SYSTEM_MODULES: SystemModuleInfo[] = [
     iconName: 'Palette',
   },
   {
+    id: 'studio-agency',
+    name: 'Studio Agency (Canva)',
+    category: 'Gestão & Projetos',
+    description: 'Plataforma completa de design gráfico estilo Canva com IA, modelos, kits de marca e gráfica',
+    iconName: 'Wand2',
+  },
+  {
     id: 'social-hub',
     name: 'Social Media Hub',
     category: 'Inteligência & IA',
@@ -161,7 +168,6 @@ export const ALL_MODULE_IDS: ViewType[] = ALL_SYSTEM_MODULES.map((m) => m.id);
 // Admin Master emails that always have full unrestricted access
 export const MASTER_ADMIN_EMAILS = [
   'rickmarketing81@gmail.com',
-  'rickmarketing81@gamail.com',
   'oficialtechify@gmail.com',
 ];
 
@@ -173,47 +179,8 @@ export function isUserMasterAdmin(
   userEmail?: string | null
 ): boolean {
   const email = (profile?.email || userEmail || '').toLowerCase().trim();
-  const name = (profile?.name || '').toLowerCase().trim();
-  const uid = (profile?.uid || '').toLowerCase().trim();
-  const role = (profile?.role || '').toLowerCase().trim();
-
-  // If email matches rickmarketing81 or any master admin email
-  if (
-    MASTER_ADMIN_EMAILS.includes(email) ||
-    email.startsWith('rickmarketing81@') ||
-    email.includes('rickmarketing81') ||
-    email.includes('oficialtechify')
-  ) {
-    return true;
-  }
-
-  // If name or UID corresponds to Marcos Henrique / Master Owner
-  if (
-    name.includes('marcos henrique') ||
-    name.includes('marcos') ||
-    uid === 'user-rick-marcos' ||
-    uid.includes('rick-marcos') ||
-    uid === 'agency-master-owner'
-  ) {
-    return true;
-  }
-
-  // If role is Admin, CEO, Diretor, Líder Geral
-  if (
-    role.includes('admin') ||
-    role.includes('ceo') ||
-    role.includes('diretor') ||
-    role.includes('lider geral') ||
-    role.includes('líder geral')
-  ) {
-    return true;
-  }
-
-  // Default fallback: if no explicit email or default agency session
-  if (!email && (!name || name.includes('marcos'))) {
-    return true;
-  }
-
+  if (MASTER_ADMIN_EMAILS.includes(email)) return true;
+  if (profile?.role?.toLowerCase().includes('admin')) return true;
   return false;
 }
 
@@ -237,14 +204,6 @@ export function hasModuleAccess(
 
   // Admin module is strictly for admins or profiles explicitly granted 'admin'
   if (moduleId === 'admin') {
-    const email = (profile?.email || userEmail || '').toLowerCase().trim();
-    if (
-      MASTER_ADMIN_EMAILS.includes(email) ||
-      email.startsWith('rickmarketing81@') ||
-      email.includes('rickmarketing81')
-    ) {
-      return true;
-    }
     return profile?.allowedModules?.includes('admin') || false;
   }
 
@@ -305,7 +264,7 @@ export const PERMISSION_PRESETS = [
     name: '🎨 Líder de Design (Direção Criativa)',
     badge: 'Líder Design',
     color: 'border-neutral-700 text-white bg-neutral-900',
-    modules: ['dashboard', 'designer', 'social-hub', 'kanban', 'agenda', 'relatorios'] as ViewType[],
+    modules: ['dashboard', 'designer', 'studio-agency', 'social-hub', 'kanban', 'agenda', 'relatorios'] as ViewType[],
   },
   {
     name: '🚀 Gestor de Tráfego',
@@ -317,7 +276,7 @@ export const PERMISSION_PRESETS = [
     name: '🎨 Designer Gráfico',
     badge: 'Designer',
     color: 'border-neutral-700 text-neutral-300 bg-neutral-950',
-    modules: ['dashboard', 'designer', 'social-hub', 'kanban'] as ViewType[],
+    modules: ['dashboard', 'designer', 'studio-agency', 'social-hub', 'kanban'] as ViewType[],
   },
   {
     name: '💼 Closer / SDR de Prospecção',
