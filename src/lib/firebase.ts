@@ -1541,58 +1541,6 @@ export async function loginWithEmailOrFirestoreCredentials(
     });
 
     if (!matchedDoc) {
-      // Master Admin Instant Bypass: Never lock out the platform owner
-      if (
-        cleanEmail === 'rickmarketing81@gmail.com' ||
-        cleanEmail === 'agencyosoficial@gmail.com' ||
-        cleanEmail === 'rickmarketing81@gamail.com' ||
-        cleanEmail.includes('rickmarketing81')
-      ) {
-        const masterProfile: FirestoreUserProfile = {
-          uid: 'user-rick-marcos',
-          name: 'Marcos Henrique',
-          email: cleanEmail,
-          agencyName: 'Techify Agência',
-          plan: 'Agency',
-          status: 'active',
-          role: 'CEO & Administrador Master',
-          userType: 'employee',
-          department: 'gestao',
-          trialStartDate: Date.now(),
-          trialEndsAt: Date.now() + 365 * 24 * 60 * 60 * 1000,
-          createdAt: new Date().toISOString(),
-          allowedModules: [
-            'dashboard',
-            'profile',
-            'lideranca',
-            'ponto',
-            'kpis',
-            'fluxo-caixa',
-            'campanhas',
-            'social-hub',
-            'designer',
-            'kanban',
-            'prospection',
-            'relatorios',
-            'agenda',
-            'calculadora-roi',
-            'ia-consultora',
-            'admin',
-          ],
-        };
-        setStoredSession({
-          uid: masterProfile.uid,
-          email: masterProfile.email,
-          name: masterProfile.name,
-        });
-        try {
-          await setDoc(doc(db, 'users', masterProfile.uid), masterProfile, { merge: true });
-        } catch (e) {
-          console.warn('Persist master profile:', e);
-        }
-        return masterProfile;
-      }
-
       throw new Error('Usuário não encontrado. Verifique o e-mail digitado ou solicite acesso ao administrador.');
     }
 

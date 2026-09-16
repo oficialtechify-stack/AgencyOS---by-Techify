@@ -270,12 +270,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {/* LeadsPay Master Telemetry & Metrics (Exclusive for rickmarketing81@gmail.com / agencyosoficial@gmail.com / Super Admin) */}
             {(effectiveEmail === 'rickmarketing81@gmail.com' ||
               effectiveEmail === 'agencyosoficial@gmail.com' ||
-              effectiveEmail.includes('rickmarketing81') ||
-              profile?.uid === 'user-rick-marcos' ||
               isMaster) && (
               <button
                 onClick={() => handleNav('leadspay-master')}
-                title="LeadsPay Master — Gestão & Métricas"
+                title="Métricas LeadsPay (Master) — Painel Exclusivo"
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all duration-150 cursor-pointer ${
                   active === 'leadspay-master'
                     ? 'bg-lime-400 text-black font-extrabold shadow-sm'
@@ -289,11 +287,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     }`}
                   />
                   <span className={active === 'leadspay-master' ? 'text-black' : 'text-neutral-200'}>
-                    LeadsPay & Gestão
+                    Métricas LeadsPay (Master)
                   </span>
                 </div>
                 <span className="text-[9px] bg-lime-950 text-lime-400 border border-lime-800/80 px-1.5 py-0.5 rounded font-black tracking-wider uppercase">
-                  Master
+                  Exclusivo
                 </span>
               </button>
             )}
