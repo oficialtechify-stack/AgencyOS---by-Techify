@@ -640,7 +640,6 @@ export function subscribeToUserProfile(uid: string, onData: (profile: FirestoreU
     },
     (err) => {
       console.warn('Error subscribing to user profile:', err);
-      onData(null);
     }
   );
 }

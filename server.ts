@@ -286,13 +286,8 @@ Inclua:
       const signature = req.headers['x-leadspay-signature'] as string;
       const secret = process.env.LEADSPAY_WEBHOOK_SECRET;
 
-      // Validação de Segurança (aceita assinatura do ambiente, live secret ou simulador de teste)
-      const isPermittedSignature =
-        signature === 'demo_test_signature' ||
-        signature === 'leadspay_sec_live_981a772f91bc' ||
-        (secret && signature === secret);
-
-      if (secret && !isPermittedSignature) {
+      // Validação de Segurança
+      if (secret && signature !== secret) {
         return res.status(401).json({ error: 'Assinatura inválida' });
       }
 

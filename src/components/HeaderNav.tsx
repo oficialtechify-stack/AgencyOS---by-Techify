@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Bell, Menu, X, Sparkles, Clock, ShieldCheck, Zap } from 'lucide-react';
+import { Bell, Menu, X, Sparkles, Clock, ShieldCheck } from 'lucide-react';
 import { SystemUpdate, ViewType } from '../types';
 import { FirestoreUserProfile } from '../lib/firebase';
 import { TrialCountdownWidget } from './TrialCountdownWidget';
-import { ALL_SYSTEM_MODULES, isUserMasterAdmin } from '../lib/permissions';
+import { ALL_SYSTEM_MODULES } from '../lib/permissions';
 
 interface HeaderNavProps {
   title?: string;
@@ -18,7 +18,6 @@ interface HeaderNavProps {
   onOpenAuthModal?: () => void;
   onOpenPunchModal?: () => void;
   onToggleSidebar?: () => void;
-  onNavigate?: (view: ViewType) => void;
 }
 
 const defaultUpdates: SystemUpdate[] = [
@@ -52,12 +51,9 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   onOpenAuthModal: _onOpenAuthModal = () => {},
   onOpenPunchModal,
   onToggleSidebar,
-  onNavigate,
 }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const updatesList = updates || defaultUpdates;
-
-  const isMaster = isUserMasterAdmin(userProfile, userProfile?.email);
 
   // Resolve current module title and subtitle dynamically
   const currentModule = ALL_SYSTEM_MODULES.find((m) => m.id === activeView);
@@ -94,23 +90,6 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
       </div>
 
       <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-        {/* LeadsPay Master Shortcut */}
-        {isMaster && onNavigate && (
-          <button
-            type="button"
-            onClick={() => onNavigate('leadspay-master')}
-            className={`px-3 py-1.5 rounded-xl font-black text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-md ${
-              activeView === 'leadspay-master' || activeView === 'leadspay-companies'
-                ? 'bg-lime-400 text-black shadow-lime-400/20 font-extrabold'
-                : 'bg-neutral-900 hover:bg-neutral-800 text-lime-400 border border-lime-400/30'
-            }`}
-            title="Acessar LeadsPay Master (Dashboard & Gestão de Empresas)"
-          >
-            <Zap className={`w-3.5 h-3.5 ${activeView === 'leadspay-master' || activeView === 'leadspay-companies' ? 'fill-black text-black' : 'fill-lime-400 text-lime-400'}`} />
-            <span className="hidden sm:inline">LeadsPay</span>
-          </button>
-        )}
-
         {/* Quick Time Clock Action Button */}
         {onOpenPunchModal && (
           <button

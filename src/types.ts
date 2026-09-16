@@ -22,7 +22,6 @@ export type ViewType =
   | 'ia-consultora'
   | 'admin'
   | 'leadspay-master'
-  | 'leadspay-companies'
   | 'technical-docs';
 
 export type ViewMode = ViewType;

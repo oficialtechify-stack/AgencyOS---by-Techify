@@ -39,12 +39,11 @@ import {
   Eye,
   EyeOff,
 } from 'lucide-react';
-import { db, FirestoreUserProfile, getStoredSession, setStoredSession } from '../lib/firebase';
+import { db, FirestoreUserProfile, getStoredSession } from '../lib/firebase';
 import { isUserMasterAdmin } from '../lib/permissions';
 
 interface LeadsPayMasterViewProps {
   currentUser?: FirestoreUserProfile | null;
-  initialTab?: 'dashboard' | 'companies' | 'webhook';
 }
 
 export interface LeadsPayEvent {
@@ -145,17 +144,8 @@ const DEFAULT_COMPANIES: LeadsPayCompany[] = [
   },
 ];
 
-export const LeadsPayMasterView: React.FC<LeadsPayMasterViewProps> = ({
-  currentUser,
-  initialTab = 'dashboard',
-}) => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'companies' | 'webhook'>(initialTab);
-
-  useEffect(() => {
-    if (initialTab) {
-      setActiveTab(initialTab);
-    }
-  }, [initialTab]);
+export const LeadsPayMasterView: React.FC<LeadsPayMasterViewProps> = ({ currentUser }) => {
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'companies' | 'webhook'>('dashboard');
 
   // Stats & Events
   const [stats, setStats] = useState<LeadsPayGlobalStats | null>(null);
@@ -319,29 +309,14 @@ export const LeadsPayMasterView: React.FC<LeadsPayMasterViewProps> = ({
   if (!isMaster) {
     return (
       <div className="p-8 min-h-[600px] flex items-center justify-center bg-[#090A0F] text-white">
-        <div className="max-w-md w-full bg-neutral-900/90 border border-neutral-800 rounded-3xl p-8 text-center space-y-5 shadow-2xl">
-          <div className="w-14 h-14 rounded-2xl bg-lime-400/10 border border-lime-400/30 text-lime-400 mx-auto flex items-center justify-center shadow-lg">
-            <Zap className="w-7 h-7 fill-lime-400 text-lime-400" />
+        <div className="max-w-md w-full bg-neutral-900/70 border border-neutral-800 rounded-2xl p-6 text-center space-y-4">
+          <div className="w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 mx-auto flex items-center justify-center">
+            <ShieldAlert className="w-6 h-6" />
           </div>
-          <div className="space-y-1">
-            <h3 className="text-xl font-black text-white tracking-tight">Painel Master LeadsPay</h3>
-            <p className="text-xs text-neutral-400">
-              Ambiente de gestão restrito ao Super Admin (<strong>rickmarketing81@gmail.com</strong>).
-            </p>
-          </div>
-          <button
-            onClick={() => {
-              setStoredSession({
-                uid: 'user-rick-marcos',
-                email: 'rickmarketing81@gmail.com',
-                name: 'Marcos Henrique',
-              });
-            }}
-            className="w-full py-3 px-4 rounded-xl bg-lime-400 hover:bg-lime-300 text-black font-black text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg shadow-lime-400/20"
-          >
-            <Zap className="w-4 h-4 fill-black text-black" />
-            <span>Desbloquear Acesso Master Agora</span>
-          </button>
+          <h3 className="text-lg font-bold text-white">Acesso Restrito ao Administrador LeadsPay</h3>
+          <p className="text-xs text-neutral-400">
+            Este painel é exclusivo para o Super Admin master (<strong>rickmarketing81@gmail.com</strong>).
+          </p>
         </div>
       </div>
     );
