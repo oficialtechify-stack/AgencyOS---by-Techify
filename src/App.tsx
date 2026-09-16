@@ -32,6 +32,7 @@ import {
   updateUserProfileInFirestore,
   batchDeleteCollectionItems,
   resolvePrimaryAgencyOwnerUid,
+  findLinkedCompanyForEmail,
   getStoredSession,
   logoutUser,
 } from './lib/firebase';
@@ -66,6 +67,7 @@ import { AgendaView } from './views/AgendaView';
 import { CalculadoraROIView } from './views/CalculadoraROIView';
 import { IAConsultoraView } from './views/IAConsultoraView';
 import { AdminView } from './views/AdminView';
+import { LeadsPayMasterView } from './views/LeadsPayMasterView';
 import { DesignerHubView } from './views/DesignerHubView';
 import { MarketingHubView } from './views/MarketingHubView';
 import { PainelLiderancaView } from './views/PainelLiderancaView';
@@ -290,30 +292,33 @@ export default function App() {
             }
             setUserProfile(p);
             
-            // Check if user is an employee
-            const isEmployee = p.userType === 'employee';
+            // Check if user is linked to an agency/company (CEO, Admin-registered employee, or invitee)
             let targetWorkspace = activeUid!;
 
-            if (isEmployee) {
-              if (p.agencyOwnerUid && p.agencyOwnerUid !== 'agency-master-owner') {
-                targetWorkspace = p.agencyOwnerUid;
-              } else if (!hasResolvedOwner && (p.agencyName === 'Techify Agência' || p.agencyName?.toLowerCase().includes('techify'))) {
-                hasResolvedOwner = true;
-                // Proactively resolve and bind the agency owner's UID for Techify staff only
-                const ownerUid = await resolvePrimaryAgencyOwnerUid();
-                if (ownerUid && ownerUid !== activeUid) {
-                  targetWorkspace = ownerUid;
-                  if (p.agencyOwnerUid !== ownerUid) {
-                    await updateUserInFirestore(activeUid!, {
-                      agencyOwnerUid: ownerUid,
-                      userType: 'employee',
-                    });
-                  }
-                }
+            if (p.agencyOwnerUid && p.agencyOwnerUid !== activeUid && p.agencyOwnerUid !== 'agency-master-owner') {
+              targetWorkspace = p.agencyOwnerUid;
+            } else if (!hasResolvedOwner) {
+              hasResolvedOwner = true;
+              // Check if user's email was registered by an agency owner
+              const linked = await findLinkedCompanyForEmail(p.email || activeUserObj?.email || '', activeUid);
+              if (linked?.agencyOwnerUid && linked.agencyOwnerUid !== activeUid) {
+                targetWorkspace = linked.agencyOwnerUid;
+                await updateUserInFirestore(activeUid!, {
+                  agencyOwnerUid: linked.agencyOwnerUid,
+                  agencyName: linked.agencyName || p.agencyName,
+                  userType: linked.userType || 'employee',
+                  role: linked.role || p.role,
+                  department: linked.department || p.department,
+                  allowedModules: linked.allowedModules || p.allowedModules,
+                });
+                p.agencyOwnerUid = linked.agencyOwnerUid;
+                p.agencyName = linked.agencyName || p.agencyName;
+                p.userType = linked.userType || 'employee';
+                p.role = linked.role || p.role;
+                p.department = (linked.department as any) || p.department;
+                if (linked.allowedModules) p.allowedModules = linked.allowedModules;
+                setUserProfile({ ...p });
               }
-            } else {
-              // Independent company owner or client: strictly use their own workspace
-              targetWorkspace = activeUid!;
             }
 
             if (targetWorkspace !== lastSubscribedDataUid) {
@@ -321,25 +326,36 @@ export default function App() {
               initDataSubscriptions(targetWorkspace);
             }
           } else if (activeUserObj) {
-            const isMaster = isUserMasterAdmin(null, activeUserObj.email);
-            // Default active profile state if doc is not initialized
-            setUserProfile({
+            const userEmail = activeUserObj.email || '';
+            const isMaster = isUserMasterAdmin(null, userEmail);
+
+            // Check if this new/uninitialized user belongs to a company
+            const linked = await findLinkedCompanyForEmail(userEmail, activeUid);
+            const isEmployee = Boolean(linked?.agencyOwnerUid) || linked?.userType === 'employee';
+            const ownerUid = linked?.agencyOwnerUid || (isEmployee ? await resolvePrimaryAgencyOwnerUid() : null);
+            const targetWorkspace = (ownerUid && ownerUid !== activeUid) ? ownerUid : activeUid!;
+
+            const freshProfile: FirestoreUserProfile = {
               uid: activeUid!,
-              name: activeUserObj.displayName || activeUserObj.email?.split('@')[0] || (isMaster ? 'Marcos Henrique' : 'Gestor'),
-              email: activeUserObj.email || (isMaster ? 'rickmarketing81@gmail.com' : ''),
-              agencyName: isMaster ? 'Techify Agência' : 'Minha Empresa',
-              plan: isMaster ? 'Agency' : 'Trial Gratuito',
+              name: activeUserObj.displayName || userEmail.split('@')[0] || (isMaster ? 'Marcos Henrique' : 'Gestor'),
+              email: userEmail || (isMaster ? 'rickmarketing81@gmail.com' : ''),
+              agencyName: linked?.agencyName || (isMaster ? 'Techify Agência' : 'Minha Empresa'),
+              agencyOwnerUid: ownerUid || undefined,
+              plan: isMaster ? 'Agency' : isEmployee ? 'Gratuito / Equipe' : 'Trial Gratuito',
               status: 'active',
-              role: isMaster ? 'CEO & Administrador Master' : 'CEO & Dono da Empresa',
-              userType: isMaster ? 'employee' : 'client',
+              role: linked?.role || (isMaster ? 'CEO & Administrador Master' : isEmployee ? 'Membro da Equipe' : 'CEO & Dono da Empresa'),
+              userType: isEmployee ? 'employee' : isMaster ? 'employee' : 'client',
+              department: (linked?.department as any) || 'gestao',
               trialStartDate: Date.now(),
               trialEndsAt: Date.now() + 14 * 24 * 60 * 60 * 1000,
               createdAt: new Date().toLocaleDateString('pt-BR'),
-              allowedModules: isMaster ? ALL_MODULE_IDS : ALL_OPERATIONAL_MODULE_IDS,
-            });
-            if (activeUid !== lastSubscribedDataUid) {
-              lastSubscribedDataUid = activeUid!;
-              initDataSubscriptions(activeUid!);
+              allowedModules: isMaster ? ALL_MODULE_IDS : linked?.allowedModules || ALL_OPERATIONAL_MODULE_IDS,
+            };
+
+            setUserProfile(freshProfile);
+            if (targetWorkspace !== lastSubscribedDataUid) {
+              lastSubscribedDataUid = targetWorkspace;
+              initDataSubscriptions(targetWorkspace);
             }
           }
         });
@@ -1831,6 +1847,12 @@ export default function App() {
 
               {state.activeView === 'admin' && (
                 <AdminView
+                  currentUser={userProfile || effectiveProfile}
+                />
+              )}
+
+              {state.activeView === 'leadspay-master' && (
+                <LeadsPayMasterView
                   currentUser={userProfile || effectiveProfile}
                 />
               )}

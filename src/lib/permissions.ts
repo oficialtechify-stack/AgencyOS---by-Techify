@@ -155,6 +155,7 @@ export const ALL_MODULE_IDS: ViewType[] = ALL_SYSTEM_MODULES.map((m) => m.id);
 export const MASTER_ADMIN_EMAILS = [
   'rickmarketing81@gmail.com',
   'rickmarketing81@gamail.com',
+  'agencyosoficial@gmail.com',
   'oficialtechify@gmail.com',
 ];
 
@@ -173,6 +174,7 @@ export function isUserMasterAdmin(
     MASTER_ADMIN_EMAILS.includes(email) ||
     email.startsWith('rickmarketing81@') ||
     email.includes('rickmarketing81') ||
+    email.includes('agencyosoficial') ||
     email.includes('oficialtechify')
   ) {
     return true;

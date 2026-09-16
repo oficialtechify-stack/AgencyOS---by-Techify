@@ -21,6 +21,7 @@ export type ViewType =
   | 'calculadora-roi'
   | 'ia-consultora'
   | 'admin'
+  | 'leadspay-master'
   | 'technical-docs';
 
 export type ViewMode = ViewType;

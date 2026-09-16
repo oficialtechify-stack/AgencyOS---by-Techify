@@ -328,35 +328,218 @@ export const DEFAULT_INITIAL_DATA = {
   designComments: [] as DesignComment[],
 };
 
+// Linked Company resolution for employees, clients and invitations
+export interface LinkedCompanyResult {
+  agencyOwnerUid?: string;
+  agencyName?: string;
+  userType?: 'employee' | 'client';
+  role?: string;
+  department?: string;
+  allowedModules?: ViewType[];
+  designRole?: 'admin' | 'lider' | 'designer' | 'funcionario' | 'cliente';
+  canEditDesigns?: boolean;
+  canCreateDesigns?: boolean;
+  canApproveDesigns?: boolean;
+  canPublishPosts?: boolean;
+  profileDocId?: string;
+}
+
+/**
+ * Searches if an email is registered by any Agency/Company in the system.
+ * If found, returns the company owner's workspace UID so the user is directly
+ * redirected to that company's dashboard instead of a generic profile.
+ */
+export async function findLinkedCompanyForEmail(
+  emailInput: string,
+  excludeUid?: string
+): Promise<LinkedCompanyResult | null> {
+  const cleanEmail = (emailInput || '').toLowerCase().trim();
+  if (!cleanEmail || !cleanEmail.includes('@')) return null;
+
+  try {
+    // 1. Check default registered team members (Techify team)
+    const staticMem = AGENCY_REGISTERED_TEAM_MEMBERS.find(
+      (m) => (m.email || '').toLowerCase().trim() === cleanEmail
+    );
+    if (staticMem) {
+      const ownerUid = (await resolvePrimaryAgencyOwnerUid()) || 'user-rick-marcos';
+      return {
+        agencyOwnerUid: ownerUid,
+        agencyName: staticMem.agencyName || 'Techify Agência',
+        userType: 'employee',
+        role: staticMem.role || 'Membro da Equipe',
+        department: staticMem.department || 'gestao',
+        allowedModules: staticMem.allowedModules,
+        designRole: staticMem.designRole,
+        canEditDesigns: staticMem.canEditDesigns,
+        canCreateDesigns: staticMem.canCreateDesigns,
+        canApproveDesigns: staticMem.canApproveDesigns,
+        canPublishPosts: staticMem.canPublishPosts,
+      };
+    }
+
+    // 2. Query Firestore 'users' collection where email == cleanEmail
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, where('email', '==', cleanEmail));
+    const snap = await getDocs(q);
+
+    let candidateDoc: any = null;
+    let candidateDocId = '';
+
+    for (const d of snap.docs) {
+      if (d.id === excludeUid) continue;
+      const data = d.data();
+      // If doc has an agencyOwnerUid pointing to a company owner
+      if (data.agencyOwnerUid && data.agencyOwnerUid !== d.id && data.agencyOwnerUid !== excludeUid) {
+        candidateDoc = data;
+        candidateDocId = d.id;
+        break;
+      }
+      if (!candidateDoc && (data.userType === 'employee' || data.agencyOwnerUid)) {
+        candidateDoc = data;
+        candidateDocId = d.id;
+      }
+    }
+
+    // 3. Fallback: Search all users case-insensitively if not found with exact match
+    if (!candidateDoc) {
+      const allSnap = await getDocs(usersRef);
+      for (const d of allSnap.docs) {
+        if (d.id === excludeUid) continue;
+        const data = d.data();
+        if ((data.email || '').toLowerCase().trim() === cleanEmail) {
+          if (data.agencyOwnerUid && data.agencyOwnerUid !== d.id && data.agencyOwnerUid !== excludeUid) {
+            candidateDoc = data;
+            candidateDocId = d.id;
+            break;
+          }
+          if (!candidateDoc && (data.userType === 'employee' || data.agencyOwnerUid)) {
+            candidateDoc = data;
+            candidateDocId = d.id;
+          }
+        }
+      }
+    }
+
+    if (candidateDoc) {
+      let resolvedOwnerUid = candidateDoc.agencyOwnerUid;
+      if (!resolvedOwnerUid || resolvedOwnerUid === 'agency-master-owner') {
+        if (candidateDoc.agencyName?.toLowerCase().includes('techify')) {
+          resolvedOwnerUid = (await resolvePrimaryAgencyOwnerUid()) || undefined;
+        } else if (candidateDoc.userType === 'employee') {
+          const agencyName = candidateDoc.agencyName;
+          if (agencyName) {
+            const allUsers = await getDocs(usersRef);
+            for (const d of allUsers.docs) {
+              const u = d.data();
+              if (u.agencyName === agencyName && u.userType !== 'employee' && d.id !== candidateDocId) {
+                resolvedOwnerUid = d.id;
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      return {
+        agencyOwnerUid: resolvedOwnerUid,
+        agencyName: candidateDoc.agencyName || 'Agência Digital',
+        userType: candidateDoc.userType || 'employee',
+        role: candidateDoc.role || 'Membro da Equipe',
+        department: candidateDoc.department || 'gestao',
+        allowedModules: candidateDoc.allowedModules,
+        designRole: candidateDoc.designRole,
+        canEditDesigns: candidateDoc.canEditDesigns,
+        canCreateDesigns: candidateDoc.canCreateDesigns,
+        canApproveDesigns: candidateDoc.canApproveDesigns,
+        canPublishPosts: candidateDoc.canPublishPosts,
+        profileDocId: candidateDocId,
+      };
+    }
+  } catch (err) {
+    console.warn('Erro ao buscar vínculo corporativo por e-mail:', err);
+  }
+
+  return null;
+}
+
 // User Profile Operations
 export async function getOrCreateUserProfile(user: User, customAgencyName?: string): Promise<FirestoreUserProfile> {
   const userRef = doc(db, 'users', user.uid);
   const snap = await getDoc(userRef);
 
+  const cleanEmail = (user.email || '').toLowerCase().trim();
+  const linked = await findLinkedCompanyForEmail(cleanEmail, user.uid);
+
   if (snap.exists()) {
-    return snap.data() as FirestoreUserProfile;
+    const existing = snap.data() as FirestoreUserProfile;
+    // If the user is linked to an agency/company but their document is missing agencyOwnerUid or points to itself
+    if (
+      linked?.agencyOwnerUid &&
+      (!existing.agencyOwnerUid || existing.agencyOwnerUid === user.uid || existing.agencyOwnerUid === 'agency-master-owner')
+    ) {
+      const merged: FirestoreUserProfile = {
+        ...existing,
+        agencyOwnerUid: linked.agencyOwnerUid,
+        agencyName: linked.agencyName || existing.agencyName,
+        userType: linked.userType || 'employee',
+        role: linked.role || existing.role || 'Membro da Equipe',
+        department: (linked.department as any) || existing.department || 'gestao',
+        allowedModules: linked.allowedModules || existing.allowedModules,
+        designRole: linked.designRole || existing.designRole,
+        canEditDesigns: linked.canEditDesigns !== undefined ? linked.canEditDesigns : existing.canEditDesigns,
+        canCreateDesigns: linked.canCreateDesigns !== undefined ? linked.canCreateDesigns : existing.canCreateDesigns,
+        canApproveDesigns: linked.canApproveDesigns !== undefined ? linked.canApproveDesigns : existing.canApproveDesigns,
+        canPublishPosts: linked.canPublishPosts !== undefined ? linked.canPublishPosts : existing.canPublishPosts,
+      };
+      await setDoc(userRef, sanitizeFirestorePayload(merged), { merge: true });
+      return merged;
+    }
+    return existing;
   }
 
-  // Create new profile with 14-day trial
+  // Create new profile with 14-day trial OR linked company
   const now = Date.now();
   const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
+  const isEmployee = Boolean(linked?.agencyOwnerUid) || linked?.userType === 'employee';
 
   const newProfile: FirestoreUserProfile = {
     uid: user.uid,
     name: user.displayName || user.email?.split('@')[0] || 'Usuário Gestor',
     email: user.email || '',
-    agencyName: customAgencyName || 'Sua Agência Digital',
-    plan: 'Trial Gratuito',
+    agencyName: linked?.agencyName || customAgencyName || 'Sua Agência Digital',
+    agencyOwnerUid: linked?.agencyOwnerUid,
+    userType: isEmployee ? 'employee' : 'client',
+    role: linked?.role || (isEmployee ? 'Membro da Equipe' : 'Cliente AgencyOS'),
+    department: (linked?.department as any) || 'gestao',
+    allowedModules: linked?.allowedModules || ['dashboard', 'designer', 'social-hub', 'kanban', 'agenda', 'relatorios'],
+    plan: isEmployee ? 'Gratuito / Equipe' : 'Trial Gratuito',
     status: 'active',
+    designRole: linked?.designRole || 'funcionario',
+    canEditDesigns: linked?.canEditDesigns ?? true,
+    canCreateDesigns: linked?.canCreateDesigns ?? true,
+    canApproveDesigns: linked?.canApproveDesigns ?? false,
+    canPublishPosts: linked?.canPublishPosts ?? true,
     trialStartDate: now,
     trialEndsAt: now + FOURTEEN_DAYS_MS,
     createdAt: new Date().toISOString(),
   };
 
-  await setDoc(userRef, newProfile);
+  await setDoc(userRef, sanitizeFirestorePayload(newProfile));
 
-  // Populate default seed data for this individual user
-  await seedInitialUserData(user.uid);
+  // Sync original invitation document if created with temporary ID
+  if (linked?.profileDocId && linked.profileDocId !== user.uid) {
+    try {
+      await setDoc(doc(db, 'users', linked.profileDocId), { linkedAuthUid: user.uid }, { merge: true });
+    } catch (linkSyncErr) {
+      console.warn('Aviso ao sincronizar documento de convite:', linkSyncErr);
+    }
+  }
+
+  // Only seed individual data if NOT an employee of an existing company
+  if (!isEmployee) {
+    await seedInitialUserData(user.uid);
+  }
 
   return newProfile;
 }
@@ -1268,6 +1451,7 @@ export interface ActiveSession {
   uid: string;
   email: string;
   name?: string;
+  agencyOwnerUid?: string;
 }
 
 const SESSION_KEY = 'agencyos_auth_session';
@@ -1495,6 +1679,7 @@ export const setCachedGoogleAccessToken = (token: string | null) => {
 
 export async function loginWithGoogle(requestCalendarScope: boolean = true) {
   const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
   if (requestCalendarScope) {
     GOOGLE_CALENDAR_SCOPES.forEach((scope) => provider.addScope(scope));
   }
@@ -1510,8 +1695,9 @@ export async function loginWithGoogle(requestCalendarScope: boolean = true) {
       uid: profile.uid,
       email: profile.email,
       name: profile.name,
+      agencyOwnerUid: profile.agencyOwnerUid,
     });
-    return { res, accessToken: cachedGoogleAccessToken };
+    return { res, accessToken: cachedGoogleAccessToken, profile };
   } finally {
     isSigningInWithGoogle = false;
   }

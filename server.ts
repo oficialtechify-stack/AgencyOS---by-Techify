@@ -5,6 +5,7 @@ import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
 import { scrapeRealLeads } from './src/server/leadScraperEngine';
+import { handleLeadsPayWebhookEvent } from './src/server/leadspayHandler';
 
 dotenv.config();
 
@@ -277,6 +278,50 @@ Inclua:
       const fallbackResult = await scrapeRealLeads(req.body?.segment || 'Manicure', req.body?.city || 'Recife');
       return res.json(fallbackResult);
     }
+  });
+
+  // LeadsPay Webhook Receiver (/api/webhooks/leadspay)
+  app.post(['/api/webhooks/leadspay', '/api/webhooks/leadspay/route'], async (req, res) => {
+    try {
+      const signature = req.headers['x-leadspay-signature'] as string;
+      const secret = process.env.LEADSPAY_WEBHOOK_SECRET;
+
+      // Validação de Segurança
+      if (secret && signature !== secret) {
+        return res.status(401).json({ error: 'Assinatura inválida' });
+      }
+
+      const payload = req.body || {};
+      const { event, agency_id, data, timestamp } = payload;
+
+      if (!event) {
+        return res.status(400).json({ error: 'Parâmetro event é obrigatório' });
+      }
+
+      const result = await handleLeadsPayWebhookEvent({
+        event,
+        agency_id,
+        data,
+        timestamp,
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: 'Evento processado com sucesso',
+        ...result,
+      });
+    } catch (error: any) {
+      console.error('Erro no Webhook LeadsPay:', error);
+      return res.status(500).json({ error: error.message || 'Erro interno' });
+    }
+  });
+
+  app.get('/api/webhooks/leadspay', (req, res) => {
+    res.json({
+      status: 'active',
+      service: 'AgencyOS LeadsPay Webhook Receiver',
+      time: new Date().toISOString(),
+    });
   });
 
   // Vite Middleware for development

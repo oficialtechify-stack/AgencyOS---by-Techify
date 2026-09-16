@@ -266,6 +266,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 )}
               </button>
             )}
+
+            {/* LeadsPay Master Telemetry & Metrics (Exclusive for rickmarketing81@gmail.com / agencyosoficial@gmail.com / Super Admin) */}
+            {(effectiveEmail === 'rickmarketing81@gmail.com' ||
+              effectiveEmail === 'agencyosoficial@gmail.com' ||
+              isMaster) && (
+              <button
+                onClick={() => handleNav('leadspay-master')}
+                title="Métricas LeadsPay (Master) — Painel Exclusivo"
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all duration-150 cursor-pointer ${
+                  active === 'leadspay-master'
+                    ? 'bg-lime-400 text-black font-extrabold shadow-sm'
+                    : 'text-neutral-400 hover:text-white hover:bg-neutral-900 font-medium'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Zap
+                    className={`w-4 h-4 ${
+                      active === 'leadspay-master' ? 'text-black fill-black' : 'text-lime-400'
+                    }`}
+                  />
+                  <span className={active === 'leadspay-master' ? 'text-black' : 'text-neutral-200'}>
+                    Métricas LeadsPay (Master)
+                  </span>
+                </div>
+                <span className="text-[9px] bg-lime-950 text-lime-400 border border-lime-800/80 px-1.5 py-0.5 rounded font-black tracking-wider uppercase">
+                  Exclusivo
+                </span>
+              </button>
+            )}
           </div>
         </div>
 

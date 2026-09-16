@@ -93,7 +93,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     } catch (err: any) {
       console.error('Google auth error:', err);
       setLoading(false);
-      setErrorMsg('Erro ao autenticar com a conta Google.');
+      if (err?.code === 'auth/unauthorized-domain') {
+        setErrorMsg(
+          'Domínio da Vercel não autorizado no Firebase Auth. Para liberar o Google na Vercel: Acesse o Console do Firebase > Authentication > Configurações > Domínios Autorizados e adicione seu domínio da Vercel. Você pode entrar normalmente digitando seu E-mail e Senha abaixo!'
+        );
+      } else if (err?.code === 'auth/popup-blocked') {
+        setErrorMsg('O navegador bloqueou a janela pop-up do Google. Permita pop-ups para este site ou entre usando seu E-mail e Senha.');
+      } else if (err?.code === 'auth/popup-closed-by-user') {
+        setErrorMsg('A janela de login do Google foi fechada antes de concluir.');
+      } else if (err?.code === 'auth/cancelled-popup-request') {
+        setErrorMsg('Tentativa de login cancelada.');
+      } else {
+        setErrorMsg(err?.message || 'Erro ao autenticar com a conta Google. Você pode entrar digitando seu E-mail e Senha cadastrados.');
+      }
     }
   };
 
