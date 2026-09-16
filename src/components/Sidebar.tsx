@@ -26,6 +26,7 @@ import {
   MessageSquare,
   UserCircle,
   Lock,
+  Building2,
 } from 'lucide-react';
 import { ViewMode, UserProfile } from '../types';
 import { hasModuleAccess, isUserMasterAdmin, isCompanyOwnerOrCEO } from '../lib/permissions';
@@ -267,33 +268,67 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </button>
             )}
 
-            {/* LeadsPay Master Telemetry & Metrics (Exclusive for rickmarketing81@gmail.com / agencyosoficial@gmail.com / Super Admin) */}
+            {/* LeadsPay Master Telemetry & Companies (Exclusive for rickmarketing81@gmail.com / Super Admin / CEO) */}
             {(effectiveEmail === 'rickmarketing81@gmail.com' ||
               effectiveEmail === 'agencyosoficial@gmail.com' ||
-              isMaster) && (
-              <button
-                onClick={() => handleNav('leadspay-master')}
-                title="Métricas LeadsPay (Master) — Painel Exclusivo"
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all duration-150 cursor-pointer ${
-                  active === 'leadspay-master'
-                    ? 'bg-lime-400 text-black font-extrabold shadow-sm'
-                    : 'text-neutral-400 hover:text-white hover:bg-neutral-900 font-medium'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Zap
-                    className={`w-4 h-4 ${
-                      active === 'leadspay-master' ? 'text-black fill-black' : 'text-lime-400'
-                    }`}
-                  />
-                  <span className={active === 'leadspay-master' ? 'text-black' : 'text-neutral-200'}>
-                    Métricas LeadsPay (Master)
-                  </span>
+              effectiveEmail.includes('rickmarketing81') ||
+              profile?.uid === 'user-rick-marcos' ||
+              isMaster ||
+              canAccessAdmin) && (
+              <div className="space-y-1 pt-1.5 border-t border-neutral-800/80 mt-1.5">
+                <div className="px-3 py-1 text-[10px] font-bold text-lime-400 tracking-wider uppercase flex items-center justify-between">
+                  <span>LeadsPay Ecosystem</span>
+                  <span className="text-[9px] bg-lime-500/20 text-lime-300 px-1.5 py-0.5 rounded font-mono font-bold">LIVE</span>
                 </div>
-                <span className="text-[9px] bg-lime-950 text-lime-400 border border-lime-800/80 px-1.5 py-0.5 rounded font-black tracking-wider uppercase">
-                  Exclusivo
-                </span>
-              </button>
+
+                <button
+                  onClick={() => handleNav('leadspay-master')}
+                  title="LeadsPay Master — Dashboard & Métricas"
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all duration-150 cursor-pointer ${
+                    active === 'leadspay-master'
+                      ? 'bg-lime-400 text-black font-extrabold shadow-sm'
+                      : 'text-neutral-400 hover:text-white hover:bg-neutral-900 font-medium'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Zap
+                      className={`w-4 h-4 ${
+                        active === 'leadspay-master' ? 'text-black fill-black' : 'text-lime-400'
+                      }`}
+                    />
+                    <span className={active === 'leadspay-master' ? 'text-black font-extrabold' : 'text-neutral-200'}>
+                      Dashboard LeadsPay
+                    </span>
+                  </div>
+                  <span className="text-[9px] bg-lime-950 text-lime-400 border border-lime-800/80 px-1.5 py-0.5 rounded font-black tracking-wider uppercase">
+                    Métricas
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => handleNav('leadspay-companies')}
+                  title="LeadsPay Master — Gerenciar Empresas"
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all duration-150 cursor-pointer ${
+                    active === 'leadspay-companies'
+                      ? 'bg-lime-400 text-black font-extrabold shadow-sm'
+                      : 'text-neutral-400 hover:text-white hover:bg-neutral-900 font-medium'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Building2
+                      className={`w-4 h-4 ${
+                        active === 'leadspay-companies' ? 'text-black' : 'text-lime-400'
+                      }`}
+                    />
+                    <span className={active === 'leadspay-companies' ? 'text-black font-extrabold' : 'text-neutral-200'}>
+                      Gerenciar Empresas
+                    </span>
+                  </div>
+                  <span className="text-[9px] bg-neutral-900 text-neutral-300 border border-neutral-700 px-1.5 py-0.5 rounded font-bold">
+                    Aba Gestão
+                  </span>
+                </button>
+              </div>
             )}
           </div>
         </div>

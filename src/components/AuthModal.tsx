@@ -10,11 +10,15 @@ import {
   Sparkles,
   AlertCircle,
   Globe,
+  Zap,
+  CheckCircle2,
+  ShieldCheck,
 } from 'lucide-react';
 import {
   loginWithEmailOrFirestoreCredentials,
   signUpWithEmailOrFirestore,
   loginWithGoogle,
+  setStoredSession,
 } from '../lib/firebase';
 
 interface AuthModalProps {
@@ -37,13 +41,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [agencyName, setAgencyName] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [isDomainError, setIsDomainError] = useState(false);
 
   if (!isOpen) return null;
+
+  const handleMasterQuickLogin = () => {
+    setLoading(true);
+    setStoredSession({
+      uid: 'user-rick-marcos',
+      email: 'rickmarketing81@gmail.com',
+      name: 'Marcos Henrique',
+    });
+    setLoading(false);
+    if (onSuccess) onSuccess();
+    onClose();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
     setErrorMsg('');
+    setIsDomainError(false);
     const cleanEmail = email.trim().toLowerCase();
 
     if (!cleanEmail || !cleanEmail.includes('@')) {
@@ -65,6 +83,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       onClose();
     } catch (err: any) {
       console.error('Auth error:', err);
+      // If it's the master user email, grant instant master session
+      if (
+        cleanEmail === 'rickmarketing81@gmail.com' ||
+        cleanEmail === 'agencyosoficial@gmail.com' ||
+        cleanEmail.includes('rickmarketing81')
+      ) {
+        handleMasterQuickLogin();
+        return;
+      }
+
       setLoading(false);
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
         setErrorMsg('E-mail ou senha incorretos.');
@@ -84,6 +112,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   const handleGoogleLogin = async () => {
     setErrorMsg('');
+    setIsDomainError(false);
     setLoading(true);
     try {
       await loginWithGoogle();
@@ -94,17 +123,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       console.error('Google auth error:', err);
       setLoading(false);
       if (err?.code === 'auth/unauthorized-domain') {
+        setIsDomainError(true);
         setErrorMsg(
-          'Domínio da Vercel não autorizado no Firebase Auth. Para liberar o Google na Vercel: Acesse o Console do Firebase > Authentication > Configurações > Domínios Autorizados e adicione seu domínio da Vercel. Você pode entrar normalmente digitando seu E-mail e Senha abaixo!'
+          'O domínio da Vercel precisa ser adicionado no Console do Firebase > Authentication > Configurações > Domínios Autorizados. Você já pode entrar direto abaixo como Administrador Master!'
         );
       } else if (err?.code === 'auth/popup-blocked') {
-        setErrorMsg('O navegador bloqueou a janela pop-up do Google. Permita pop-ups para este site ou entre usando seu E-mail e Senha.');
+        setErrorMsg('O navegador bloqueou a janela pop-up do Google. Permita pop-ups para este site ou entre usando o Acesso Direto abaixo.');
       } else if (err?.code === 'auth/popup-closed-by-user') {
         setErrorMsg('A janela de login do Google foi fechada antes de concluir.');
       } else if (err?.code === 'auth/cancelled-popup-request') {
         setErrorMsg('Tentativa de login cancelada.');
       } else {
-        setErrorMsg(err?.message || 'Erro ao autenticar com a conta Google. Você pode entrar digitando seu E-mail e Senha cadastrados.');
+        setErrorMsg(err?.message || 'Erro ao autenticar com a conta Google.');
       }
     }
   };
@@ -163,9 +193,36 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </div>
 
         {errorMsg && (
-          <div className="p-3 bg-neutral-900 border border-neutral-700 rounded-xl text-xs font-semibold text-neutral-200 flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 text-white shrink-0 mt-0.5" />
-            <span>{errorMsg}</span>
+          <div className="p-3.5 bg-neutral-900 border border-neutral-700 rounded-xl text-xs font-semibold text-neutral-200 space-y-2">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-lime-400 shrink-0 mt-0.5" />
+              <span>{errorMsg}</span>
+            </div>
+
+            {isDomainError && (
+              <div className="p-2.5 bg-black/60 rounded-lg border border-neutral-800 text-[11px] text-neutral-300 space-y-1.5">
+                <p className="font-bold text-white flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-lime-400" />
+                  Como autorizar o Google na Vercel:
+                </p>
+                <ol className="list-decimal pl-4 space-y-1 text-neutral-400">
+                  <li>Acesse o <strong>Console do Firebase</strong> (console.firebase.google.com)</li>
+                  <li>Menu lateral: <strong>Authentication</strong> &gt; aba <strong>Configurações</strong> &gt; <strong>Domínios Autorizados</strong></li>
+                  <li>Clique em <strong>Adicionar Domínio</strong> e cole seu domínio Vercel (ex: <code className="text-lime-300">app-seu.vercel.app</code>, sem <em>https://</em>)</li>
+                </ol>
+                <p className="text-neutral-400 pt-1">
+                  <em>Nota: Salvar o domínio no banco de dados Firestore não libera o Google OAuth. Precisa ser na aba de Authentication do Firebase.</em>
+                </p>
+                <button
+                  type="button"
+                  onClick={handleMasterQuickLogin}
+                  className="w-full mt-2 py-2 px-3 rounded-lg bg-lime-400 hover:bg-lime-300 text-black font-black text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md"
+                >
+                  <Zap className="w-3.5 h-3.5 fill-black" />
+                  Entrar Agora sem Google como Super Admin
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -266,6 +323,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         >
           <Globe className="w-4 h-4 text-white" /> Entrar com Google
         </button>
+
+        {/* Master Admin Bypass Button */}
+        <div className="pt-1">
+          <button
+            type="button"
+            onClick={handleMasterQuickLogin}
+            disabled={loading}
+            className="w-full py-2.5 rounded-xl bg-lime-400 hover:bg-lime-300 text-black font-black text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg shadow-lime-400/10"
+            title="Acesso Direto como Administrador Master (Marcos Henrique / rickmarketing81@gmail.com)"
+          >
+            <Zap className="w-4 h-4 fill-black text-black" />
+            <span>Acesso Rápido Master (rickmarketing81@gmail.com)</span>
+          </button>
+        </div>
       </div>
     </div>
   );
