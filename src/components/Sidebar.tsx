@@ -28,7 +28,7 @@ import {
   Lock,
 } from 'lucide-react';
 import { ViewMode, UserProfile } from '../types';
-import { hasModuleAccess, isUserMasterAdmin } from '../lib/permissions';
+import { hasModuleAccess, isUserMasterAdmin, isCompanyOwnerOrCEO } from '../lib/permissions';
 import { FirestoreUserProfile, cleanAvatarUrl, resolveUserAvatar } from '../lib/firebase';
 
 interface SidebarProps {
@@ -59,16 +59,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
     if (onClose) onClose();
   };
 
-  const profile = userProfile || {
-    name: 'Marcos Henrique',
-    email: 'rickmarketing81@gmail.com',
-    plan: 'Pro',
-    status: 'active',
-    createdAt: '2026-01-01',
-  };
+  const effectiveEmail = userProfile?.email || '';
+  const isMaster = isUserMasterAdmin(userProfile, effectiveEmail);
+  const isCompanyCEO = isCompanyOwnerOrCEO(userProfile, effectiveEmail);
+  const canAccessAdmin = isMaster || isCompanyCEO || hasModuleAccess('admin', userProfile, effectiveEmail);
 
-  const isMaster = isUserMasterAdmin(userProfile as any);
-  const canAccessAdmin = hasModuleAccess('admin', userProfile as any);
+  const profile = userProfile || {
+    name: 'Usuário',
+    email: '',
+    role: 'Membro',
+    agencyName: 'AgencyOS',
+  };
 
   const handleExit = onLogout || (() => handleNav('landing'));
 
@@ -76,7 +77,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     {
       title: 'COMUNICAÇÃO & PESSOAS',
       items: [
-        { id: 'chat' as ViewMode, label: 'Chat da Empresa', icon: MessageSquare },
         { id: 'profile' as ViewMode, label: 'Meu Perfil', icon: UserCircle },
         { id: 'ponto' as ViewMode, label: 'Ponto Seguro', icon: Clock },
       ],
@@ -112,7 +112,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     {
       title: 'CRIAÇÃO & DESIGN',
       items: [
-        { id: 'studio-agency' as ViewMode, label: 'Studio Agency (Canva)', icon: Wand2 },
         { id: 'designer' as ViewMode, label: 'Área do Designer', icon: Palette },
         { id: 'social-hub' as ViewMode, label: 'Social Hub (Instagram & WhatsApp)', icon: Share2 },
       ],
@@ -243,26 +242,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="pt-2 space-y-1">
             <div className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg bg-neutral-900 border border-neutral-700 text-xs font-bold text-neutral-200">
               <Shield className="w-3.5 h-3.5 text-white" />
-              <span>Agency</span>
+              <span className="truncate">{userProfile?.agencyName || 'AgencyOS'}</span>
             </div>
 
-            <button
-              onClick={() => handleNav('admin')}
-              title={!canAccessAdmin ? 'Painel restrito a administradores' : undefined}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all duration-150 cursor-pointer ${
-                active === 'admin'
-                  ? 'bg-white text-black font-extrabold shadow-sm'
-                  : canAccessAdmin
-                  ? 'text-neutral-400 hover:text-white hover:bg-neutral-900 font-medium'
-                  : 'text-neutral-600 hover:text-neutral-400 hover:bg-neutral-950 opacity-70 font-medium'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <ShieldCheck className={`w-4 h-4 ${canAccessAdmin ? 'text-neutral-400' : 'text-neutral-600'}`} />
-                <span>Admin — Assinaturas</span>
-              </div>
-              {!canAccessAdmin && <Lock className="w-3 h-3 text-neutral-600" />}
-            </button>
+            {canAccessAdmin && (
+              <button
+                onClick={() => handleNav('admin')}
+                title={isMaster ? 'Painel Master — Assinaturas & Clientes' : 'Gestão de Equipe & Permissões'}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all duration-150 cursor-pointer ${
+                  active === 'admin'
+                    ? 'bg-white text-black font-extrabold shadow-sm'
+                    : 'text-neutral-400 hover:text-white hover:bg-neutral-900 font-medium'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <ShieldCheck className="w-4 h-4 text-neutral-400" />
+                  <span>{isMaster ? 'Admin — Clientes SaaS' : 'Equipe & Permissões'}</span>
+                </div>
+                {isCompanyCEO && !isMaster && (
+                  <span className="text-[9px] bg-neutral-800 text-neutral-300 px-1.5 py-0.5 rounded font-bold">
+                    CEO
+                  </span>
+                )}
+              </button>
+            )}
           </div>
         </div>
 
@@ -288,15 +291,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
             <div className="truncate">
               <div className="text-xs font-bold text-white truncate flex items-center gap-1 group-hover:text-purple-400 transition-colors">
-                <span>{profile.name || 'Marcos Henrique'}</span>
-                {isMaster && (
+                <span>{profile.name || 'Usuário'}</span>
+                {isMaster ? (
                   <span className="text-[9px] bg-white text-black px-1 rounded font-black">
-                    ADMIN
+                    MASTER
                   </span>
-                )}
+                ) : isCompanyCEO ? (
+                  <span className="text-[9px] bg-neutral-800 text-neutral-300 px-1 rounded font-bold">
+                    CEO
+                  </span>
+                ) : null}
               </div>
               <div className="text-[10px] text-neutral-400 truncate">
-                {profile.email || 'rickmarketing81@gmail.com'}
+                {profile.email || ''}
               </div>
             </div>
           </button>

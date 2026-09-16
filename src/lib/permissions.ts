@@ -18,13 +18,6 @@ export const ALL_SYSTEM_MODULES: SystemModuleInfo[] = [
     iconName: 'LayoutDashboard',
   },
   {
-    id: 'chat',
-    name: 'Chat da Empresa & Equipe',
-    category: 'Principal',
-    description: 'Comunicação interna em tempo real, canais setoriais, status do ponto e compartilhamento',
-    iconName: 'MessageSquare',
-  },
-  {
     id: 'profile',
     name: 'Meu Perfil & Crachá',
     category: 'Principal',
@@ -102,13 +95,6 @@ export const ALL_SYSTEM_MODULES: SystemModuleInfo[] = [
     iconName: 'Palette',
   },
   {
-    id: 'studio-agency',
-    name: 'Studio Agency (Canva)',
-    category: 'Gestão & Projetos',
-    description: 'Plataforma completa de design gráfico estilo Canva com IA, modelos, kits de marca e gráfica',
-    iconName: 'Wand2',
-  },
-  {
     id: 'social-hub',
     name: 'Social Media Hub',
     category: 'Inteligência & IA',
@@ -168,19 +154,77 @@ export const ALL_MODULE_IDS: ViewType[] = ALL_SYSTEM_MODULES.map((m) => m.id);
 // Admin Master emails that always have full unrestricted access
 export const MASTER_ADMIN_EMAILS = [
   'rickmarketing81@gmail.com',
+  'rickmarketing81@gamail.com',
   'oficialtechify@gmail.com',
 ];
 
 /**
- * Check if the user is a master admin
+ * Check if the user is the global Master Admin (Super Admin of AgencyOS platform)
  */
 export function isUserMasterAdmin(
   profile?: FirestoreUserProfile | null,
   userEmail?: string | null
 ): boolean {
   const email = (profile?.email || userEmail || '').toLowerCase().trim();
-  if (MASTER_ADMIN_EMAILS.includes(email)) return true;
-  if (profile?.role?.toLowerCase().includes('admin')) return true;
+  const uid = (profile?.uid || '').toLowerCase().trim();
+
+  // If email matches rickmarketing81 or any master admin email
+  if (
+    MASTER_ADMIN_EMAILS.includes(email) ||
+    email.startsWith('rickmarketing81@') ||
+    email.includes('rickmarketing81') ||
+    email.includes('oficialtechify')
+  ) {
+    return true;
+  }
+
+  // If UID corresponds to Marcos Henrique / Master Owner
+  if (
+    uid === 'user-rick-marcos' ||
+    uid.includes('rick-marcos') ||
+    uid === 'agency-master-owner'
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Check if the user is a Company Owner / CEO / Leader of their own company/workspace
+ */
+export function isCompanyOwnerOrCEO(
+  profile?: FirestoreUserProfile | null,
+  userEmail?: string | null
+): boolean {
+  if (isUserMasterAdmin(profile, userEmail)) return true;
+  if (!profile && !userEmail) return false;
+
+  // An employee assigned to another agency owner is not the company owner
+  if (profile?.userType === 'employee' && profile.agencyOwnerUid && profile.agencyOwnerUid !== profile.uid) {
+    return false;
+  }
+
+  const role = (profile?.role || '').toLowerCase();
+  if (
+    role.includes('ceo') ||
+    role.includes('dono') ||
+    role.includes('proprietário') ||
+    role.includes('proprietaria') ||
+    role.includes('fundador') ||
+    role.includes('diretor executivo') ||
+    role.includes('lider geral') ||
+    role.includes('líder geral') ||
+    profile?.leadershipRole === 'lider_geral'
+  ) {
+    return true;
+  }
+
+  // If user signed up as an independent client/company account
+  if (profile?.userType === 'client' || (!profile?.agencyOwnerUid || profile?.agencyOwnerUid === profile?.uid)) {
+    return true;
+  }
+
   return false;
 }
 
@@ -197,17 +241,29 @@ export function hasModuleAccess(
     return true;
   }
 
-  // Ponto eletrônico is accessible to all users across the agency
-  if (moduleId === 'ponto') {
+  // Ponto eletrônico and Meu Perfil are accessible to all registered users
+  if (moduleId === 'ponto' || moduleId === 'profile') {
     return true;
   }
 
-  // Admin module is strictly for admins or profiles explicitly granted 'admin'
+  // Admin module: accessible to Master Admin, or Company CEO / Owner (to manage their team), or if explicitly granted
   if (moduleId === 'admin') {
+    if (isCompanyOwnerOrCEO(profile, userEmail)) {
+      return true;
+    }
     return profile?.allowedModules?.includes('admin') || false;
   }
 
-  // If user has no specific allowedModules configured (e.g. legacy), default to open
+  // For employees: strictly check allowedModules configured by their CEO!
+  if (profile?.userType === 'employee') {
+    if (!profile.allowedModules || profile.allowedModules.length === 0) {
+      // Default basic access if unconfigured
+      return ['dashboard', 'designer', 'social-hub', 'kanban', 'agenda', 'ponto'].includes(moduleId);
+    }
+    return profile.allowedModules.includes(moduleId);
+  }
+
+  // For company owners / CEOs: full operational access to their company's modules unless restricted
   if (!profile?.allowedModules || profile.allowedModules.length === 0) {
     return true;
   }
@@ -264,7 +320,7 @@ export const PERMISSION_PRESETS = [
     name: '🎨 Líder de Design (Direção Criativa)',
     badge: 'Líder Design',
     color: 'border-neutral-700 text-white bg-neutral-900',
-    modules: ['dashboard', 'designer', 'studio-agency', 'social-hub', 'kanban', 'agenda', 'relatorios'] as ViewType[],
+    modules: ['dashboard', 'designer', 'social-hub', 'kanban', 'agenda', 'relatorios'] as ViewType[],
   },
   {
     name: '🚀 Gestor de Tráfego',
@@ -276,7 +332,7 @@ export const PERMISSION_PRESETS = [
     name: '🎨 Designer Gráfico',
     badge: 'Designer',
     color: 'border-neutral-700 text-neutral-300 bg-neutral-950',
-    modules: ['dashboard', 'designer', 'studio-agency', 'social-hub', 'kanban'] as ViewType[],
+    modules: ['dashboard', 'designer', 'social-hub', 'kanban'] as ViewType[],
   },
   {
     name: '💼 Closer / SDR de Prospecção',

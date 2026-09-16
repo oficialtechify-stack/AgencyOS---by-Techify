@@ -107,7 +107,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
     canApproveDesigns: true,
     canPublishPosts: true,
     canDeleteDesigns: true,
-    allowedModules: ['dashboard', 'designer', 'studio-agency', 'social-hub', 'kanban', 'agenda', 'relatorios'] as ViewType[],
+    allowedModules: ['dashboard', 'designer', 'social-hub', 'kanban', 'agenda', 'relatorios'] as ViewType[],
   });
 
   const [currentSelectedModules, setCurrentSelectedModules] = useState<ViewType[]>([
@@ -150,7 +150,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
         setLoading(false);
       },
       (error) => {
-        console.error('Erro na escuta de usuários:', error);
+        console.warn('Aviso na escuta de usuários:', error?.message || error);
         setUsers(
           INITIAL_DEMO_USERS.map((u, i) => ({
             ...u,
@@ -225,8 +225,28 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
     return false;
   };
 
-  const employeeUsers = users.filter(isEmployeeUser);
-  const clientUsers = users.filter((u) => !isEmployeeUser(u));
+  const isMaster = isUserMasterAdmin(currentUser, currentUser?.email);
+
+  // Strictly scope users based on tenancy:
+  // If Master Super-Admin (Marcos Henrique): sees all platform records
+  // If Company CEO / Owner: ONLY sees employees belonging to their own company workspace!
+  const employeeUsers = users.filter((u) => {
+    if (isMaster) {
+      return isEmployeeUser(u);
+    }
+    // Company CEO: only sees employees belonging to their workspace or matching their agency
+    const isOwnerUidMatch = u.agencyOwnerUid === currentUser?.uid;
+    const isCompanyStaffMatch =
+      u.userType === 'employee' &&
+      Boolean(
+        u.agencyName &&
+          currentUser?.agencyName &&
+          u.agencyName.toLowerCase().trim() === currentUser.agencyName.toLowerCase().trim()
+      );
+    return isOwnerUidMatch || isCompanyStaffMatch;
+  });
+
+  const clientUsers = isMaster ? users.filter((u) => !isEmployeeUser(u)) : [];
 
   // Current List based on Active Tab
   const currentTabUsers = activeTab === 'Equipe' ? employeeUsers : clientUsers;
@@ -552,14 +572,16 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
               <Shield className="w-5 h-5 stroke-[2.5]" />
             </div>
             <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-              Gestão de Equipe & Clientes
+              {isMaster ? 'Gestão de Equipe & Clientes' : 'Gestão de Equipe & Permissões'}
             </h1>
             <span className="text-[10px] bg-neutral-900 border border-neutral-700 px-2 py-0.5 rounded-full text-neutral-300 font-bold">
-              AgencyOS Master
+              {isMaster ? 'AgencyOS Master' : (currentUser?.agencyName || 'CEO da Empresa')}
             </span>
           </div>
           <p className="text-xs sm:text-sm text-neutral-400">
-            Separe sua equipe interna (gratuita e colaborativa) dos clientes assinantes com workspaces independentes.
+            {isMaster
+              ? 'Separe sua equipe interna (gratuita e colaborativa) dos clientes assinantes com workspaces independentes.'
+              : 'Cadastre sua equipe com contas individuais e defina exatamente quais módulos e funções cada funcionário pode acessar ou bloquear. Seus funcionários utilizam o mesmo dashboard da sua empresa com autenticação própria.'}
           </p>
         </div>
 
@@ -572,22 +594,26 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
             <UserPlus className="w-4 h-4 stroke-[2.5]" />
             Adicionar Funcionário (Equipe)
           </button>
-          <button
-            onClick={() => handleOpenAddModal('client')}
-            className="px-4 py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-white font-bold text-xs flex items-center gap-2 border border-neutral-700 transition-all hover:scale-105 cursor-pointer"
-          >
-            <Building2 className="w-4 h-4" />
-            Cadastrar Cliente AgencyOS
-          </button>
+          {isMaster && (
+            <button
+              onClick={() => handleOpenAddModal('client')}
+              className="px-4 py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-white font-bold text-xs flex items-center gap-2 border border-neutral-700 transition-all hover:scale-105 cursor-pointer"
+            >
+              <Building2 className="w-4 h-4" />
+              Cadastrar Cliente AgencyOS
+            </button>
+          )}
         </div>
       </div>
 
-      {/* 4 TOP METRIC CARDS - ACCURATELY SEPARATING TEAM VS PAID CLIENTS */}
+      {/* 4 TOP METRIC CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Minha Equipe */}
+        {/* Card 1 */}
         <div className="p-5 rounded-2xl bg-[#0e0e0e] border border-neutral-800 flex flex-col justify-between space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-neutral-400">Minha Equipe</span>
+            <span className="text-xs font-bold text-neutral-400">
+              {isMaster ? 'Minha Equipe' : 'Funcionários da Empresa'}
+            </span>
             <div className="p-2 rounded-xl bg-neutral-900 text-white border border-neutral-700">
               <Users className="w-4 h-4" />
             </div>
@@ -596,55 +622,102 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
           <div className="text-[11px] text-neutral-400 font-medium flex items-center gap-1.5">
             <span className="text-white font-bold">● {activeEmployeesCount} ativos</span>
             <span>•</span>
-            <span className="text-neutral-400">Sem cobrança (Equipe)</span>
+            <span className="text-neutral-400">Contas individuais</span>
           </div>
         </div>
 
-        {/* Clientes do AgencyOS */}
-        <div className="p-5 rounded-2xl bg-[#0e0e0e] border border-neutral-800 flex flex-col justify-between space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-neutral-400">Clientes AgencyOS</span>
-            <div className="p-2 rounded-xl bg-neutral-900 text-white border border-neutral-700">
-              <Building2 className="w-4 h-4" />
+        {/* Card 2 */}
+        {isMaster ? (
+          <div className="p-5 rounded-2xl bg-[#0e0e0e] border border-neutral-800 flex flex-col justify-between space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-neutral-400">Clientes AgencyOS</span>
+              <div className="p-2 rounded-xl bg-neutral-900 text-white border border-neutral-700">
+                <Building2 className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="text-3xl font-black text-white tracking-tight">{totalClientsCount}</div>
+            <div className="text-[11px] text-neutral-400 font-medium flex items-center gap-1.5">
+              <span className="text-white font-bold">● {activeClientsCount} ativos</span>
+              <span>•</span>
+              <span className="text-neutral-400">{clientTrialCount} em trial</span>
             </div>
           </div>
-          <div className="text-3xl font-black text-white tracking-tight">{totalClientsCount}</div>
-          <div className="text-[11px] text-neutral-400 font-medium flex items-center gap-1.5">
-            <span className="text-white font-bold">● {activeClientsCount} ativos</span>
-            <span>•</span>
-            <span className="text-neutral-400">{clientTrialCount} em trial</span>
+        ) : (
+          <div className="p-5 rounded-2xl bg-[#0e0e0e] border border-neutral-800 flex flex-col justify-between space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-neutral-400">Acessos Liberados</span>
+              <div className="p-2 rounded-xl bg-neutral-900 text-white border border-neutral-700">
+                <CheckCircle2 className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="text-3xl font-black text-white tracking-tight">{activeEmployeesCount}</div>
+            <div className="text-[11px] text-neutral-400 font-medium">
+              Funcionários ativos colaborando no dashboard
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Assinaturas SaaS Ativas */}
-        <div className="p-5 rounded-2xl bg-[#0e0e0e] border border-neutral-800 flex flex-col justify-between space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-neutral-400">Assinaturas Clientes</span>
-            <div className="p-2 rounded-xl bg-neutral-900 text-white border border-neutral-700">
-              <CheckCircle2 className="w-4 h-4" />
+        {/* Card 3 */}
+        {isMaster ? (
+          <div className="p-5 rounded-2xl bg-[#0e0e0e] border border-neutral-800 flex flex-col justify-between space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-neutral-400">Assinaturas Clientes</span>
+              <div className="p-2 rounded-xl bg-neutral-900 text-white border border-neutral-700">
+                <CheckCircle2 className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="text-3xl font-black text-white tracking-tight">{clientTotalPaid}</div>
+            <div className="text-[11px] text-neutral-400 font-medium">
+              Starter: {clientPaidStarter} • Pro: {clientPaidPro} • Agency: {clientPaidAgency}
             </div>
           </div>
-          <div className="text-3xl font-black text-white tracking-tight">{clientTotalPaid}</div>
-          <div className="text-[11px] text-neutral-400 font-medium">
-            Starter: {clientPaidStarter} • Pro: {clientPaidPro} • Agency: {clientPaidAgency}
+        ) : (
+          <div className="p-5 rounded-2xl bg-[#0e0e0e] border border-neutral-800 flex flex-col justify-between space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-neutral-400">Acessos Bloqueados</span>
+              <div className="p-2 rounded-xl bg-neutral-900 text-white border border-neutral-700">
+                <Shield className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="text-3xl font-black text-white tracking-tight">
+              {employeeUsers.filter((u) => u.status === 'blocked').length}
+            </div>
+            <div className="text-[11px] text-neutral-400 font-medium">
+              Contas suspensas ou restritas pelo CEO
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* MRR Real dos Clientes */}
-        <div className="p-5 rounded-2xl bg-[#0e0e0e] border border-neutral-800 flex flex-col justify-between space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-neutral-400">MRR Real (Clientes)</span>
-            <div className="p-2 rounded-xl bg-neutral-900 text-white border border-neutral-700">
-              <DollarSign className="w-4 h-4" />
+        {/* Card 4 */}
+        {isMaster ? (
+          <div className="p-5 rounded-2xl bg-[#0e0e0e] border border-neutral-800 flex flex-col justify-between space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-neutral-400">MRR Real (Clientes)</span>
+              <div className="p-2 rounded-xl bg-neutral-900 text-white border border-neutral-700">
+                <DollarSign className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="text-3xl font-black text-white tracking-tight">
+              R$ {mrrEst.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </div>
+            <div className="text-[11px] text-neutral-400 font-medium">
+              {clientTotalPaid > 0 ? 'Faturamento mensal de clientes ativos' : 'Cadastre clientes pagantes na aba Clientes'}
             </div>
           </div>
-          <div className="text-3xl font-black text-white tracking-tight">
-            R$ {mrrEst.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+        ) : (
+          <div className="p-5 rounded-2xl bg-[#0e0e0e] border border-neutral-800 flex flex-col justify-between space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-neutral-400">Módulos do Sistema</span>
+              <div className="p-2 rounded-xl bg-neutral-900 text-white border border-neutral-700">
+                <Sparkles className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="text-3xl font-black text-white tracking-tight">14</div>
+            <div className="text-[11px] text-neutral-400 font-medium">
+              Funções operacionais com controle de permissão
+            </div>
           </div>
-          <div className="text-[11px] text-neutral-400 font-medium">
-            {clientTotalPaid > 0 ? 'Faturamento mensal de clientes ativos' : 'Cadastre clientes pagantes na aba Clientes'}
-          </div>
-        </div>
+        )}
       </div>
 
       {/* EXPLANATORY WORKSPACE SEPARATION BANNER */}
@@ -656,13 +729,15 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
             </div>
             <div>
               <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                <span>Minha Equipe • Workspace Compartilhado da Agência</span>
+                <span>{isMaster ? 'Minha Equipe • Workspace Compartilhado da Agência' : 'Equipe da Minha Empresa • Mesmo Dashboard com Contas Próprias'}</span>
                 <span className="text-[10px] bg-white text-black px-2 py-0.5 rounded-full font-black">
-                  Colaboração em Tempo Real
+                  {isMaster ? 'Colaboração em Tempo Real' : 'Acesso Individual'}
                 </span>
               </h4>
               <p className="text-xs text-neutral-400 leading-snug">
-                Seus funcionários <strong className="text-white">não pagam nada no sistema</strong>. Todas as demandas de design, criativos, briefings e tarefas postadas pela agência aparecem instantaneamente para eles trabalharem.
+                {isMaster
+                  ? 'Seus funcionários não pagam nada no sistema. Todas as demandas de design, criativos, briefings e tarefas postadas pela agência aparecem instantaneamente para eles trabalharem.'
+                  : 'Cada funcionário cadastrado entra com seu próprio e-mail e senha no mesmo dashboard da sua empresa. Como CEO, você pode liberar ou bloquear funções e módulos para cada um.'}
               </p>
             </div>
           </div>
@@ -675,7 +750,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
             <span>Adicionar Funcionário</span>
           </button>
         </div>
-      ) : activeTab === 'Clientes' ? (
+      ) : activeTab === 'Clientes' && isMaster ? (
         <div className="p-4 rounded-2xl bg-neutral-950 border border-neutral-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
             <div className="w-10 h-10 rounded-xl bg-neutral-900 border border-neutral-700 flex items-center justify-center text-white shrink-0">
@@ -721,7 +796,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
               }`}
             >
               <Users className="w-3.5 h-3.5" />
-              <span>Minha Equipe & Funcionários</span>
+              <span>{isMaster ? 'Minha Equipe & Funcionários' : 'Funcionários da Minha Empresa'}</span>
               <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
                 activeTab === 'Equipe' ? 'bg-black text-white' : 'bg-neutral-900 text-neutral-400'
               }`}>
@@ -729,58 +804,66 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
               </span>
             </button>
 
-            <button
-              onClick={() => {
-                setActiveTab('Clientes');
-                setFilterCategory('Todos');
-              }}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
-                activeTab === 'Clientes'
-                  ? 'bg-white text-black shadow-md'
-                  : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
-              }`}
-            >
-              <Building2 className="w-3.5 h-3.5" />
-              <span>Clientes do AgencyOS</span>
-              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-                activeTab === 'Clientes' ? 'bg-black text-white' : 'bg-neutral-900 text-neutral-400'
-              }`}>
-                {totalClientsCount}
-              </span>
-            </button>
+            {isMaster && (
+              <button
+                onClick={() => {
+                  setActiveTab('Clientes');
+                  setFilterCategory('Todos');
+                }}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
+                  activeTab === 'Clientes'
+                    ? 'bg-white text-black shadow-md'
+                    : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
+                }`}
+              >
+                <Building2 className="w-3.5 h-3.5" />
+                <span>Clientes do AgencyOS</span>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                  activeTab === 'Clientes' ? 'bg-black text-white' : 'bg-neutral-900 text-neutral-400'
+                }`}>
+                  {totalClientsCount}
+                </span>
+              </button>
+            )}
 
-            <button
-              onClick={() => setActiveTab('Planos')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
-                activeTab === 'Planos'
-                  ? 'bg-white text-black shadow-md'
-                  : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
-              }`}
-            >
-              Planos & Preços SaaS
-            </button>
+            {isMaster && (
+              <button
+                onClick={() => setActiveTab('Planos')}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                  activeTab === 'Planos'
+                    ? 'bg-white text-black shadow-md'
+                    : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
+                }`}
+              >
+                Planos & Preços SaaS
+              </button>
+            )}
 
-            <button
-              onClick={() => setActiveTab('Atualizações')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
-                activeTab === 'Atualizações'
-                  ? 'bg-white text-black shadow-md'
-                  : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
-              }`}
-            >
-              Atualizações
-            </button>
+            {isMaster && (
+              <button
+                onClick={() => setActiveTab('Atualizações')}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                  activeTab === 'Atualizações'
+                    ? 'bg-white text-black shadow-md'
+                    : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
+                }`}
+              >
+                Atualizações
+              </button>
+            )}
 
-            <button
-              onClick={() => setActiveTab('Estatísticas')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
-                activeTab === 'Estatísticas'
-                  ? 'bg-white text-black shadow-md'
-                  : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
-              }`}
-            >
-              Estatísticas
-            </button>
+            {isMaster && (
+              <button
+                onClick={() => setActiveTab('Estatísticas')}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                  activeTab === 'Estatísticas'
+                    ? 'bg-white text-black shadow-md'
+                    : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
+                }`}
+              >
+                Estatísticas
+              </button>
+            )}
           </div>
 
           {/* Search Input */}
@@ -1745,7 +1828,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
                             leadership = 'lider_marketing';
                             dRole = 'lider';
                             approve = true;
-                            mods = ['dashboard', 'marketing', 'campanhas', 'social-hub', 'designer', 'studio-agency', 'calculadora-roi', 'relatorios', 'ia-consultora', 'agenda'];
+                            mods = ['dashboard', 'marketing', 'campanhas', 'social-hub', 'designer', 'calculadora-roi', 'relatorios', 'ia-consultora', 'agenda'];
                           } else if (r === 'Líder de Prospecção') {
                             leadership = 'lider_prospeccao';
                             dRole = 'lider';
@@ -1755,7 +1838,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
                             leadership = 'lider_design';
                             dRole = 'lider';
                             approve = true;
-                            mods = ['dashboard', 'designer', 'studio-agency', 'social-hub', 'kanban', 'agenda', 'relatorios'];
+                            mods = ['dashboard', 'designer', 'social-hub', 'kanban', 'agenda', 'relatorios'];
                           } else if (r === 'Gestor de Tráfego') {
                             leadership = 'membro';
                             dRole = 'designer';
@@ -1770,7 +1853,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
                             leadership = 'membro';
                             dRole = 'designer';
                             approve = false;
-                            mods = ['dashboard', 'designer', 'studio-agency', 'social-hub', 'kanban', 'agenda'];
+                            mods = ['dashboard', 'designer', 'social-hub', 'kanban', 'agenda'];
                           } else {
                             leadership = 'membro';
                             dRole = 'funcionario';
@@ -1825,12 +1908,12 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
                     <div className="flex flex-wrap gap-1.5">
                       {[
                         { label: '👑 Líder Geral', role: 'Líder Geral', leadership: 'lider_geral' as const, designRole: 'lider' as const, approve: true, mods: [...ALL_OPERATIONAL_MODULE_IDS] },
-                        { label: '🎯 Líder Marketing', role: 'Líder de Marketing', leadership: 'lider_marketing' as const, designRole: 'lider' as const, approve: true, mods: ['dashboard', 'marketing', 'campanhas', 'social-hub', 'designer', 'studio-agency', 'calculadora-roi', 'relatorios', 'ia-consultora', 'agenda'] as ViewType[] },
+                        { label: '🎯 Líder Marketing', role: 'Líder de Marketing', leadership: 'lider_marketing' as const, designRole: 'lider' as const, approve: true, mods: ['dashboard', 'marketing', 'campanhas', 'social-hub', 'designer', 'calculadora-roi', 'relatorios', 'ia-consultora', 'agenda'] as ViewType[] },
                         { label: '📍 Líder Prospecção', role: 'Líder de Prospecção', leadership: 'lider_prospeccao' as const, designRole: 'lider' as const, approve: false, mods: ['dashboard', 'maps-scraper', 'agenda', 'relatorios', 'campanhas', 'social-hub', 'ia-consultora', 'calculadora-roi'] as ViewType[] },
-                        { label: '🎨 Líder Design', role: 'Líder de Design', leadership: 'lider_design' as const, designRole: 'lider' as const, approve: true, mods: ['dashboard', 'designer', 'studio-agency', 'social-hub', 'kanban', 'agenda', 'relatorios'] as ViewType[] },
+                        { label: '🎨 Líder Design', role: 'Líder de Design', leadership: 'lider_design' as const, designRole: 'lider' as const, approve: true, mods: ['dashboard', 'designer', 'social-hub', 'kanban', 'agenda', 'relatorios'] as ViewType[] },
                         { label: '🚀 Gestor Tráfego', role: 'Gestor de Tráfego', leadership: 'membro' as const, designRole: 'designer' as const, approve: false, mods: ['dashboard', 'campanhas', 'marketing', 'calculadora-roi', 'relatorios', 'ia-consultora', 'agenda'] as ViewType[] },
                         { label: '💼 Closer / SDR', role: 'Closer / SDR de Prospecção', leadership: 'membro' as const, designRole: 'funcionario' as const, approve: false, mods: ['dashboard', 'maps-scraper', 'agenda', 'relatorios', 'ia-consultora'] as ViewType[] },
-                        { label: '🎨 Designer', role: 'Designer Gráfico', leadership: 'membro' as const, designRole: 'designer' as const, approve: false, mods: ['dashboard', 'designer', 'studio-agency', 'social-hub', 'kanban', 'agenda'] as ViewType[] },
+                        { label: '🎨 Designer', role: 'Designer Gráfico', leadership: 'membro' as const, designRole: 'designer' as const, approve: false, mods: ['dashboard', 'designer', 'social-hub', 'kanban', 'agenda'] as ViewType[] },
                       ].map((preset) => (
                         <button
                           key={preset.label}
@@ -2026,7 +2109,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
                       canApprove: true,
                       canPublish: true,
                       canDelete: true,
-                      mods: ['dashboard', 'marketing', 'campanhas', 'social-hub', 'designer', 'studio-agency', 'calculadora-roi', 'relatorios', 'ia-consultora', 'agenda'] as ViewType[],
+                      mods: ['dashboard', 'marketing', 'campanhas', 'social-hub', 'designer', 'calculadora-roi', 'relatorios', 'ia-consultora', 'agenda'] as ViewType[],
                     },
                     {
                       label: '📍 Líder de Prospecção',
@@ -2046,7 +2129,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
                       canApprove: true,
                       canPublish: true,
                       canDelete: true,
-                      mods: ['dashboard', 'designer', 'studio-agency', 'social-hub', 'kanban', 'agenda', 'relatorios'] as ViewType[],
+                      mods: ['dashboard', 'designer', 'social-hub', 'kanban', 'agenda', 'relatorios'] as ViewType[],
                     },
                     {
                       label: '🚀 Gestor de Tráfego',
@@ -2076,7 +2159,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
                       canApprove: false,
                       canPublish: true,
                       canDelete: false,
-                      mods: ['dashboard', 'designer', 'studio-agency', 'social-hub', 'kanban', 'agenda'] as ViewType[],
+                      mods: ['dashboard', 'designer', 'social-hub', 'kanban', 'agenda'] as ViewType[],
                     },
                   ].map((p) => (
                     <button
