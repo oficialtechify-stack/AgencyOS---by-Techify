@@ -143,6 +143,20 @@ export const ALL_SYSTEM_MODULES: SystemModuleInfo[] = [
     description: 'Gestão global de usuários, senhas, planos e permissões granulares',
     iconName: 'ShieldCheck',
   },
+  {
+    id: 'leadspay-master',
+    name: 'LeadsPay — Dashboard & Métricas',
+    category: 'Administração',
+    description: 'Central de telemetria, faturamento global, webhooks e métricas unificadas',
+    iconName: 'Zap',
+  },
+  {
+    id: 'leadspay-companies',
+    name: 'LeadsPay — Gerenciar Empresas',
+    category: 'Administração',
+    description: 'Gestão de empresas parceiras, assinaturas, planos e chaves de API LeadsPay',
+    iconName: 'Building2',
+  },
 ];
 
 export const ALL_OPERATIONAL_MODULE_IDS: ViewType[] = ALL_SYSTEM_MODULES.filter(

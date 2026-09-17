@@ -1571,6 +1571,7 @@ export default function App() {
         onOpenUpgradeModal={() => setShowUpgradeModal(true)}
         onOpenAuthModal={() => handleOpenAuth('login')}
         onOpenPunchModal={() => setShowPunchModal(true)}
+        onNavigate={setView}
       />
 
       {/* Firestore Permissions Notification Banner */}
