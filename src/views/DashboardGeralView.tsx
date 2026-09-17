@@ -627,22 +627,35 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
               onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
               className="flex items-center gap-2 px-2.5 py-1.5 bg-[#0B152F] border border-[#182855] rounded-xl hover:bg-[#122045] transition-colors cursor-pointer"
             >
-              <div className="w-7 h-7 rounded-full bg-blue-600 border border-blue-400/40 flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden">
+              <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-blue-700 to-indigo-600 border border-blue-400/40 flex items-center justify-center text-white text-xs font-black shrink-0 overflow-hidden shadow-sm">
                 {resolveUserAvatar(userProfile as any) ? (
                   <img
                     src={resolveUserAvatar(userProfile as any)}
-                    alt="Avatar"
+                    alt={userProfile?.name || 'Avatar'}
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  'AG'
+                  <span>
+                    {userProfile?.name
+                      ? userProfile.name
+                          .trim()
+                          .split(' ')
+                          .filter(Boolean)
+                          .map((n) => n[0])
+                          .slice(0, 2)
+                          .join('')
+                          .toUpperCase()
+                      : 'MH'}
+                  </span>
                 )}
               </div>
               <div className="text-left hidden sm:block">
                 <div className="text-xs font-bold text-white leading-tight">
-                  {userProfile?.agencyName || 'Agência Demo'}
+                  {userProfile?.name || userProfile?.agencyName || 'Marcos Henrique'}
                 </div>
-                <div className="text-[10px] text-slate-400 leading-none mt-0.5">Conta Principal</div>
+                <div className="text-[10px] text-slate-400 leading-none mt-0.5">
+                  {userProfile?.role || 'CEO & Administrador Master'}
+                </div>
               </div>
             </button>
 

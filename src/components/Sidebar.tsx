@@ -270,23 +270,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
             className="flex items-center gap-2.5 overflow-hidden text-left hover:opacity-80 transition-opacity cursor-pointer group flex-1 mr-2"
             title="Ver Meu Perfil"
           >
-            <div className="w-8 h-8 rounded-full bg-blue-600 border border-blue-400/30 flex items-center justify-center text-xs font-bold text-white shrink-0 overflow-hidden">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-700 to-indigo-600 border border-blue-400/30 flex items-center justify-center text-xs font-black text-white shrink-0 overflow-hidden shadow-sm">
               {resolveUserAvatar(profile) ? (
                 <img
                   src={resolveUserAvatar(profile)}
-                  alt={profile.name}
+                  alt={profile.name || 'Foto de Perfil'}
                   className="w-full h-full object-cover"
                   referrerPolicy="no-referrer"
                 />
               ) : (
-                'AG'
+                <span>
+                  {profile.name
+                    ? profile.name
+                        .trim()
+                        .split(' ')
+                        .filter(Boolean)
+                        .map((n) => n[0])
+                        .slice(0, 2)
+                        .join('')
+                        .toUpperCase()
+                    : 'MH'}
+                </span>
               )}
             </div>
             <div className="truncate">
               <div className="text-xs font-bold text-white truncate flex items-center gap-1 group-hover:text-blue-300 transition-colors">
-                <span>{profile.agencyName || 'Agência Demo'}</span>
+                <span>{profile.name || profile.agencyName || 'Marcos Henrique'}</span>
               </div>
-              <div className="text-[10px] text-slate-400 truncate">Conta Principal</div>
+              <div className="text-[10px] text-slate-400 truncate">
+                {profile.role || 'CEO & Administrador Master'}
+              </div>
             </div>
           </button>
           <button
