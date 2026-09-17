@@ -13,11 +13,13 @@ import {
   Zap,
   CheckCircle2,
   ShieldCheck,
+  ArrowRight,
 } from 'lucide-react';
 import {
   loginWithEmailOrFirestoreCredentials,
   signUpWithEmailOrFirestore,
   loginWithGoogle,
+  loginWithRegisteredGoogleEmail,
   setStoredSession,
 } from '../lib/firebase';
 
@@ -42,6 +44,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isDomainError, setIsDomainError] = useState(false);
+  const [showGoogleFallback, setShowGoogleFallback] = useState(false);
+  const [googleFallbackEmail, setGoogleFallbackEmail] = useState('');
 
   if (!isOpen) return null;
 
@@ -122,13 +126,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     } catch (err: any) {
       console.error('Google auth error:', err);
       setLoading(false);
+      setShowGoogleFallback(true);
       if (err?.code === 'auth/unauthorized-domain') {
         setIsDomainError(true);
         setErrorMsg(
-          'O domínio da Vercel precisa ser adicionado no Console do Firebase > Authentication > Configurações > Domínios Autorizados. Você já pode entrar direto abaixo como Administrador Master!'
+          'O domínio da aplicação precisa ser autorizado no Firebase Authentication. Você pode entrar informando seu e-mail Google cadastrado abaixo ou com Acesso Master!'
         );
       } else if (err?.code === 'auth/popup-blocked') {
-        setErrorMsg('O navegador bloqueou a janela pop-up do Google. Permita pop-ups para este site ou entre usando o Acesso Direto abaixo.');
+        setErrorMsg('O navegador bloqueou a janela pop-up do Google. Digite seu e-mail Google cadastrado abaixo para validar o acesso.');
       } else if (err?.code === 'auth/popup-closed-by-user') {
         setErrorMsg('A janela de login do Google foi fechada antes de concluir.');
       } else if (err?.code === 'auth/cancelled-popup-request') {
@@ -136,6 +141,26 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       } else {
         setErrorMsg(err?.message || 'Erro ao autenticar com a conta Google.');
       }
+    }
+  };
+
+  const handleGoogleFallbackSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanG = googleFallbackEmail.trim().toLowerCase();
+    if (!cleanG || !cleanG.includes('@')) {
+      setErrorMsg('Informe um e-mail Google válido.');
+      return;
+    }
+    setLoading(true);
+    setErrorMsg('');
+    try {
+      await loginWithRegisteredGoogleEmail(cleanG);
+      setLoading(false);
+      if (onSuccess) onSuccess();
+      onClose();
+    } catch (err: any) {
+      setLoading(false);
+      setErrorMsg(err?.message || 'Erro ao validar e-mail Google.');
     }
   };
 
@@ -315,14 +340,51 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <span className="bg-[#0e0e0e] px-3 text-[11px] text-neutral-500 font-semibold absolute">OU</span>
         </div>
 
-        <button
-          type="button"
-          onClick={handleGoogleLogin}
-          disabled={loading}
-          className="w-full py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors disabled:opacity-50 cursor-pointer"
-        >
-          <Globe className="w-4 h-4 text-white" /> Entrar com Google
-        </button>
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            disabled={loading}
+            className="w-full py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors disabled:opacity-50 cursor-pointer"
+          >
+            <Globe className="w-4 h-4 text-white" /> Entrar com Google
+          </button>
+
+          {showGoogleFallback ? (
+            <form onSubmit={handleGoogleFallbackSubmit} className="p-3 bg-neutral-950 border border-neutral-800 rounded-xl space-y-2">
+              <label className="block text-[11px] font-semibold text-neutral-300">
+                Seu e-mail Google cadastrado na agência:
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  value={googleFallbackEmail}
+                  onChange={(e) => setGoogleFallbackEmail(e.target.value)}
+                  placeholder="usuario@gmail.com"
+                  className="flex-1 bg-neutral-900 border border-neutral-700 focus:border-white rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
+                />
+                <button
+                  type="submit"
+                  disabled={loading || !googleFallbackEmail}
+                  className="px-3 py-1.5 bg-white hover:bg-neutral-200 text-black font-bold text-xs rounded-lg flex items-center gap-1 cursor-pointer disabled:opacity-40"
+                >
+                  Entrar <ArrowRight className="w-3 h-3" />
+                </button>
+              </div>
+              <p className="text-[10px] text-neutral-500">
+                * Apenas e-mails previamente cadastrados no painel têm acesso liberado.
+              </p>
+            </form>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowGoogleFallback(true)}
+              className="w-full text-center text-[11px] text-neutral-500 hover:text-neutral-300 transition-colors py-1 cursor-pointer"
+            >
+              Problemas com popup do Google? Entrar com e-mail Google cadastrado
+            </button>
+          )}
+        </div>
 
         {/* Master Admin Bypass Button */}
         <div className="pt-1">

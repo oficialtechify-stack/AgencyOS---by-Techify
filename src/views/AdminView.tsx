@@ -127,6 +127,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
   const [showAddPassword, setShowAddPassword] = useState(false);
   const [showEditPassword, setShowEditPassword] = useState(false);
   const [isCreatingUser, setIsCreatingUser] = useState(false);
+  const [isSavingUser, setIsSavingUser] = useState(false);
   const [copiedUid, setCopiedUid] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
@@ -306,8 +307,17 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
   const handleDeleteConfirm = async () => {
     if (!deletingUser) return;
     try {
-      await deleteUserFromFirestore(deletingUser.uid);
-      showToast(`Usuário ${deletingUser.email} foi excluído com sucesso!`);
+      const emailToDelete = deletingUser.email;
+      const uidToDelete = deletingUser.uid;
+      await deleteUserFromFirestore(uidToDelete, emailToDelete);
+      setUsers((prev) =>
+        prev.filter(
+          (u) =>
+            u.uid !== uidToDelete &&
+            (u.email || '').toLowerCase().trim() !== (emailToDelete || '').toLowerCase().trim()
+        )
+      );
+      showToast(`Usuário ${emailToDelete} foi excluído permanentemente do banco de dados e do sistema!`);
       setDeletingUser(null);
     } catch (err) {
       console.error('Erro ao excluir usuário:', err);
@@ -416,45 +426,77 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
 
   const handleUpdateUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingUser) return;
+    if (!editingUser || isSavingUser) return;
+    setIsSavingUser(true);
 
     try {
-      await updateUserProfileInFirestore(editingUser.uid, editingUser.email, {
+      const updatePayload = {
         name: editingUser.name || '',
         email: editingUser.email || '',
         avatarUrl: editingUser.avatarUrl || '',
         userType: editingUser.userType,
         role: editingUser.role || 'Gestor de Tráfego',
-        leadershipRole: editingUser.leadershipRole || (editingUser.role?.toLowerCase().includes('marketing') ? 'lider_marketing' : editingUser.role?.toLowerCase().includes('prospec') ? 'lider_prospeccao' : editingUser.role?.toLowerCase().includes('lider') ? 'lider_geral' : 'membro'),
+        leadershipRole:
+          editingUser.leadershipRole ||
+          (editingUser.role?.toLowerCase().includes('marketing')
+            ? 'lider_marketing'
+            : editingUser.role?.toLowerCase().includes('prospec')
+            ? 'lider_prospeccao'
+            : editingUser.role?.toLowerCase().includes('lider')
+            ? 'lider_geral'
+            : 'membro'),
         agencyName: editingUser.agencyName || '',
         plan: editingUser.plan,
         status: editingUser.status,
         notes: editingUser.notes || '',
         allowedModules: editingUser.allowedModules || ALL_OPERATIONAL_MODULE_IDS,
         tempPasswordHint: editingUser.tempPasswordHint,
-      });
+      };
 
-      showToast(`Usuário ${editingUser.email} atualizado com sucesso!`);
+      await updateUserProfileInFirestore(editingUser.uid, editingUser.email, updatePayload);
+
+      // Optimistically update local users state immediately
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.uid === editingUser.uid ||
+          (u.email && u.email.toLowerCase().trim() === (editingUser.email || '').toLowerCase().trim())
+            ? { ...u, ...updatePayload }
+            : u
+        )
+      );
+
+      showToast(`Usuário ${editingUser.email} atualizado e salvo com sucesso no banco de dados!`);
       setEditingUser(null);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao atualizar usuário:', err);
-      showToast('Erro ao salvar alterações.');
+      showToast('Erro ao salvar alterações: ' + (err?.message || 'Tente novamente'));
+    } finally {
+      setIsSavingUser(false);
     }
   };
 
   const handleToggleUserType = async (user: FirestoreUserProfile) => {
     const isNowEmployee = isEmployeeUser(user);
-    const newType = isNowEmployee ? 'client' : 'employee';
-    const newPlan = newType === 'employee' ? 'Gratuito / Equipe' : 'Pro';
+    const newType: 'client' | 'employee' = isNowEmployee ? 'client' : 'employee';
+    const newPlan: FirestoreUserProfile['plan'] = newType === 'employee' ? 'Gratuito / Equipe' : 'Pro';
     const newRole = newType === 'employee' ? 'Designer Gráfico' : 'Cliente AgencyOS';
 
+    const patch: Partial<FirestoreUserProfile> = {
+      userType: newType,
+      plan: newPlan,
+      role: user.role === 'Cliente AgencyOS' ? 'Designer Gráfico' : user.role,
+      designRole: newType === 'employee' ? ('designer' as const) : ('cliente' as const),
+    };
+
     try {
-      await updateUserInFirestore(user.uid, {
-        userType: newType,
-        plan: newPlan,
-        role: user.role === 'Cliente AgencyOS' ? 'Designer Gráfico' : user.role,
-        designRole: newType === 'employee' ? 'designer' : 'cliente',
-      });
+      await updateUserProfileInFirestore(user.uid, user.email, patch);
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.uid === user.uid || (u.email && u.email.toLowerCase().trim() === (user.email || '').toLowerCase().trim())
+            ? { ...u, ...patch }
+            : u
+        )
+      );
       showToast(`Usuário movido para ${newType === 'employee' ? '👥 Minha Equipe' : '💼 Clientes AgencyOS'}!`);
     } catch (err) {
       console.error('Erro ao alternar tipo de usuário:', err);
@@ -509,17 +551,21 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
       await updateUserPermissionsInFirestore(
         permissionsModalUser.uid,
         currentSelectedModules,
-        extraFields
+        extraFields,
+        permissionsModalUser.email
       );
 
       // Optimistic update of local users state
       setUsers((prev) =>
         prev.map((u) =>
-          u.uid === permissionsModalUser.uid ? { ...u, ...extraFields } : u
+          u.uid === permissionsModalUser.uid ||
+          (u.email && u.email.toLowerCase().trim() === (permissionsModalUser.email || '').toLowerCase().trim())
+            ? { ...u, ...extraFields }
+            : u
         )
       );
 
-      showToast(`Permissões e acessos de ${permissionsModalUser.name || permissionsModalUser.email} atualizados com sucesso!`);
+      showToast(`Permissões e acessos de ${permissionsModalUser.name || permissionsModalUser.email} salvos com sucesso no banco de dados!`);
       setPermissionsModalUser(null);
     } catch (err) {
       console.error('Erro ao atualizar permissões:', err);
@@ -532,7 +578,14 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
   const handleToggleBlock = async (user: FirestoreUserProfile) => {
     const newStatus = user.status === 'blocked' ? 'active' : 'blocked';
     try {
-      await updateUserInFirestore(user.uid, { status: newStatus });
+      await updateUserProfileInFirestore(user.uid, user.email, { status: newStatus });
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.uid === user.uid || (u.email && u.email.toLowerCase().trim() === (user.email || '').toLowerCase().trim())
+            ? { ...u, status: newStatus }
+            : u
+        )
+      );
       showToast(`Usuário ${user.email} foi ${newStatus === 'blocked' ? 'bloqueado' : 'desbloqueado'}.`);
     } catch (err) {
       console.error('Erro ao alterar status:', err);
@@ -2539,10 +2592,20 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-white hover:bg-neutral-200 text-black font-black flex items-center gap-2 shadow-md cursor-pointer"
+                  disabled={isSavingUser}
+                  className="px-5 py-2 rounded-xl bg-white hover:bg-neutral-200 text-black font-black flex items-center gap-2 shadow-md cursor-pointer disabled:opacity-50"
                 >
-                  <Check className="w-4 h-4 stroke-[3]" />
-                  Salvar
+                  {isSavingUser ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4 stroke-[3]" />
+                      Salvar
+                    </>
+                  )}
                 </button>
               </div>
             </form>

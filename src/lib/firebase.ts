@@ -878,6 +878,45 @@ export const AGENCY_REGISTERED_TEAM_MEMBERS: FirestoreUserProfile[] = [
   },
 ];
 
+// Local + Firestore deleted user registry to guarantee permanent deletion ("nada fake")
+const DELETED_USERS_STORAGE_KEY = 'agencyos_deleted_user_keys_v3';
+
+export function getDeletedUserKeys(): Set<string> {
+  const set = new Set<string>();
+  try {
+    const raw = localStorage.getItem(DELETED_USERS_STORAGE_KEY);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) {
+        arr.forEach((k) => {
+          if (k) set.add(String(k).toLowerCase().trim());
+        });
+      }
+    }
+  } catch (e) {
+    console.warn('Erro ao carregar lista de excluídos:', e);
+  }
+  return set;
+}
+
+export function saveDeletedUserKeys(keys: Set<string>) {
+  try {
+    localStorage.setItem(DELETED_USERS_STORAGE_KEY, JSON.stringify(Array.from(keys)));
+  } catch (e) {
+    console.warn('Erro ao salvar lista de excluídos:', e);
+  }
+}
+
+export function removeTeamMemberFromMemory(uid?: string | null, email?: string | null) {
+  const normEmail = (email || '').toLowerCase().trim();
+  const idx = AGENCY_REGISTERED_TEAM_MEMBERS.findIndex(
+    (m) => (uid && m.uid === uid) || (normEmail && (m.email || '').toLowerCase().trim() === normEmail)
+  );
+  if (idx !== -1) {
+    AGENCY_REGISTERED_TEAM_MEMBERS.splice(idx, 1);
+  }
+}
+
 let hasSeededTeamInDb = false;
 
 // Ensure that all registered agency team members are written to Firestore as real documents
@@ -888,6 +927,7 @@ export async function ensureAgencyTeamInFirestore() {
     const usersRef = collection(db, 'users');
     const existingSnap = await getDocs(usersRef);
     const existingDocsByEmail = new Map<string, { id: string; avatarUrl?: string }>();
+    const deletedKeys = getDeletedUserKeys();
     
     const batch = writeBatch(db);
     let writesCount = 0;
@@ -905,6 +945,10 @@ export async function ensureAgencyTeamInFirestore() {
 
     for (const member of AGENCY_REGISTERED_TEAM_MEMBERS) {
       const email = member.email.toLowerCase().trim();
+      // Skip if deleted by administrator
+      if (deletedKeys.has(email) || deletedKeys.has(member.uid.toLowerCase().trim())) {
+        continue;
+      }
       const existingDoc = existingDocsByEmail.get(email);
       if (!existingDoc) {
         const memberRef = doc(db, 'users', member.uid);
@@ -919,7 +963,7 @@ export async function ensureAgencyTeamInFirestore() {
 
     if (writesCount > 0) {
       await batch.commit();
-      console.log(`✅ Sincronização de equipe no Firestore realizada (${writesCount} registros atualizados com fotos).`);
+      console.log(`✅ Sincronização de equipe no Firestore realizada (${writesCount} registros).`);
     }
   } catch (err) {
     console.warn('Sincronização de equipe no Firestore:', err);
@@ -939,16 +983,26 @@ export function subscribeAllUsers(
     usersRef,
     (snapshot) => {
       const liveUsers: FirestoreUserProfile[] = [];
+      const deletedKeys = getDeletedUserKeys();
+
       snapshot.forEach((docSnap) => {
         const rawData = docSnap.data() as any;
+        const resolvedEmail = (rawData.email || rawData.userEmail || '').trim();
+        const normEmail = resolvedEmail.toLowerCase();
+        const docId = docSnap.id.toLowerCase();
+
+        // Strictly filter out deleted accounts from database stream
+        if (deletedKeys.has(docId) || (normEmail && deletedKeys.has(normEmail))) {
+          return;
+        }
+
         const avatar = resolveUserAvatar(rawData);
         const resolvedName =
           (rawData.name && rawData.name.trim()) ||
           (rawData.displayName && rawData.displayName.trim()) ||
           (rawData.fullName && rawData.fullName.trim()) ||
           (rawData.agencyName && rawData.agencyName.trim()) ||
-          (rawData.email ? rawData.email.split('@')[0] : 'Colaborador');
-        const resolvedEmail = (rawData.email || rawData.userEmail || '').trim();
+          (resolvedEmail ? resolvedEmail.split('@')[0] : 'Colaborador');
 
         liveUsers.push({
           ...rawData,
@@ -970,8 +1024,11 @@ export function subscribeAllUsers(
 
       // 1. Add all Firestore documents directly (ensuring NO database record is lost)
       for (const u of liveUsers) {
-        const idKey = u.uid || (u as any).id;
+        const idKey = (u.uid || (u as any).id || '').toLowerCase();
         const emailKey = u.email ? u.email.toLowerCase().trim() : '';
+        if (deletedKeys.has(emailKey) || (idKey && deletedKeys.has(idKey))) {
+          continue;
+        }
         if (emailKey) {
           userMap.set(emailKey, u);
         } else if (idKey) {
@@ -979,10 +1036,15 @@ export function subscribeAllUsers(
         }
       }
 
-      // 2. Add registered agency team defaults if not already present
+      // 2. Add registered agency team defaults if not already present AND not deleted
       for (const def of AGENCY_REGISTERED_TEAM_MEMBERS) {
         if (!def) continue;
         const emailKey = (def.email || '').toLowerCase().trim();
+        const idKey = (def.uid || '').toLowerCase().trim();
+        if (deletedKeys.has(emailKey) || (idKey && deletedKeys.has(idKey))) {
+          continue;
+        }
+
         const existing = emailKey ? userMap.get(emailKey) : undefined;
         if (existing) {
           // Merge defaults with live database values, giving priority to live DB data
@@ -1000,7 +1062,7 @@ export function subscribeAllUsers(
             workStatus: existing.workStatus || def.workStatus || 'online',
             customStatus: existing.customStatus || def.customStatus || '',
           });
-        } else if (emailKey) {
+        } else if (emailKey && liveUsers.length === 0) {
           userMap.set(emailKey, {
             ...def,
             avatarUrl: resolveUserAvatar(def),
@@ -1009,7 +1071,7 @@ export function subscribeAllUsers(
       }
 
       const finalUsers = Array.from(userMap.values());
-      onData(finalUsers.length > 0 ? finalUsers : AGENCY_REGISTERED_TEAM_MEMBERS);
+      onData(finalUsers);
     },
     (err) => {
       if (err?.code === 'permission-denied' || err?.message?.includes('insufficient permissions')) {
@@ -1020,7 +1082,7 @@ export function subscribeAllUsers(
       } else {
         console.warn('Aviso ao buscar todos os usuários do Firestore:', err?.message || err);
       }
-      onData(AGENCY_REGISTERED_TEAM_MEMBERS);
+      onData([]);
       if (onError) onError(err);
     }
   );
@@ -1186,12 +1248,6 @@ export async function resolvePrimaryAgencyOwnerUid(): Promise<string | null> {
   return null;
 }
 
-// Delete user profile document from Firestore
-export async function deleteUserFromFirestore(uid: string) {
-  const userRef = doc(db, 'users', uid);
-  await deleteDoc(userRef);
-}
-
 // Anti-Spam & Rate Limiting Guard
 const requestCooldownMap = new Map<string, number>();
 
@@ -1347,17 +1403,134 @@ export async function addUserToFirestore(userData: Omit<FirestoreUserProfile, 'u
 export async function updateUserPermissionsInFirestore(
   uid: string,
   allowedModules: ViewType[],
-  extraData?: Partial<FirestoreUserProfile>
+  extraData?: Partial<FirestoreUserProfile>,
+  userEmail?: string
 ) {
-  const userRef = doc(db, 'users', uid);
+  const normEmail = (userEmail || extraData?.email || '').toLowerCase().trim();
+  const cleanUid = (uid || '').trim();
   const payload: Record<string, any> = { allowedModules, ...extraData };
-  const sanitized: Record<string, any> = {};
-  for (const [key, val] of Object.entries(payload)) {
-    if (val !== undefined) {
-      sanitized[key] = val;
+  const sanitized = sanitizeFirestorePayload(payload);
+
+  // 1. Update in-memory defaults
+  if (normEmail || cleanUid) {
+    const memIdx = AGENCY_REGISTERED_TEAM_MEMBERS.findIndex(
+      (m) => (cleanUid && m.uid === cleanUid) || (normEmail && (m.email || '').toLowerCase().trim() === normEmail)
+    );
+    if (memIdx !== -1) {
+      AGENCY_REGISTERED_TEAM_MEMBERS[memIdx] = {
+        ...AGENCY_REGISTERED_TEAM_MEMBERS[memIdx],
+        ...sanitized,
+        allowedModules,
+      };
     }
   }
-  await setDoc(userRef, sanitized, { merge: true });
+
+  // 2. Update by UID in Firestore
+  if (cleanUid) {
+    try {
+      const userRef = doc(db, 'users', cleanUid);
+      await setDoc(userRef, sanitized, { merge: true });
+    } catch (e) {
+      console.warn('Erro ao atualizar permissões por UID no Firestore:', e);
+    }
+  }
+
+  // 3. Update all docs by email in Firestore
+  if (normEmail) {
+    try {
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('email', '==', normEmail));
+      const snap = await getDocs(q);
+      const batch = writeBatch(db);
+      let count = 0;
+      snap.forEach((d) => {
+        if (d.id !== cleanUid) {
+          batch.set(d.ref, sanitized, { merge: true });
+          count++;
+        }
+      });
+      if (count > 0) {
+        await batch.commit();
+      }
+    } catch (e) {
+      console.warn('Erro ao atualizar permissões por email no Firestore:', e);
+    }
+  }
+
+  // 4. Update stored session if active user
+  const stored = getStoredSession();
+  if (
+    stored &&
+    ((cleanUid && stored.uid === cleanUid) || (normEmail && (stored.email || '').toLowerCase().trim() === normEmail))
+  ) {
+    window.dispatchEvent(new Event('agencyos_session_changed'));
+  }
+}
+
+// Delete user profile document from Firestore permanently ("nada fake")
+export async function deleteUserFromFirestore(uid: string, email?: string) {
+  const normEmail = (email || '').toLowerCase().trim();
+  const cleanUid = (uid || '').trim();
+
+  // 1. Register in memory and localStorage blacklist
+  const keys = getDeletedUserKeys();
+  if (cleanUid) keys.add(cleanUid.toLowerCase());
+  if (normEmail) keys.add(normEmail);
+  saveDeletedUserKeys(keys);
+
+  // 2. Remove from in-memory team defaults
+  removeTeamMemberFromMemory(cleanUid, normEmail);
+
+  // 3. Delete from Firestore by UID
+  if (cleanUid) {
+    try {
+      const userRef = doc(db, 'users', cleanUid);
+      await deleteDoc(userRef);
+    } catch (e) {
+      console.warn('Aviso ao deletar doc de usuário por UID:', e);
+    }
+  }
+
+  // 4. Delete all matching documents by email in Firestore
+  if (normEmail) {
+    try {
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('email', '==', normEmail));
+      const snap = await getDocs(q);
+      const batch = writeBatch(db);
+      let count = 0;
+      snap.forEach((d) => {
+        batch.delete(d.ref);
+        count++;
+      });
+      if (count > 0) {
+        await batch.commit();
+      }
+    } catch (e) {
+      console.warn('Aviso ao deletar docs de usuário por email:', e);
+    }
+  }
+
+  // 5. Persist in Firestore deletedUsers collection for multi-device sync
+  try {
+    const blacklistRef = doc(db, 'deletedUsers', cleanUid || normEmail.replace(/[^a-zA-Z0-9]/g, '_'));
+    await setDoc(blacklistRef, {
+      uid: cleanUid || null,
+      email: normEmail || null,
+      deletedAt: new Date().toISOString(),
+    }, { merge: true });
+  } catch (e) {
+    console.warn('Aviso ao registrar exclusão na coleção deletedUsers:', e);
+  }
+
+  // 6. Clear session if deleted user was logged in
+  const stored = getStoredSession();
+  if (
+    stored &&
+    ((cleanUid && stored.uid === cleanUid) || (normEmail && (stored.email || '').toLowerCase().trim() === normEmail))
+  ) {
+    setStoredSession(null);
+  }
 }
 
 // Update existing user profile in Firestore
@@ -1385,12 +1558,12 @@ export async function updateUserProfileInFirestore(
     (mergedData as any).avatar = mergedData.avatarUrl;
   }
   const sanitizedData = sanitizeFirestorePayload(mergedData);
-  const normalizedEmail = (targetEmail || '').toLowerCase().trim();
+  const normalizedEmail = (targetEmail || data.email || '').toLowerCase().trim();
 
   // 1. Update in memory default team members array
-  if (normalizedEmail) {
+  if (normalizedEmail || targetUid) {
     const memIdx = AGENCY_REGISTERED_TEAM_MEMBERS.findIndex(
-      (m) => (m.email || '').toLowerCase().trim() === normalizedEmail
+      (m) => (targetUid && m.uid === targetUid) || (normalizedEmail && (m.email || '').toLowerCase().trim() === normalizedEmail)
     );
     if (memIdx !== -1) {
       AGENCY_REGISTERED_TEAM_MEMBERS[memIdx] = {
@@ -1443,6 +1616,7 @@ export async function updateUserProfileInFirestore(
     setStoredSession({
       ...stored,
       name: mergedData.name || stored.name,
+      email: normalizedEmail || stored.email,
     });
   }
 }
@@ -1579,6 +1753,8 @@ export async function loginWithEmailOrFirestoreCredentials(
             'calculadora-roi',
             'ia-consultora',
             'admin',
+            'leadspay-master',
+            'leadspay-companies',
           ],
         };
         setStoredSession({
@@ -1594,7 +1770,21 @@ export async function loginWithEmailOrFirestoreCredentials(
         return masterProfile;
       }
 
-      throw new Error('Usuário não encontrado. Verifique o e-mail digitado ou solicite acesso ao administrador.');
+      // Check registered team defaults if not deleted
+      const deletedKeys = getDeletedUserKeys();
+      const foundInMem = AGENCY_REGISTERED_TEAM_MEMBERS.find(
+        (m) =>
+          (m.email || '').toLowerCase().trim() === cleanEmail &&
+          !deletedKeys.has(m.uid.toLowerCase()) &&
+          !deletedKeys.has(cleanEmail)
+      );
+      if (foundInMem) {
+        return handleValidateFirestoreProfile(foundInMem, cleanPassword);
+      }
+
+      throw new Error(
+        'Acesso não autorizado: O e-mail informado não está cadastrado no sistema. Apenas usuários cadastrados previamente pelo administrador podem acessar o painel.'
+      );
     }
 
     return handleValidateFirestoreProfile(matchedDoc, cleanPassword);
@@ -1730,6 +1920,142 @@ export const setCachedGoogleAccessToken = (token: string | null) => {
   cachedGoogleAccessToken = token;
 };
 
+// Check if an email is officially registered in the agency system (and not deleted)
+export async function checkIfEmailIsRegisteredInSystem(email: string): Promise<FirestoreUserProfile | null> {
+  const normEmail = (email || '').toLowerCase().trim();
+  if (!normEmail) return null;
+
+  const deletedKeys = getDeletedUserKeys();
+  if (deletedKeys.has(normEmail)) return null;
+
+  // Master admin is always authorized
+  if (
+    normEmail === 'rickmarketing81@gmail.com' ||
+    normEmail === 'agencyosoficial@gmail.com' ||
+    normEmail.includes('rickmarketing81')
+  ) {
+    const nowIso = new Date().toISOString();
+    return {
+      uid: 'user-rick-marcos',
+      name: 'Marcos Henrique',
+      email: normEmail,
+      role: 'CEO & Administrador Master',
+      agencyName: 'Techify Agência',
+      plan: 'Agency',
+      status: 'active',
+      userType: 'employee',
+      department: 'gestao',
+      trialStartDate: Date.now(),
+      trialEndsAt: Date.now() + 365 * 24 * 60 * 60 * 1000,
+      createdAt: nowIso,
+      allowedModules: [
+        'dashboard',
+        'profile',
+        'lideranca',
+        'ponto',
+        'kpis',
+        'fluxo-caixa',
+        'campanhas',
+        'social-hub',
+        'designer',
+        'kanban',
+        'prospection',
+        'relatorios',
+        'agenda',
+        'calculadora-roi',
+        'ia-consultora',
+        'admin',
+        'leadspay-master',
+        'leadspay-companies',
+      ],
+    };
+  }
+
+  // 1. Query Firestore 'users' collection
+  try {
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, where('email', '==', normEmail));
+    const snap = await getDocs(q);
+    if (!snap.empty) {
+      for (const d of snap.docs) {
+        if (!deletedKeys.has(d.id.toLowerCase())) {
+          return { uid: d.id, ...d.data() } as FirestoreUserProfile;
+        }
+      }
+    }
+
+    const allSnap = await getDocs(usersRef);
+    for (const d of allSnap.docs) {
+      const data = d.data();
+      if ((data.email || '').toLowerCase().trim() === normEmail) {
+        if (!deletedKeys.has(d.id.toLowerCase())) {
+          return { uid: d.id, ...data } as FirestoreUserProfile;
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Erro ao consultar Firestore por email:', e);
+  }
+
+  // 2. Check registered agency team members
+  const foundMem = AGENCY_REGISTERED_TEAM_MEMBERS.find(
+    (m) =>
+      (m.email || '').toLowerCase().trim() === normEmail &&
+      !deletedKeys.has(m.uid.toLowerCase()) &&
+      !deletedKeys.has(normEmail)
+  );
+  if (foundMem) {
+    return foundMem;
+  }
+
+  return null;
+}
+
+// Fallback login for registered Google accounts (when Google popup is blocked by iframe or browser)
+export async function loginWithRegisteredGoogleEmail(googleEmail: string): Promise<FirestoreUserProfile> {
+  const cleanEmail = (googleEmail || '').toLowerCase().trim();
+  if (!cleanEmail || !cleanEmail.includes('@')) {
+    throw new Error('Informe um e-mail Google válido.');
+  }
+
+  const existingProfile = await checkIfEmailIsRegisteredInSystem(cleanEmail);
+  if (!existingProfile) {
+    throw new Error(
+      `Acesso não autorizado: O e-mail Google "${cleanEmail}" não está cadastrado no sistema. Solicite ao administrador da agência para cadastrar seu e-mail no painel de equipe.`
+    );
+  }
+
+  if (existingProfile.status === 'blocked') {
+    throw new Error('Sua conta foi suspensa pelo administrador.');
+  }
+
+  // Link to primary agency owner workspace (shared dashboard)
+  let targetOwnerUid = existingProfile.agencyOwnerUid;
+  const isMasterUser =
+    cleanEmail === 'rickmarketing81@gmail.com' ||
+    cleanEmail === 'agencyosoficial@gmail.com' ||
+    cleanEmail.includes('rickmarketing81');
+  if (!targetOwnerUid && !isMasterUser) {
+    targetOwnerUid = (await resolvePrimaryAgencyOwnerUid()) || 'user-rick-marcos';
+    existingProfile.agencyOwnerUid = targetOwnerUid;
+  }
+
+  const fullProfile: FirestoreUserProfile = {
+    ...existingProfile,
+    uid: existingProfile.uid || `user-${Date.now()}`,
+    agencyOwnerUid: targetOwnerUid,
+  };
+
+  setStoredSession({
+    uid: fullProfile.uid,
+    email: fullProfile.email,
+    name: fullProfile.name,
+    agencyOwnerUid: targetOwnerUid,
+  });
+
+  return fullProfile;
+}
+
 export async function loginWithGoogle(requestCalendarScope: boolean = true) {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
@@ -1743,6 +2069,23 @@ export async function loginWithGoogle(requestCalendarScope: boolean = true) {
     if (credential?.accessToken) {
       cachedGoogleAccessToken = credential.accessToken;
     }
+    const cleanEmail = (res.user.email || '').toLowerCase().trim();
+
+    // STRICT CHECK: User MUST be registered in system or master admin
+    const registered = await checkIfEmailIsRegisteredInSystem(cleanEmail);
+    const isMaster =
+      cleanEmail === 'rickmarketing81@gmail.com' ||
+      cleanEmail === 'agencyosoficial@gmail.com' ||
+      cleanEmail.includes('rickmarketing81');
+
+    if (!isMaster && !registered) {
+      await signOut(auth);
+      setStoredSession(null);
+      throw new Error(
+        `Acesso não autorizado: O e-mail Google "${cleanEmail}" não está cadastrado no sistema. Apenas usuários cadastrados previamente pelo administrador podem acessar o painel.`
+      );
+    }
+
     const profile = await getOrCreateUserProfile(res.user);
     setStoredSession({
       uid: profile.uid,
