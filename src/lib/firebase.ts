@@ -1756,7 +1756,7 @@ export function setStoredSession(session: ActiveSession | null) {
 // Unified Login Handler that checks Firebase Auth and Firestore records
 export async function loginWithEmailOrFirestoreCredentials(
   emailInput: string,
-  passwordInput: string
+  passwordInput?: string
 ): Promise<FirestoreUserProfile> {
   const cleanEmail = (emailInput || '').toLowerCase().trim();
   const cleanPassword = (passwordInput || '').trim();
@@ -1765,19 +1765,17 @@ export async function loginWithEmailOrFirestoreCredentials(
     throw new Error('Por favor, informe um e-mail válido.');
   }
 
-  if (!cleanPassword) {
-    throw new Error('Informe a senha de acesso.');
-  }
-
-  // 1. Attempt standard Firebase Auth sign in
+  // 1. Attempt standard Firebase Auth sign in if password was provided
   let authSuccess = false;
   let authUser: User | null = null;
-  try {
-    const res = await signInWithEmailAndPassword(auth, cleanEmail, cleanPassword);
-    authUser = res.user;
-    authSuccess = true;
-  } catch (authErr: any) {
-    console.log('Firebase Auth direto não autenticou ou está restrito. Verificando cadastro no Firestore:', authErr?.code || authErr?.message);
+  if (cleanPassword) {
+    try {
+      const res = await signInWithEmailAndPassword(auth, cleanEmail, cleanPassword);
+      authUser = res.user;
+      authSuccess = true;
+    } catch (authErr: any) {
+      console.log('Firebase Auth direto não autenticou ou está restrito. Verificando cadastro no Firestore:', authErr?.code || authErr?.message);
+    }
   }
 
   if (authSuccess && authUser) {
@@ -1790,7 +1788,7 @@ export async function loginWithEmailOrFirestoreCredentials(
     return profile;
   }
 
-  // 2. Query Firestore 'users' collection for the user registered by Admin
+  // 2. Query Firestore 'users' collection for the user registered in the database
   const usersRef = collection(db, 'users');
   const q = query(usersRef, where('email', '==', cleanEmail));
   const querySnap = await getDocs(q);
@@ -1883,6 +1881,52 @@ export async function loginWithEmailOrFirestoreCredentials(
 
   const userDoc = { uid: querySnap.docs[0].id, ...querySnap.docs[0].data() } as unknown as FirestoreUserProfile;
   return handleValidateFirestoreProfile(userDoc, cleanPassword);
+}
+
+// Database helper: Verify if an email is registered in Firestore
+export async function checkIfEmailExistsInDatabase(emailInput: string): Promise<{ exists: boolean; profile?: FirestoreUserProfile }> {
+  const cleanEmail = (emailInput || '').toLowerCase().trim();
+  if (!cleanEmail) return { exists: false };
+
+  try {
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, where('email', '==', cleanEmail));
+    const snap = await getDocs(q);
+    if (!snap.empty) {
+      return { exists: true, profile: { uid: snap.docs[0].id, ...snap.docs[0].data() } as any };
+    }
+
+    const allUsersSnap = await getDocs(usersRef);
+    let matchedDoc: any = null;
+    allUsersSnap.forEach((d) => {
+      const data = d.data();
+      if ((data.email || '').toLowerCase().trim() === cleanEmail) {
+        matchedDoc = { uid: d.id, ...data };
+      }
+    });
+
+    if (matchedDoc) {
+      return { exists: true, profile: matchedDoc };
+    }
+
+    if (
+      cleanEmail === 'rickmarketing81@gmail.com' ||
+      cleanEmail === 'agencyosoficial@gmail.com' ||
+      cleanEmail.includes('rickmarketing81')
+    ) {
+      return { exists: true };
+    }
+
+    return { exists: false };
+  } catch (err) {
+    console.warn('Erro ao verificar email no banco de dados:', err);
+    return { exists: false };
+  }
+}
+
+// Database helper: Login with already registered email (direct Firestore authentication for companies created with Google or Admin)
+export async function loginWithRegisteredEmailOnly(emailInput: string): Promise<FirestoreUserProfile> {
+  return loginWithEmailOrFirestoreCredentials(emailInput, '');
 }
 
 // Helper to validate Firestore user status and password

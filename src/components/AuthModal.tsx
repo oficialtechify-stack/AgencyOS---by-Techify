@@ -179,7 +179,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </h3>
           <p className="text-xs text-neutral-400 mt-1">
             {mode === 'login'
-              ? 'Digite suas credenciais ou continue com o Google.'
+              ? 'Informe o seu e-mail cadastrado no banco de dados para entrar.'
               : 'As empresas podem criar sua conta pelo Google ou com e-mail e senha.'}
           </p>
         </div>
@@ -193,49 +193,54 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
         )}
 
-        <div className="space-y-2">
-          <button
-            type="button"
-            onClick={handleGoogleLogin}
-            disabled={loading}
-            className="w-full py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors disabled:opacity-50 cursor-pointer"
-          >
-            <Globe className="w-4 h-4 text-white" />
-            {mode === 'login' ? 'Entrar com Google' : 'Criar Conta com Google'}
-          </button>
+        {/* Google option is ONLY available for account creation (Signup) as requested */}
+        {mode === 'signup' && (
+          <>
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={handleGoogleLogin}
+                disabled={loading}
+                className="w-full py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                <Globe className="w-4 h-4 text-white" />
+                Criar Conta de Empresa com Google
+              </button>
 
-          {showGoogleFallback && (
-            <form onSubmit={handleGoogleFallbackSubmit} className="p-3 bg-neutral-950 border border-neutral-800 rounded-xl space-y-2">
-              <label className="block text-[11px] font-semibold text-neutral-300">
-                Informe seu e-mail Google:
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="email"
-                  value={googleFallbackEmail}
-                  onChange={(e) => setGoogleFallbackEmail(e.target.value)}
-                  placeholder="empresa@gmail.com"
-                  className="flex-1 bg-neutral-900 border border-neutral-700 focus:border-white rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
-                />
-                <button
-                  type="submit"
-                  disabled={loading || !googleFallbackEmail}
-                  className="px-3 py-1.5 bg-white hover:bg-neutral-200 text-black font-bold text-xs rounded-lg flex items-center gap-1 cursor-pointer disabled:opacity-40"
-                >
-                  Continuar <ArrowRight className="w-3 h-3" />
-                </button>
-              </div>
-              <p className="text-[10px] text-neutral-500">
-                * Se já possui conta, você entrará diretamente. Se for nova empresa, sua conta será criada no banco de dados.
-              </p>
-            </form>
-          )}
-        </div>
+              {showGoogleFallback && (
+                <form onSubmit={handleGoogleFallbackSubmit} className="p-3 bg-neutral-950 border border-neutral-800 rounded-xl space-y-2">
+                  <label className="block text-[11px] font-semibold text-neutral-300">
+                    Informe o e-mail da sua empresa:
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="email"
+                      value={googleFallbackEmail}
+                      onChange={(e) => setGoogleFallbackEmail(e.target.value)}
+                      placeholder="empresa@gmail.com"
+                      className="flex-1 bg-neutral-900 border border-neutral-700 focus:border-white rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
+                    />
+                    <button
+                      type="submit"
+                      disabled={loading || !googleFallbackEmail}
+                      className="px-3 py-1.5 bg-white hover:bg-neutral-200 text-black font-bold text-xs rounded-lg flex items-center gap-1 cursor-pointer disabled:opacity-40"
+                    >
+                      Continuar <ArrowRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-neutral-500">
+                    * Sua conta e organização serão inicializadas no banco de dados.
+                  </p>
+                </form>
+              )}
+            </div>
 
-        <div className="relative flex items-center justify-center">
-          <div className="border-t border-neutral-800 w-full"></div>
-          <span className="bg-[#0e0e0e] px-3 text-[11px] text-neutral-500 font-semibold absolute">OU COM E-MAIL E SENHA</span>
-        </div>
+            <div className="relative flex items-center justify-center">
+              <div className="border-t border-neutral-800 w-full"></div>
+              <span className="bg-[#0e0e0e] px-3 text-[11px] text-neutral-500 font-semibold absolute">OU COM E-MAIL E SENHA</span>
+            </div>
+          </>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {mode === 'signup' && (
@@ -273,7 +278,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-neutral-300 mb-1">E-mail</label>
+            <label className="block text-xs font-semibold text-neutral-300 mb-1">E-mail Cadastrado</label>
             <div className="relative">
               <Mail className="w-4 h-4 text-neutral-500 absolute left-3 top-3" />
               <input
@@ -288,15 +293,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-neutral-300 mb-1">Senha</label>
+            <div className="flex justify-between items-center mb-1">
+              <label className="block text-xs font-semibold text-neutral-300">
+                Senha {mode === 'login' && <span className="text-[10px] text-neutral-500 font-normal">(deixe em branco se criou via Google)</span>}
+              </label>
+            </div>
             <div className="relative">
               <Lock className="w-4 h-4 text-neutral-500 absolute left-3 top-3" />
               <input
                 type="password"
-                required
+                required={mode === 'signup'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder={mode === 'login' ? '•••••••• (opcional se criada pelo Google)' : 'Mínimo 6 caracteres'}
                 className="w-full bg-neutral-950 border border-neutral-800 focus:border-white rounded-xl pl-9 pr-3 py-2.5 text-xs text-white focus:outline-none transition-colors"
               />
             </div>

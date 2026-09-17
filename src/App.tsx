@@ -480,6 +480,17 @@ export default function App() {
     }
   };
 
+  const handleUpdateCampaign = async (id: string, updates: any) => {
+    setState((prev) => ({
+      ...prev,
+      campaigns: prev.campaigns.map((c) => (c.id === id ? { ...c, ...updates } : c)),
+    }));
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await updateCollectionItem(targetUid, 'campaigns', id, updates);
+    }
+  };
+
   const handleDeleteCampaign = async (id: string) => {
     setState((prev) => ({
       ...prev,
@@ -1638,7 +1649,18 @@ export default function App() {
                   campaigns={state.campaigns}
                   leads={state.leads}
                   stockItems={state.stockItems}
+                  tasks={state.tasks}
+                  prospectionContracts={state.prospectionContracts}
                   onNavigate={setView}
+                  onAddTask={handleAddTask}
+                  onUpdateTaskStatus={handleUpdateTaskStatus}
+                  onDeleteTask={handleDeleteTask}
+                  onAddTransaction={handleAddTransaction}
+                  onDeleteTransaction={handleDeleteTransaction}
+                  onAddCampaign={handleAddCampaign}
+                  onUpdateCampaign={handleUpdateCampaign}
+                  onDeleteCampaign={handleDeleteCampaign}
+                  onAddLead={handleAddLead}
                 />
               )}
 

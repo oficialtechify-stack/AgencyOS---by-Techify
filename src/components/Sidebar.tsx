@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   LayoutDashboard,
   Crown,
@@ -27,6 +27,11 @@ import {
   UserCircle,
   Lock,
   Building2,
+  Users,
+  Folder,
+  BarChart3,
+  Settings,
+  ChevronDown,
 } from 'lucide-react';
 import { ViewMode, UserProfile } from '../types';
 import { hasModuleAccess, isUserMasterAdmin, isCompanyOwnerOrCEO } from '../lib/permissions';
@@ -53,6 +58,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isOpen,
   onClose,
 }) => {
+  const [showMoreModules, setShowMoreModules] = useState(false);
   const active = activeView || currentView || 'dashboard';
   const handleNav = (view: ViewMode) => {
     if (onNavigate) onNavigate(view);
@@ -74,65 +80,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const handleExit = onLogout || (() => handleNav('landing'));
 
-  const menuSections = [
-    {
-      title: 'COMUNICAÇÃO & PESSOAS',
-      items: [
-        { id: 'profile' as ViewMode, label: 'Meu Perfil', icon: UserCircle },
-        { id: 'ponto' as ViewMode, label: 'Ponto Seguro', icon: Clock },
-      ],
-    },
-    {
-      title: 'PRINCIPAL',
-      items: [
-        { id: 'dashboard' as ViewMode, label: 'Dashboard Geral', icon: LayoutDashboard },
-        { id: 'lideranca' as ViewMode, label: 'Painel de Liderança', icon: Crown },
-      ],
-    },
-    {
-      title: 'FINANCEIRO',
-      items: [
-        { id: 'kpis' as ViewMode, label: 'KPIs', icon: DollarSign },
-        { id: 'fluxo-caixa' as ViewMode, label: 'Fluxo de Caixa', icon: TrendingUp },
-      ],
-    },
-    {
-      title: 'TRÁFEGO & MARKETING',
-      items: [
-        { id: 'campanhas' as ViewMode, label: 'Campanhas', icon: Megaphone },
-        { id: 'marketing' as ViewMode, label: 'Marketing & Lançamentos', icon: Target },
-      ],
-    },
-    {
-      title: 'PROSPECÇÃO & VENDAS',
-      items: [
-        { id: 'prospection' as ViewMode, label: 'Demandas & Catálogo', icon: Target },
-        { id: 'maps-scraper' as ViewMode, label: 'Maps Scraper', icon: MapPin },
-      ],
-    },
-    {
-      title: 'CRIAÇÃO & DESIGN',
-      items: [
-        { id: 'designer' as ViewMode, label: 'Área do Designer', icon: Palette },
-        { id: 'social-hub' as ViewMode, label: 'Social Hub (Instagram & WhatsApp)', icon: Share2 },
-      ],
-    },
-    {
-      title: 'OPERAÇÕES & AGENDA',
-      items: [
-        { id: 'agenda' as ViewMode, label: 'Agenda', icon: Calendar },
-        { id: 'estoque' as ViewMode, label: 'Estoque de Recursos', icon: Package },
-        { id: 'kanban' as ViewMode, label: 'Kanban de Projetos', icon: Kanban },
-        { id: 'relatorios' as ViewMode, label: 'Relatórios', icon: FileText },
-      ],
-    },
-    {
-      title: 'ESTRATÉGIA & IA',
-      items: [
-        { id: 'calculadora-roi' as ViewMode, label: 'Calculadora ROI', icon: Calculator },
-        { id: 'ia-consultora' as ViewMode, label: 'IA Consultora', icon: Bot },
-      ],
-    },
+  // Primary menu items matching screenshot exactly
+  const primaryMenuItems = [
+    { id: 'dashboard' as ViewMode, label: 'Visão geral', icon: LayoutDashboard },
+    { id: 'prospection' as ViewMode, label: 'Clientes', icon: Users },
+    { id: 'kanban' as ViewMode, label: 'Projetos', icon: Folder },
+    { id: 'fluxo-caixa' as ViewMode, label: 'Financeiro', icon: DollarSign },
+    { id: 'campanhas' as ViewMode, label: 'Campanhas', icon: BarChart3 },
+    { id: 'lideranca' as ViewMode, label: 'Equipe', icon: Users },
+    { id: 'relatorios' as ViewMode, label: 'Relatórios', icon: FileText },
+    { id: 'profile' as ViewMode, label: 'Configurações', icon: Settings },
+  ];
+
+  // Secondary tools accessible in sub-list
+  const extraModules = [
+    { id: 'ia-consultora' as ViewMode, label: 'IA Consultora Gemini', icon: Bot },
+    { id: 'maps-scraper' as ViewMode, label: 'Maps Scraper Leads', icon: MapPin },
+    { id: 'social-hub' as ViewMode, label: 'Social Hub (Instagram/Zap)', icon: Share2 },
+    { id: 'designer' as ViewMode, label: 'Área do Designer', icon: Palette },
+    { id: 'ponto' as ViewMode, label: 'Ponto Seguro', icon: Clock },
+    { id: 'marketing' as ViewMode, label: 'Funis & Lançamentos', icon: Target },
+    { id: 'kpis' as ViewMode, label: 'KPIs Estratégicos', icon: TrendingUp },
+    { id: 'agenda' as ViewMode, label: 'Agenda & Reuniões', icon: Calendar },
+    { id: 'estoque' as ViewMode, label: 'Estoque de Recursos', icon: Package },
+    { id: 'calculadora-roi' as ViewMode, label: 'Calculadora ROI', icon: Calculator },
   ];
 
   return (
@@ -147,22 +118,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
       )}
 
       <aside
-        className={`w-64 bg-[#0a0a0a] border-r border-neutral-800 flex flex-col h-full shrink-0 text-neutral-300 font-sans select-none transition-all duration-200 ${
+        className={`w-60 bg-[#080E21] border-r border-[#15234A] flex flex-col h-full shrink-0 text-slate-300 font-sans select-none transition-all duration-200 ${
           isOpen ? 'fixed inset-y-0 left-0 z-50 shadow-2xl block' : 'hidden md:flex z-20'
         }`}
       >
         {/* Brand Header */}
-        <div className="p-4 px-5 flex items-center justify-between border-b border-neutral-800 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-black shrink-0 font-black">
-              <Zap className="w-4 h-4 fill-black text-black" />
+        <div className="p-5 flex items-center justify-between border-b border-[#15234A] shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+              <span className="text-base font-black leading-none">▲</span>
             </div>
             <div>
-              <div className="font-extrabold text-white text-base tracking-tight leading-none">
+              <div className="font-extrabold text-white text-lg tracking-tight leading-none">
                 AgencyOS
-              </div>
-              <div className="text-[9px] font-bold text-neutral-400 tracking-wider uppercase mt-1">
-                BY TECHIFY
               </div>
             </div>
           </div>
@@ -171,7 +139,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {isOpen && onClose && (
             <button
               onClick={onClose}
-              className="md:hidden p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 cursor-pointer"
+              className="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
             >
               <LogOut className="w-4 h-4 rotate-180" />
             </button>
@@ -179,169 +147,130 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Navigation List */}
-        <div className="flex-1 overflow-y-auto py-3 px-3 space-y-4 custom-scrollbar">
-          {menuSections.map((section, idx) => (
-            <div key={idx}>
-              <div className="px-3 text-[10px] font-bold text-neutral-500 tracking-wider uppercase mb-1.5">
-                {section.title}
-              </div>
-              <div className="space-y-1">
-                {section.items.map((item) => {
+        <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1.5 custom-scrollbar">
+          {primaryMenuItems.map((item) => {
+            const Icon = item.icon;
+            const isActive =
+              active === item.id ||
+              (item.id === 'prospection' && (active === 'maps-scraper' || active === 'prospection')) ||
+              (item.id === 'fluxo-caixa' && active === 'kpis') ||
+              (item.id === 'lideranca' && active === 'ponto') ||
+              (item.id === 'profile' && active === 'admin');
+
+            const isAllowed = hasModuleAccess(item.id, userProfile as any);
+
+            return (
+              <button
+                key={item.id}
+                onClick={() => handleNav(item.id)}
+                title={!isAllowed ? 'Módulo bloqueado pelo administrador' : undefined}
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm transition-all duration-150 cursor-pointer group ${
+                  isActive
+                    ? 'bg-[#13244F] text-white font-semibold border border-blue-500/30 shadow-md shadow-blue-950/40'
+                    : 'text-slate-400 hover:text-white hover:bg-[#0E1B3D]/70 font-medium'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Icon
+                    className={`w-4 h-4 transition-colors ${
+                      isActive ? 'text-blue-400' : 'text-slate-400 group-hover:text-slate-200'
+                    }`}
+                  />
+                  <span>{item.label}</span>
+                </div>
+
+                {isActive && <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />}
+              </button>
+            );
+          })}
+
+          {/* Collapsible Advanced Modules */}
+          <div className="pt-2 border-t border-[#15234A]/80">
+            <button
+              onClick={() => setShowMoreModules(!showMoreModules)}
+              className="w-full flex items-center justify-between px-3.5 py-2 text-xs text-slate-400 hover:text-slate-200 cursor-pointer rounded-lg hover:bg-[#0E1B3D]/50 transition-colors"
+            >
+              <span className="font-semibold uppercase tracking-wider text-[10px] text-slate-500">
+                Mais Ferramentas
+              </span>
+              <ChevronDown
+                className={`w-3.5 h-3.5 text-slate-500 transition-transform ${
+                  showMoreModules ? 'rotate-180' : ''
+                }`}
+              />
+            </button>
+
+            {showMoreModules && (
+              <div className="mt-1 space-y-1 pl-1">
+                {extraModules.map((item) => {
                   const Icon = item.icon;
                   const isActive = active === item.id;
-                  const isAllowed = hasModuleAccess(item.id, userProfile as any);
-
                   return (
                     <button
                       key={item.id}
                       onClick={() => handleNav(item.id)}
-                      title={!isAllowed ? 'Módulo bloqueado pelo administrador' : undefined}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all duration-150 cursor-pointer ${
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-colors cursor-pointer ${
                         isActive
-                          ? 'bg-white text-black font-extrabold shadow-sm'
-                          : isAllowed
-                          ? 'text-neutral-400 hover:text-white hover:bg-neutral-900 font-medium'
-                          : 'text-neutral-600 hover:text-neutral-400 hover:bg-neutral-950 opacity-70 font-medium'
+                          ? 'bg-[#13244F] text-blue-300 font-semibold'
+                          : 'text-slate-400 hover:text-white hover:bg-[#0E1B3D]/50'
                       }`}
                     >
-                      <div className="flex items-center gap-2.5">
-                        <Icon
-                          className={`w-4 h-4 ${
-                            isActive
-                              ? 'text-black'
-                              : isAllowed
-                              ? 'text-neutral-400'
-                              : 'text-neutral-600'
-                          }`}
-                        />
-                        <span
-                          className={
-                            isActive
-                              ? 'text-black'
-                              : isAllowed
-                              ? 'text-neutral-300'
-                              : 'text-neutral-500'
-                          }
-                        >
-                          {item.label}
-                        </span>
-                      </div>
-
-                      {isActive ? (
-                        <ChevronRight className="w-3.5 h-3.5 text-black" />
-                      ) : !isAllowed ? (
-                        <Lock className="w-3 h-3 text-neutral-600" />
-                      ) : null}
+                      <Icon className="w-3.5 h-3.5 text-slate-400" />
+                      <span className="truncate">{item.label}</span>
                     </button>
                   );
                 })}
               </div>
-            </div>
-          ))}
+            )}
+          </div>
 
-          {/* Agency Badge & Admin Section */}
-          <div className="pt-2 space-y-1">
-            <div className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg bg-neutral-900 border border-neutral-700 text-xs font-bold text-neutral-200">
-              <Shield className="w-3.5 h-3.5 text-white" />
-              <span className="truncate">{userProfile?.agencyName || 'AgencyOS'}</span>
-            </div>
-
-            {canAccessAdmin && (
+          {/* Admin Panel Link */}
+          {canAccessAdmin && (
+            <div className="pt-1">
               <button
                 onClick={() => handleNav('admin')}
-                title={isMaster ? 'Painel Master — Assinaturas & Clientes' : 'Gestão de Equipe & Permissões'}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all duration-150 cursor-pointer ${
+                className={`w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs transition-all cursor-pointer ${
                   active === 'admin'
-                    ? 'bg-white text-black font-extrabold shadow-sm'
-                    : 'text-neutral-400 hover:text-white hover:bg-neutral-900 font-medium'
+                    ? 'bg-[#13244F] text-white font-semibold'
+                    : 'text-slate-400 hover:text-white hover:bg-[#0E1B3D]/50'
                 }`}
               >
                 <div className="flex items-center gap-2.5">
-                  <ShieldCheck className="w-4 h-4 text-neutral-400" />
-                  <span>{isMaster ? 'Admin — Clientes SaaS' : 'Equipe & Permissões'}</span>
+                  <ShieldCheck className="w-4 h-4 text-slate-400" />
+                  <span>Painel Admin</span>
                 </div>
-                {isCompanyCEO && !isMaster && (
-                  <span className="text-[9px] bg-neutral-800 text-neutral-300 px-1.5 py-0.5 rounded font-bold">
-                    CEO
+                {isMaster && (
+                  <span className="text-[9px] bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded font-bold">
+                    MASTER
                   </span>
                 )}
               </button>
-            )}
+            </div>
+          )}
+        </div>
 
-            {/* LeadsPay Master Telemetry & Companies (Exclusive for rickmarketing81@gmail.com / Super Admin / CEO) */}
-            {(effectiveEmail === 'rickmarketing81@gmail.com' ||
-              effectiveEmail === 'agencyosoficial@gmail.com' ||
-              effectiveEmail.includes('rickmarketing81') ||
-              profile?.uid === 'user-rick-marcos' ||
-              isMaster ||
-              canAccessAdmin) && (
-              <div className="space-y-1 pt-1.5 border-t border-neutral-800/80 mt-1.5">
-                <div className="px-3 py-1 text-[10px] font-bold text-lime-400 tracking-wider uppercase flex items-center justify-between">
-                  <span>LeadsPay Ecosystem</span>
-                  <span className="text-[9px] bg-lime-500/20 text-lime-300 px-1.5 py-0.5 rounded font-mono font-bold">LIVE</span>
-                </div>
-
-                <button
-                  onClick={() => handleNav('leadspay-master')}
-                  title="LeadsPay Master — Dashboard & Métricas"
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all duration-150 cursor-pointer ${
-                    active === 'leadspay-master'
-                      ? 'bg-lime-400 text-black font-extrabold shadow-sm'
-                      : 'text-neutral-400 hover:text-white hover:bg-neutral-900 font-medium'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Zap
-                      className={`w-4 h-4 ${
-                        active === 'leadspay-master' ? 'text-black fill-black' : 'text-lime-400'
-                      }`}
-                    />
-                    <span className={active === 'leadspay-master' ? 'text-black font-extrabold' : 'text-neutral-200'}>
-                      Dashboard LeadsPay
-                    </span>
-                  </div>
-                  <span className="text-[9px] bg-lime-950 text-lime-400 border border-lime-800/80 px-1.5 py-0.5 rounded font-black tracking-wider uppercase">
-                    Métricas
-                  </span>
-                </button>
-
-                <button
-                  onClick={() => handleNav('leadspay-companies')}
-                  title="LeadsPay Master — Gerenciar Empresas"
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all duration-150 cursor-pointer ${
-                    active === 'leadspay-companies'
-                      ? 'bg-lime-400 text-black font-extrabold shadow-sm'
-                      : 'text-neutral-400 hover:text-white hover:bg-neutral-900 font-medium'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Building2
-                      className={`w-4 h-4 ${
-                        active === 'leadspay-companies' ? 'text-black' : 'text-lime-400'
-                      }`}
-                    />
-                    <span className={active === 'leadspay-companies' ? 'text-black font-extrabold' : 'text-neutral-200'}>
-                      Gerenciar Empresas
-                    </span>
-                  </div>
-                  <span className="text-[9px] bg-neutral-900 text-neutral-300 border border-neutral-700 px-1.5 py-0.5 rounded font-bold">
-                    Aba Gestão
-                  </span>
-                </button>
-              </div>
-            )}
+        {/* Promo Growth Card (Direct from Screenshot) */}
+        <div className="p-3.5 mx-3 mb-3 bg-[#0B142B] border border-[#182955] rounded-2xl space-y-1.5 shrink-0 shadow-lg">
+          <div className="w-7 h-7 rounded-lg bg-blue-900/40 border border-blue-700/40 flex items-center justify-center text-blue-400">
+            <Crown className="w-4 h-4 text-blue-400" />
+          </div>
+          <div className="text-xs font-bold text-white leading-tight">
+            Seu crescimento em primeiro lugar.
+          </div>
+          <div className="text-[11px] text-slate-400 leading-snug">
+            AgencyOS. Mais resultado para sua agência.
           </div>
         </div>
 
         {/* User Profile Footer */}
-        <div className="p-3 px-4 border-t border-neutral-800 bg-[#0a0a0a] flex items-center justify-between">
+        <div className="p-3 px-4 border-t border-[#15234A] bg-[#070D1E] flex items-center justify-between">
           <button
             type="button"
             onClick={() => handleNav('profile')}
             className="flex items-center gap-2.5 overflow-hidden text-left hover:opacity-80 transition-opacity cursor-pointer group flex-1 mr-2"
-            title="Ver Meu Perfil & Crachá Digital"
+            title="Ver Meu Perfil"
           >
-            <div className="w-8 h-8 rounded-full bg-neutral-900 border border-neutral-700 flex items-center justify-center text-xs font-bold text-white shrink-0 overflow-hidden">
+            <div className="w-8 h-8 rounded-full bg-blue-600 border border-blue-400/30 flex items-center justify-center text-xs font-bold text-white shrink-0 overflow-hidden">
               {resolveUserAvatar(profile) ? (
                 <img
                   src={resolveUserAvatar(profile)}
@@ -350,31 +279,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   referrerPolicy="no-referrer"
                 />
               ) : (
-                <UserIcon className="w-4 h-4 text-white" />
+                'AG'
               )}
             </div>
             <div className="truncate">
-              <div className="text-xs font-bold text-white truncate flex items-center gap-1 group-hover:text-purple-400 transition-colors">
-                <span>{profile.name || 'Usuário'}</span>
-                {isMaster ? (
-                  <span className="text-[9px] bg-white text-black px-1 rounded font-black">
-                    MASTER
-                  </span>
-                ) : isCompanyCEO ? (
-                  <span className="text-[9px] bg-neutral-800 text-neutral-300 px-1 rounded font-bold">
-                    CEO
-                  </span>
-                ) : null}
+              <div className="text-xs font-bold text-white truncate flex items-center gap-1 group-hover:text-blue-300 transition-colors">
+                <span>{profile.agencyName || 'Agência Demo'}</span>
               </div>
-              <div className="text-[10px] text-neutral-400 truncate">
-                {profile.email || ''}
-              </div>
+              <div className="text-[10px] text-slate-400 truncate">Conta Principal</div>
             </div>
           </button>
           <button
             onClick={handleExit}
             title="Sair / Encerrar Sessão"
-            className="p-1.5 text-neutral-400 hover:text-white hover:bg-neutral-900 rounded-md transition-colors shrink-0 cursor-pointer"
+            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-md transition-colors shrink-0 cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
           </button>

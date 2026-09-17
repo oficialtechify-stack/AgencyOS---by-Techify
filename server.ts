@@ -113,7 +113,7 @@ async function startServer() {
     res.json({ status: 'ok', time: new Date().toISOString() });
   });
 
-  // AI Consultant endpoint (Powered primarily by Groq AI with key fallback)
+  // AI Consultant endpoint (Powered primarily by Google Gemini AI with key from process.env.GEMINI_API_KEY)
   app.post('/api/ai/consultant', async (req, res) => {
     try {
       const { message, prompt, history = [], context } = req.body;
@@ -136,29 +136,46 @@ Diretrizes:
 `;
 
       let responseText = '';
+
+      // Primary: Google Gemini AI
       try {
-        responseText = await callGroqConsultant(
-          systemPrompt,
-          Array.isArray(history)
-            ? history.map((h) => ({
-                role: h.sender === 'user' || h.role === 'user' ? 'user' : 'ai',
-                content: h.text || h.content || '',
-              }))
-            : [],
-          userText
-        );
-      } catch (groqErr: any) {
-        console.warn('Groq failed in /api/ai/consultant, falling back to Gemini:', groqErr?.message);
-        try {
-          const response = await ai.models.generateContent({
-            model: 'gemini-3.7-flash',
-            contents: [
-              { role: 'user', parts: [{ text: systemPrompt + '\n\nPergunta do usuário: ' + userText }] },
-            ],
-          });
-          responseText = response.text || '';
-        } catch (geminiErr: any) {
-          console.warn('Gemini fallback failed:', geminiErr?.message);
+        const contents: any[] = [];
+        if (Array.isArray(history) && history.length > 0) {
+          for (const h of history) {
+            const role = h.sender === 'user' || h.role === 'user' ? 'user' : 'model';
+            const text = h.text || h.content || '';
+            if (text) {
+              contents.push({ role, parts: [{ text }] });
+            }
+          }
+        }
+        contents.push({ role: 'user', parts: [{ text: userText }] });
+
+        const response = await ai.models.generateContent({
+          model: 'gemini-3.8-flash',
+          contents,
+          config: {
+            systemInstruction: systemPrompt,
+          },
+        });
+        responseText = response.text || '';
+      } catch (geminiErr: any) {
+        console.warn('Gemini primary call failed, trying fallback:', geminiErr?.message);
+        if (GROQ_API_KEY) {
+          try {
+            responseText = await callGroqConsultant(
+              systemPrompt,
+              Array.isArray(history)
+                ? history.map((h) => ({
+                    role: h.sender === 'user' || h.role === 'user' ? 'user' : 'ai',
+                    content: h.text || h.content || '',
+                  }))
+                : [],
+              userText
+            );
+          } catch (groqErr: any) {
+            console.warn('Groq fallback failed:', groqErr?.message);
+          }
         }
       }
 
@@ -169,8 +186,8 @@ Diretrizes:
     } catch (error: any) {
       console.error('Error in /api/ai/consultant:', error);
       res.json({
-        text: '📊 **Análise Rápida da Agência:** Foque na reativação dos leads no pipeline de prospecção e na negociação de contratos recorrentes de longo prazo (MRR).',
-        reply: '📊 **Análise Rápida da Agência:** Foque na reativação dos leads no pipeline de prospecção e na negociação de contratos recorrentes de longo prazo (MRR).',
+        text: '📊 **Análise Rápida da Agência:** Foque na retenção de clientes de maior LTV, elevação do MRR e na estruturação de campanhas com ROAS superior a 4x.',
+        reply: '📊 **Análise Rápida da Agência:** Foque na retenção de clientes de maior LTV, elevação do MRR e na estruturação de campanhas com ROAS superior a 4x.',
       });
     }
   });
@@ -182,30 +199,47 @@ Diretrizes:
       const userText = prompt || message || '';
 
       const systemPrompt = `
-Você é o Techify AI Copilot, a Inteligência Artificial Consultora de Negócios e Vendas do AgencyOS.
+Você é o AgencyOS AI Copilot, a Inteligência Artificial Consultora de Negócios e Vendas do AgencyOS.
 Você responde diretamente ao gestor da agência sobre estratégias comerciais, propostas, prospecção e métricas.
 Responda sempre em Português do Brasil com formatação rica em markdown, objetividade e foco total em crescimento e vendas.
 `;
 
       let responseText = '';
       try {
-        responseText = await callGroqConsultant(
-          systemPrompt,
-          Array.isArray(history)
-            ? history.map((h) => ({
-                role: h.sender === 'user' || h.role === 'user' ? 'user' : 'ai',
-                content: h.text || h.content || '',
-              }))
-            : [],
-          userText
-        );
-      } catch (groqErr: any) {
-        console.warn('Groq failed in /api/gemini/chat, falling back to Gemini:', groqErr?.message);
+        const contents: any[] = [];
+        if (Array.isArray(history) && history.length > 0) {
+          for (const h of history) {
+            const role = h.sender === 'user' || h.role === 'user' ? 'user' : 'model';
+            const text = h.text || h.content || '';
+            if (text) {
+              contents.push({ role, parts: [{ text }] });
+            }
+          }
+        }
+        contents.push({ role: 'user', parts: [{ text: userText }] });
+
         const response = await ai.models.generateContent({
-          model: 'gemini-flash-latest',
-          contents: [{ role: 'user', parts: [{ text: systemPrompt + '\n\n' + userText }] }],
+          model: 'gemini-3.8-flash',
+          contents,
+          config: {
+            systemInstruction: systemPrompt,
+          },
         });
         responseText = response.text || '';
+      } catch (geminiErr: any) {
+        console.warn('Gemini chat failed, fallback to Groq:', geminiErr?.message);
+        if (GROQ_API_KEY) {
+          responseText = await callGroqConsultant(
+            systemPrompt,
+            Array.isArray(history)
+              ? history.map((h) => ({
+                  role: h.sender === 'user' || h.role === 'user' ? 'user' : 'ai',
+                  content: h.text || h.content || '',
+                }))
+              : [],
+            userText
+          );
+        }
       }
 
       res.json({
