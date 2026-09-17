@@ -64,6 +64,7 @@ export interface FirestoreUserProfile {
   email: string;
   agencyName: string;
   avatarUrl?: string;
+  photoURL?: string;
   phone?: string;
   whatsapp?: string;
   instagram?: string;
@@ -465,12 +466,13 @@ export async function findLinkedCompanyForEmail(
 
 // User Profile Operations
 export async function getOrCreateUserProfile(user: User, customAgencyName?: string): Promise<FirestoreUserProfile> {
+  const cleanEmail = (user.email || '').toLowerCase().trim();
   const userRef = doc(db, 'users', user.uid);
   const snap = await getDoc(userRef);
 
-  const cleanEmail = (user.email || '').toLowerCase().trim();
   const linked = await findLinkedCompanyForEmail(cleanEmail, user.uid);
 
+  // 1. If document already exists by user.uid
   if (snap.exists()) {
     const existing = snap.data() as FirestoreUserProfile;
     // If the user is linked to an agency/company but their document is missing agencyOwnerUid or points to itself
@@ -480,6 +482,8 @@ export async function getOrCreateUserProfile(user: User, customAgencyName?: stri
     ) {
       const merged: FirestoreUserProfile = {
         ...existing,
+        avatarUrl: user.photoURL || existing.avatarUrl || '',
+        photoURL: user.photoURL || (existing as any).photoURL || '',
         agencyOwnerUid: linked.agencyOwnerUid,
         agencyName: linked.agencyName || existing.agencyName,
         userType: linked.userType || 'employee',
@@ -498,28 +502,113 @@ export async function getOrCreateUserProfile(user: User, customAgencyName?: stri
     return existing;
   }
 
-  // Create new profile with 14-day trial OR linked company
+  // 2. Check if an existing profile exists in Firestore with this email
+  if (cleanEmail) {
+    try {
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('email', '==', cleanEmail));
+      const querySnap = await getDocs(q);
+      if (!querySnap.empty) {
+        const foundDoc = querySnap.docs[0];
+        const existingData = foundDoc.data() as FirestoreUserProfile;
+        const merged: FirestoreUserProfile = {
+          ...existingData,
+          uid: foundDoc.id,
+          avatarUrl: user.photoURL || existingData.avatarUrl || '',
+          photoURL: user.photoURL || (existingData as any).photoURL || '',
+        };
+        // Also map to auth uid if different
+        if (foundDoc.id !== user.uid) {
+          await setDoc(userRef, sanitizeFirestorePayload({ ...merged, uid: user.uid, linkedOriginalId: foundDoc.id }), { merge: true });
+        }
+        return merged;
+      }
+    } catch (e) {
+      console.warn('Erro ao consultar usuário existente por email:', e);
+    }
+  }
+
+  // 3. Check if this is the Master Admin or pre-registered team member
+  if (
+    cleanEmail === 'rickmarketing81@gmail.com' ||
+    cleanEmail === 'agencyosoficial@gmail.com' ||
+    cleanEmail.includes('rickmarketing81')
+  ) {
+    const nowIso = new Date().toISOString();
+    const masterProfile: FirestoreUserProfile = {
+      uid: user.uid,
+      name: user.displayName || 'Marcos Henrique',
+      email: cleanEmail,
+      agencyName: 'Techify Agência',
+      plan: 'Agency',
+      status: 'active',
+      role: 'CEO & Administrador Master',
+      userType: 'employee',
+      department: 'gestao',
+      avatarUrl: user.photoURL || '',
+      trialStartDate: Date.now(),
+      trialEndsAt: Date.now() + 365 * 24 * 60 * 60 * 1000,
+      createdAt: nowIso,
+      allowedModules: [
+        'dashboard',
+        'profile',
+        'lideranca',
+        'ponto',
+        'chat',
+        'kpis',
+        'fluxo-caixa',
+        'campanhas',
+        'social-hub',
+        'designer',
+        'kanban',
+        'prospection',
+        'agenda',
+        'leadspay-companies',
+        'admin',
+        'leadspay-master',
+        'relatorios',
+        'calculadora-roi',
+        'ia-consultora',
+      ],
+    };
+    await setDoc(userRef, sanitizeFirestorePayload(masterProfile), { merge: true });
+    return masterProfile;
+  }
+
+  // 4. Create new company profile ("as empresas conseguem criar a conta so pelo google")
   const now = Date.now();
   const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
   const isEmployee = Boolean(linked?.agencyOwnerUid) || linked?.userType === 'employee';
+  const companyName = customAgencyName || (user.displayName ? `Empresa ${user.displayName}` : 'Sua Empresa');
 
   const newProfile: FirestoreUserProfile = {
     uid: user.uid,
-    name: user.displayName || user.email?.split('@')[0] || 'Usuário Gestor',
-    email: user.email || '',
-    agencyName: linked?.agencyName || customAgencyName || 'Sua Agência Digital',
+    name: user.displayName || cleanEmail.split('@')[0] || 'Empresa Cliente',
+    email: cleanEmail,
+    avatarUrl: user.photoURL || '',
+    photoURL: user.photoURL || '',
+    agencyName: linked?.agencyName || companyName,
     agencyOwnerUid: linked?.agencyOwnerUid,
     userType: isEmployee ? 'employee' : 'client',
     role: linked?.role || (isEmployee ? 'Membro da Equipe' : 'Cliente AgencyOS'),
     department: (linked?.department as any) || 'gestao',
-    allowedModules: linked?.allowedModules || ['dashboard', 'designer', 'social-hub', 'kanban', 'agenda', 'relatorios'],
-    plan: isEmployee ? 'Gratuito / Equipe' : 'Trial Gratuito',
+    allowedModules: linked?.allowedModules || [
+      'dashboard',
+      'designer',
+      'social-hub',
+      'kanban',
+      'agenda',
+      'relatorios',
+      'calculadora-roi',
+      'ia-consultora',
+    ],
+    plan: isEmployee ? 'Gratuito / Equipe' : 'Pro',
     status: 'active',
-    designRole: linked?.designRole || 'funcionario',
+    designRole: linked?.designRole || 'cliente',
     canEditDesigns: linked?.canEditDesigns ?? true,
     canCreateDesigns: linked?.canCreateDesigns ?? true,
-    canApproveDesigns: linked?.canApproveDesigns ?? false,
-    canPublishPosts: linked?.canPublishPosts ?? true,
+    canApproveDesigns: linked?.canApproveDesigns ?? true,
+    canPublishPosts: linked?.canPublishPosts ?? false,
     trialStartDate: now,
     trialEndsAt: now + FOURTEEN_DAYS_MS,
     createdAt: new Date().toISOString(),
@@ -536,9 +625,11 @@ export async function getOrCreateUserProfile(user: User, customAgencyName?: stri
     }
   }
 
-  // Only seed individual data if NOT an employee of an existing company
-  if (!isEmployee) {
+  // Seed default workspace subcollections for the company in Firestore
+  try {
     await seedInitialUserData(user.uid);
+  } catch (seedErr) {
+    console.warn('Workspace seed:', seedErr);
   }
 
   return newProfile;
@@ -2011,50 +2102,113 @@ export async function checkIfEmailIsRegisteredInSystem(email: string): Promise<F
   return null;
 }
 
-// Fallback login for registered Google accounts (when Google popup is blocked by iframe or browser)
-export async function loginWithRegisteredGoogleEmail(googleEmail: string): Promise<FirestoreUserProfile> {
+// Login or Create Company Account with Google Email (database-backed)
+export async function loginOrCreateAccountWithGoogleEmail(
+  googleEmail: string,
+  displayName?: string,
+  photoUrl?: string
+): Promise<FirestoreUserProfile> {
   const cleanEmail = (googleEmail || '').toLowerCase().trim();
   if (!cleanEmail || !cleanEmail.includes('@')) {
     throw new Error('Informe um e-mail Google válido.');
   }
 
+  const deletedKeys = getDeletedUserKeys();
+  if (deletedKeys.has(cleanEmail)) {
+    throw new Error('Esta conta foi excluída pelo administrador.');
+  }
+
+  // 1. Check if email already has an account in Firestore or static team
   const existingProfile = await checkIfEmailIsRegisteredInSystem(cleanEmail);
-  if (!existingProfile) {
-    throw new Error(
-      `Acesso não autorizado: O e-mail Google "${cleanEmail}" não está cadastrado no sistema. Solicite ao administrador da agência para cadastrar seu e-mail no painel de equipe.`
-    );
+  if (existingProfile) {
+    if (existingProfile.status === 'blocked') {
+      throw new Error('Sua conta foi suspensa pelo administrador.');
+    }
+
+    let targetOwnerUid = existingProfile.agencyOwnerUid;
+    const isMasterUser =
+      cleanEmail === 'rickmarketing81@gmail.com' ||
+      cleanEmail === 'agencyosoficial@gmail.com' ||
+      cleanEmail.includes('rickmarketing81');
+    if (!targetOwnerUid && !isMasterUser) {
+      targetOwnerUid = (await resolvePrimaryAgencyOwnerUid()) || 'user-rick-marcos';
+      existingProfile.agencyOwnerUid = targetOwnerUid;
+    }
+
+    const fullProfile: FirestoreUserProfile = {
+      ...existingProfile,
+      uid: existingProfile.uid || `user-${Date.now()}`,
+      agencyOwnerUid: targetOwnerUid,
+      avatarUrl: photoUrl || existingProfile.avatarUrl || '',
+    };
+
+    setStoredSession({
+      uid: fullProfile.uid,
+      email: fullProfile.email,
+      name: fullProfile.name,
+      agencyOwnerUid: targetOwnerUid,
+    });
+
+    return fullProfile;
   }
 
-  if (existingProfile.status === 'blocked') {
-    throw new Error('Sua conta foi suspensa pelo administrador.');
-  }
+  // 2. New Company Signup via Google ("as empresas conseguem criar a conta so pelo google")
+  const targetUid = `user-google-${cleanEmail.replace(/[^a-zA-Z0-9]/g, '_')}`;
+  const now = Date.now();
+  const FOURTEEN_DAYS = 14 * 24 * 60 * 60 * 1000;
+  const companyName = displayName ? `Empresa ${displayName}` : `Empresa ${cleanEmail.split('@')[0]}`;
 
-  // Link to primary agency owner workspace (shared dashboard)
-  let targetOwnerUid = existingProfile.agencyOwnerUid;
-  const isMasterUser =
-    cleanEmail === 'rickmarketing81@gmail.com' ||
-    cleanEmail === 'agencyosoficial@gmail.com' ||
-    cleanEmail.includes('rickmarketing81');
-  if (!targetOwnerUid && !isMasterUser) {
-    targetOwnerUid = (await resolvePrimaryAgencyOwnerUid()) || 'user-rick-marcos';
-    existingProfile.agencyOwnerUid = targetOwnerUid;
-  }
-
-  const fullProfile: FirestoreUserProfile = {
-    ...existingProfile,
-    uid: existingProfile.uid || `user-${Date.now()}`,
-    agencyOwnerUid: targetOwnerUid,
+  const newCompanyProfile: FirestoreUserProfile = {
+    uid: targetUid,
+    name: displayName || cleanEmail.split('@')[0],
+    email: cleanEmail,
+    avatarUrl: photoUrl || '',
+    photoURL: photoUrl || '',
+    agencyName: companyName,
+    role: 'Cliente AgencyOS',
+    userType: 'client',
+    plan: 'Pro',
+    status: 'active',
+    designRole: 'cliente',
+    canEditDesigns: true,
+    canCreateDesigns: true,
+    canApproveDesigns: true,
+    canPublishPosts: false,
+    trialStartDate: now,
+    trialEndsAt: now + FOURTEEN_DAYS,
+    createdAt: new Date().toISOString(),
+    allowedModules: [
+      'dashboard',
+      'designer',
+      'social-hub',
+      'kanban',
+      'agenda',
+      'relatorios',
+      'calculadora-roi',
+      'ia-consultora',
+    ],
   };
 
+  // Save in Firestore 'users' collection
+  try {
+    const userRef = doc(db, 'users', targetUid);
+    await setDoc(userRef, sanitizeFirestorePayload(newCompanyProfile), { merge: true });
+    await seedInitialUserData(targetUid);
+  } catch (err) {
+    console.warn('Erro ao criar conta de empresa no Firestore:', err);
+  }
+
   setStoredSession({
-    uid: fullProfile.uid,
-    email: fullProfile.email,
-    name: fullProfile.name,
-    agencyOwnerUid: targetOwnerUid,
+    uid: newCompanyProfile.uid,
+    email: newCompanyProfile.email,
+    name: newCompanyProfile.name,
   });
 
-  return fullProfile;
+  return newCompanyProfile;
 }
+
+// Backward-compatibility wrapper
+export const loginWithRegisteredGoogleEmail = loginOrCreateAccountWithGoogleEmail;
 
 export async function loginWithGoogle(requestCalendarScope: boolean = true) {
   const provider = new GoogleAuthProvider();
@@ -2068,22 +2222,6 @@ export async function loginWithGoogle(requestCalendarScope: boolean = true) {
     const credential = GoogleAuthProvider.credentialFromResult(res);
     if (credential?.accessToken) {
       cachedGoogleAccessToken = credential.accessToken;
-    }
-    const cleanEmail = (res.user.email || '').toLowerCase().trim();
-
-    // STRICT CHECK: User MUST be registered in system or master admin
-    const registered = await checkIfEmailIsRegisteredInSystem(cleanEmail);
-    const isMaster =
-      cleanEmail === 'rickmarketing81@gmail.com' ||
-      cleanEmail === 'agencyosoficial@gmail.com' ||
-      cleanEmail.includes('rickmarketing81');
-
-    if (!isMaster && !registered) {
-      await signOut(auth);
-      setStoredSession(null);
-      throw new Error(
-        `Acesso não autorizado: O e-mail Google "${cleanEmail}" não está cadastrado no sistema. Apenas usuários cadastrados previamente pelo administrador podem acessar o painel.`
-      );
     }
 
     const profile = await getOrCreateUserProfile(res.user);

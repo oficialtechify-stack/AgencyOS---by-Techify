@@ -10,17 +10,13 @@ import {
   Sparkles,
   AlertCircle,
   Globe,
-  Zap,
-  CheckCircle2,
-  ShieldCheck,
   ArrowRight,
 } from 'lucide-react';
 import {
   loginWithEmailOrFirestoreCredentials,
   signUpWithEmailOrFirestore,
   loginWithGoogle,
-  loginWithRegisteredGoogleEmail,
-  setStoredSession,
+  loginOrCreateAccountWithGoogleEmail,
 } from '../lib/firebase';
 
 interface AuthModalProps {
@@ -43,29 +39,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [agencyName, setAgencyName] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [isDomainError, setIsDomainError] = useState(false);
   const [showGoogleFallback, setShowGoogleFallback] = useState(false);
   const [googleFallbackEmail, setGoogleFallbackEmail] = useState('');
 
   if (!isOpen) return null;
 
-  const handleMasterQuickLogin = () => {
-    setLoading(true);
-    setStoredSession({
-      uid: 'user-rick-marcos',
-      email: 'rickmarketing81@gmail.com',
-      name: 'Marcos Henrique',
-    });
-    setLoading(false);
-    if (onSuccess) onSuccess();
-    onClose();
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
     setErrorMsg('');
-    setIsDomainError(false);
     const cleanEmail = email.trim().toLowerCase();
 
     if (!cleanEmail || !cleanEmail.includes('@')) {
@@ -87,16 +69,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       onClose();
     } catch (err: any) {
       console.error('Auth error:', err);
-      // If it's the master user email, grant instant master session
-      if (
-        cleanEmail === 'rickmarketing81@gmail.com' ||
-        cleanEmail === 'agencyosoficial@gmail.com' ||
-        cleanEmail.includes('rickmarketing81')
-      ) {
-        handleMasterQuickLogin();
-        return;
-      }
-
       setLoading(false);
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
         setErrorMsg('E-mail ou senha incorretos.');
@@ -116,7 +88,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   const handleGoogleLogin = async () => {
     setErrorMsg('');
-    setIsDomainError(false);
     setLoading(true);
     try {
       await loginWithGoogle();
@@ -126,16 +97,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     } catch (err: any) {
       console.error('Google auth error:', err);
       setLoading(false);
-      setShowGoogleFallback(true);
-      if (err?.code === 'auth/unauthorized-domain') {
-        setIsDomainError(true);
-        setErrorMsg(
-          'O domínio da aplicação precisa ser autorizado no Firebase Authentication. Você pode entrar informando seu e-mail Google cadastrado abaixo ou com Acesso Master!'
-        );
-      } else if (err?.code === 'auth/popup-blocked') {
-        setErrorMsg('O navegador bloqueou a janela pop-up do Google. Digite seu e-mail Google cadastrado abaixo para validar o acesso.');
+      if (err?.code === 'auth/unauthorized-domain' || err?.code === 'auth/popup-blocked') {
+        setShowGoogleFallback(true);
       } else if (err?.code === 'auth/popup-closed-by-user') {
-        setErrorMsg('A janela de login do Google foi fechada antes de concluir.');
+        setErrorMsg('A janela de login do Google foi fechada.');
       } else if (err?.code === 'auth/cancelled-popup-request') {
         setErrorMsg('Tentativa de login cancelada.');
       } else {
@@ -154,13 +119,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setLoading(true);
     setErrorMsg('');
     try {
-      await loginWithRegisteredGoogleEmail(cleanG);
+      await loginOrCreateAccountWithGoogleEmail(cleanG);
       setLoading(false);
       if (onSuccess) onSuccess();
       onClose();
     } catch (err: any) {
       setLoading(false);
-      setErrorMsg(err?.message || 'Erro ao validar e-mail Google.');
+      setErrorMsg(err?.message || 'Erro ao autenticar com e-mail Google.');
     }
   };
 
@@ -169,18 +134,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       <div className="w-full max-w-md bg-[#0e0e0e] border border-neutral-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative space-y-6">
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 text-neutral-400 hover:text-white p-1 rounded-lg hover:bg-neutral-800 transition-colors"
+          className="absolute top-5 right-5 text-neutral-400 hover:text-white p-1 rounded-lg hover:bg-neutral-800 transition-colors cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>
 
-        {/* Tab Headers */}
+        {/* Tab Selector */}
         <div className="flex bg-neutral-900 p-1 rounded-2xl border border-neutral-800">
           <button
             type="button"
             onClick={() => {
               setMode('login');
               setErrorMsg('');
+              setShowGoogleFallback(false);
             }}
             className={`flex-1 py-2.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
               mode === 'login'
@@ -195,6 +161,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             onClick={() => {
               setMode('signup');
               setErrorMsg('');
+              setShowGoogleFallback(false);
             }}
             className={`flex-1 py-2.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
               mode === 'signup'
@@ -202,18 +169,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 : 'text-neutral-400 hover:text-white'
             }`}
           >
-            <UserPlus className="w-4 h-4" /> Criar Conta (14 dias)
+            <UserPlus className="w-4 h-4" /> Cadastrar Empresa
           </button>
         </div>
 
         <div>
           <h3 className="text-xl font-extrabold text-white">
-            {mode === 'login' ? 'Acesse seu Dashboard Individual' : 'Inicie seu Teste Grátis de 14 Dias'}
+            {mode === 'login' ? 'Acesse seu Dashboard' : 'Cadastrar sua Empresa'}
           </h3>
           <p className="text-xs text-neutral-400 mt-1">
             {mode === 'login'
-              ? 'Seus dados e relatórios estão salvos no seu banco de dados individual.'
-              : 'Sem cartão de crédito necessário. Acesso completo liberado.'}
+              ? 'Digite suas credenciais ou continue com o Google.'
+              : 'As empresas podem criar sua conta pelo Google ou com e-mail e senha.'}
           </p>
         </div>
 
@@ -223,33 +190,52 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <AlertCircle className="w-4 h-4 text-lime-400 shrink-0 mt-0.5" />
               <span>{errorMsg}</span>
             </div>
-
-            {isDomainError && (
-              <div className="p-2.5 bg-black/60 rounded-lg border border-neutral-800 text-[11px] text-neutral-300 space-y-1.5">
-                <p className="font-bold text-white flex items-center gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5 text-lime-400" />
-                  Como autorizar o Google na Vercel:
-                </p>
-                <ol className="list-decimal pl-4 space-y-1 text-neutral-400">
-                  <li>Acesse o <strong>Console do Firebase</strong> (console.firebase.google.com)</li>
-                  <li>Menu lateral: <strong>Authentication</strong> &gt; aba <strong>Configurações</strong> &gt; <strong>Domínios Autorizados</strong></li>
-                  <li>Clique em <strong>Adicionar Domínio</strong> e cole seu domínio Vercel (ex: <code className="text-lime-300">app-seu.vercel.app</code>, sem <em>https://</em>)</li>
-                </ol>
-                <p className="text-neutral-400 pt-1">
-                  <em>Nota: Salvar o domínio no banco de dados Firestore não libera o Google OAuth. Precisa ser na aba de Authentication do Firebase.</em>
-                </p>
-                <button
-                  type="button"
-                  onClick={handleMasterQuickLogin}
-                  className="w-full mt-2 py-2 px-3 rounded-lg bg-lime-400 hover:bg-lime-300 text-black font-black text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md"
-                >
-                  <Zap className="w-3.5 h-3.5 fill-black" />
-                  Entrar Agora sem Google como Super Admin
-                </button>
-              </div>
-            )}
           </div>
         )}
+
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            disabled={loading}
+            className="w-full py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors disabled:opacity-50 cursor-pointer"
+          >
+            <Globe className="w-4 h-4 text-white" />
+            {mode === 'login' ? 'Entrar com Google' : 'Criar Conta com Google'}
+          </button>
+
+          {showGoogleFallback && (
+            <form onSubmit={handleGoogleFallbackSubmit} className="p-3 bg-neutral-950 border border-neutral-800 rounded-xl space-y-2">
+              <label className="block text-[11px] font-semibold text-neutral-300">
+                Informe seu e-mail Google:
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  value={googleFallbackEmail}
+                  onChange={(e) => setGoogleFallbackEmail(e.target.value)}
+                  placeholder="empresa@gmail.com"
+                  className="flex-1 bg-neutral-900 border border-neutral-700 focus:border-white rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
+                />
+                <button
+                  type="submit"
+                  disabled={loading || !googleFallbackEmail}
+                  className="px-3 py-1.5 bg-white hover:bg-neutral-200 text-black font-bold text-xs rounded-lg flex items-center gap-1 cursor-pointer disabled:opacity-40"
+                >
+                  Continuar <ArrowRight className="w-3 h-3" />
+                </button>
+              </div>
+              <p className="text-[10px] text-neutral-500">
+                * Se já possui conta, você entrará diretamente. Se for nova empresa, sua conta será criada no banco de dados.
+              </p>
+            </form>
+          )}
+        </div>
+
+        <div className="relative flex items-center justify-center">
+          <div className="border-t border-neutral-800 w-full"></div>
+          <span className="bg-[#0e0e0e] px-3 text-[11px] text-neutral-500 font-semibold absolute">OU COM E-MAIL E SENHA</span>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {mode === 'signup' && (
@@ -270,7 +256,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-neutral-300 mb-1">Nome da sua Agência</label>
+                <label className="block text-xs font-semibold text-neutral-300 mb-1">Nome da Empresa</label>
                 <div className="relative">
                   <Briefcase className="w-4 h-4 text-neutral-500 absolute left-3 top-3" />
                   <input
@@ -287,7 +273,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-neutral-300 mb-1">E-mail Comercial</label>
+            <label className="block text-xs font-semibold text-neutral-300 mb-1">E-mail</label>
             <div className="relative">
               <Mail className="w-4 h-4 text-neutral-500 absolute left-3 top-3" />
               <input
@@ -295,7 +281,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu.email@agencia.com"
+                placeholder="seu.email@empresa.com"
                 className="w-full bg-neutral-950 border border-neutral-800 focus:border-white rounded-xl pl-9 pr-3 py-2.5 text-xs text-white focus:outline-none transition-colors"
               />
             </div>
@@ -325,80 +311,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <span>Autenticando...</span>
             ) : mode === 'login' ? (
               <>
-                <LogIn className="w-4 h-4" /> Entrar no Meu Dashboard
+                <LogIn className="w-4 h-4" /> Entrar no Dashboard
               </>
             ) : (
               <>
-                <Sparkles className="w-4 h-4 text-black" /> Criar Conta & Iniciar Teste (14 Dias)
+                <Sparkles className="w-4 h-4 text-black" /> Criar Conta da Empresa
               </>
             )}
           </button>
         </form>
-
-        <div className="relative flex items-center justify-center">
-          <div className="border-t border-neutral-800 w-full"></div>
-          <span className="bg-[#0e0e0e] px-3 text-[11px] text-neutral-500 font-semibold absolute">OU</span>
-        </div>
-
-        <div className="space-y-2">
-          <button
-            type="button"
-            onClick={handleGoogleLogin}
-            disabled={loading}
-            className="w-full py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors disabled:opacity-50 cursor-pointer"
-          >
-            <Globe className="w-4 h-4 text-white" /> Entrar com Google
-          </button>
-
-          {showGoogleFallback ? (
-            <form onSubmit={handleGoogleFallbackSubmit} className="p-3 bg-neutral-950 border border-neutral-800 rounded-xl space-y-2">
-              <label className="block text-[11px] font-semibold text-neutral-300">
-                Seu e-mail Google cadastrado na agência:
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="email"
-                  value={googleFallbackEmail}
-                  onChange={(e) => setGoogleFallbackEmail(e.target.value)}
-                  placeholder="usuario@gmail.com"
-                  className="flex-1 bg-neutral-900 border border-neutral-700 focus:border-white rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
-                />
-                <button
-                  type="submit"
-                  disabled={loading || !googleFallbackEmail}
-                  className="px-3 py-1.5 bg-white hover:bg-neutral-200 text-black font-bold text-xs rounded-lg flex items-center gap-1 cursor-pointer disabled:opacity-40"
-                >
-                  Entrar <ArrowRight className="w-3 h-3" />
-                </button>
-              </div>
-              <p className="text-[10px] text-neutral-500">
-                * Apenas e-mails previamente cadastrados no painel têm acesso liberado.
-              </p>
-            </form>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setShowGoogleFallback(true)}
-              className="w-full text-center text-[11px] text-neutral-500 hover:text-neutral-300 transition-colors py-1 cursor-pointer"
-            >
-              Problemas com popup do Google? Entrar com e-mail Google cadastrado
-            </button>
-          )}
-        </div>
-
-        {/* Master Admin Bypass Button */}
-        <div className="pt-1">
-          <button
-            type="button"
-            onClick={handleMasterQuickLogin}
-            disabled={loading}
-            className="w-full py-2.5 rounded-xl bg-lime-400 hover:bg-lime-300 text-black font-black text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg shadow-lime-400/10"
-            title="Acesso Direto como Administrador Master (Marcos Henrique / rickmarketing81@gmail.com)"
-          >
-            <Zap className="w-4 h-4 fill-black text-black" />
-            <span>Acesso Rápido Master (rickmarketing81@gmail.com)</span>
-          </button>
-        </div>
       </div>
     </div>
   );
