@@ -90,6 +90,15 @@ export interface FirestoreUserProfile {
   notes?: string;
   allowedModules?: ViewType[];
   tempPasswordHint?: string;
+  organizationId?: string;
+  jobTitle?: string;
+  permissions?: Record<string, boolean>;
+  subscription?: {
+    plan: 'starter' | 'professional' | 'enterprise';
+    status: 'trialing' | 'active' | 'canceled' | 'expired';
+    trialEndsAt: string;
+    isMasterAccount?: boolean;
+  };
 }
 
 // Initial default data seed for new individual user dashboards - completely zeroed for production
@@ -2034,7 +2043,7 @@ export async function loginOrCreateAccountWithGoogleEmail(
 // Backward-compatibility wrapper
 export const loginWithRegisteredGoogleEmail = loginOrCreateAccountWithGoogleEmail;
 
-export async function loginWithGoogle(requestCalendarScope: boolean = true) {
+export async function loginWithGoogle(requestCalendarScope: boolean = false) {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
   if (requestCalendarScope) {

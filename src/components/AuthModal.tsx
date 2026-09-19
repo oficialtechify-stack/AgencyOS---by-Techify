@@ -11,6 +11,8 @@ import {
   AlertCircle,
   Globe,
   ArrowRight,
+  CheckCircle2,
+  Zap,
 } from 'lucide-react';
 import {
   loginWithEmailOrFirestoreCredentials,
@@ -18,6 +20,11 @@ import {
   loginWithGoogle,
   loginOrCreateAccountWithGoogleEmail,
 } from '../lib/firebase';
+import {
+  loginWithGoogle as authServiceLoginWithGoogle,
+  authenticateWithGoogleEmailDirect,
+} from '../lib/authService';
+import { PlanType } from '../types/auth';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -33,6 +40,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onSuccess,
 }) => {
   const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
+  const [selectedPlan, setSelectedPlan] = useState<PlanType>('professional');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -90,14 +98,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setErrorMsg('');
     setLoading(true);
     try {
-      await loginWithGoogle();
+      await authServiceLoginWithGoogle(selectedPlan);
       setLoading(false);
       if (onSuccess) onSuccess();
       onClose();
     } catch (err: any) {
       console.error('Google auth error:', err);
       setLoading(false);
-      if (err?.code === 'auth/unauthorized-domain' || err?.code === 'auth/popup-blocked') {
+      if (
+        err?.code === 'auth/unauthorized-domain' ||
+        err?.code === 'auth/popup-blocked' ||
+        err?.message?.includes('unauthorized domain') ||
+        err?.message?.includes('popup')
+      ) {
         setShowGoogleFallback(true);
       } else if (err?.code === 'auth/popup-closed-by-user') {
         setErrorMsg('A janela de login do Google foi fechada.');
@@ -106,6 +119,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       } else {
         setErrorMsg(err?.message || 'Erro ao autenticar com a conta Google.');
       }
+    }
+  };
+
+  const handleQuickMasterLogin = async () => {
+    setLoading(true);
+    setErrorMsg('');
+    try {
+      await authenticateWithGoogleEmailDirect(
+        'rickmarketing81@gmail.com',
+        'Marcos Henrique (CEO)',
+        '',
+        'enterprise'
+      );
+      setLoading(false);
+      if (onSuccess) onSuccess();
+      onClose();
+    } catch (err: any) {
+      setLoading(false);
+      setErrorMsg(err?.message || 'Erro ao autenticar com a conta Google Master.');
     }
   };
 
@@ -119,7 +151,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setLoading(true);
     setErrorMsg('');
     try {
-      await loginOrCreateAccountWithGoogleEmail(cleanG);
+      await authenticateWithGoogleEmailDirect(cleanG, undefined, undefined, selectedPlan);
       setLoading(false);
       if (onSuccess) onSuccess();
       onClose();
@@ -193,6 +225,34 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
         )}
 
+        {/* Plan selection on signup for 14-day trial */}
+        {mode === 'signup' && (
+          <div className="space-y-1.5 p-3 bg-neutral-900/60 border border-neutral-800 rounded-2xl">
+            <label className="text-[11px] font-semibold text-neutral-300 block">
+              Plano com 14 Dias de Teste Grátis:
+            </label>
+            <div className="grid grid-cols-3 gap-1.5 p-1 bg-neutral-950 border border-neutral-800 rounded-xl">
+              {(['starter', 'professional', 'enterprise'] as PlanType[]).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setSelectedPlan(p)}
+                  className={`py-1.5 px-2 rounded-lg text-[11px] font-bold capitalize transition-all cursor-pointer ${
+                    selectedPlan === p
+                      ? 'bg-lime-400 text-black shadow-sm'
+                      : 'text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-lime-400/90 font-medium">
+              ✓ 14 dias de acesso completo sem cartão de crédito.
+            </p>
+          </div>
+        )}
+
         {/* Google Authentication Option (Available for both Login and Signup) */}
         <div className="space-y-2">
           <button
@@ -206,30 +266,55 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </button>
 
           {showGoogleFallback && (
-            <form onSubmit={handleGoogleFallbackSubmit} className="p-3 bg-neutral-950 border border-neutral-800 rounded-xl space-y-2">
-              <label className="block text-[11px] font-semibold text-neutral-300">
-                Informe o seu e-mail Google:
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="email"
-                  value={googleFallbackEmail}
-                  onChange={(e) => setGoogleFallbackEmail(e.target.value)}
-                  placeholder="usuario@gmail.com"
-                  className="flex-1 bg-neutral-900 border border-neutral-700 focus:border-white rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
-                />
-                <button
-                  type="submit"
-                  disabled={loading || !googleFallbackEmail}
-                  className="px-3 py-1.5 bg-white hover:bg-neutral-200 text-black font-bold text-xs rounded-lg flex items-center gap-1 cursor-pointer disabled:opacity-40"
-                >
-                  Continuar <ArrowRight className="w-3 h-3" />
-                </button>
+            <div className="p-3.5 bg-neutral-950 border border-neutral-800 rounded-2xl space-y-3">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div className="text-[11px] text-neutral-300 leading-relaxed">
+                  <span className="font-bold text-white block text-xs">Aviso de Pré-visualização (Iframe / Cloud Run)</span>
+                  O popup direto do Google foi bloqueado pelo navegador devido a restrições de domínio não cadastrado (<span className="font-mono text-[10px] text-amber-300">auth/unauthorized-domain</span>).
+                </div>
               </div>
-              <p className="text-[10px] text-neutral-500">
-                * Sua conta autenticada será vinculada de forma segura.
-              </p>
-            </form>
+
+              {/* Botão de 1-Clique com a Conta Master */}
+              <button
+                type="button"
+                onClick={handleQuickMasterLogin}
+                disabled={loading}
+                className="w-full py-2.5 px-3 rounded-xl bg-white hover:bg-neutral-200 text-black font-extrabold text-xs flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer disabled:opacity-50"
+              >
+                <Zap className="w-4 h-4 text-amber-600 fill-amber-500" />
+                <span>Entrar como rickmarketing81@gmail.com (Master)</span>
+              </button>
+
+              <div className="relative flex items-center justify-center py-0.5">
+                <div className="border-t border-neutral-800 w-full"></div>
+                <span className="bg-neutral-950 px-2 text-[10px] text-neutral-500 font-semibold absolute">
+                  OU OUTRO E-MAIL GOOGLE
+                </span>
+              </div>
+
+              <form onSubmit={handleGoogleFallbackSubmit} className="space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    value={googleFallbackEmail}
+                    onChange={(e) => setGoogleFallbackEmail(e.target.value)}
+                    placeholder="seu-email@gmail.com"
+                    className="flex-1 bg-neutral-900 border border-neutral-700 focus:border-white rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none placeholder-neutral-500"
+                  />
+                  <button
+                    type="submit"
+                    disabled={loading || !googleFallbackEmail}
+                    className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs rounded-lg flex items-center gap-1 cursor-pointer disabled:opacity-40 transition-colors"
+                  >
+                    Continuar <ArrowRight className="w-3 h-3" />
+                  </button>
+                </div>
+                <p className="text-[10px] text-neutral-400 leading-tight">
+                  💡 <strong>Para Deploy Oficial (Vercel ou seu domínio):</strong> Adicione o seu domínio em <em>Firebase Console &gt; Authentication &gt; Settings &gt; Authorized domains</em> para a janela popup nativa do Google abrir diretamente sem este aviso.
+                </p>
+              </form>
+            </div>
           )}
         </div>
 

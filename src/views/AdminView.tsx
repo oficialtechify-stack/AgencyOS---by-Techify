@@ -57,6 +57,8 @@ import {
   resolveUserAvatar,
 } from '../lib/firebase';
 import { compressAvatarImage } from '../lib/imageCompressor';
+import { addEmployeeToCompany } from '../lib/employeeService';
+import { UserPermissions } from '../types/auth';
 import {
   ALL_SYSTEM_MODULES,
   ALL_OPERATIONAL_MODULE_IDS,
@@ -412,6 +414,42 @@ export const AdminView: React.FC<AdminViewProps> = ({ currentUser }) => {
         allowedModules: newUser.allowedModules,
         notes: newUser.notes.trim(),
       });
+
+      // Save pre-cadastro in invited_employees so Google Login auto-links to this company
+      if (newUser.userType === 'employee') {
+        const perms: UserPermissions = {
+          dashboardGeral: newUser.allowedModules.includes('dashboard'),
+          pontoEletronico: newUser.allowedModules.includes('ponto'),
+          kpisMetricas: newUser.allowedModules.includes('kpis'),
+          fluxoCaixa: newUser.allowedModules.includes('fluxo-caixa'),
+          campanhasTrafego: newUser.allowedModules.includes('campanhas'),
+          marketingLancamentos: newUser.allowedModules.includes('marketing'),
+          agendaReunioes: newUser.allowedModules.includes('agenda'),
+          prospeccaoFechamento: newUser.allowedModules.includes('prospection'),
+          mapsScraper: newUser.allowedModules.includes('maps-scraper'),
+          areaDesigner: newUser.allowedModules.includes('designer'),
+          socialMediaHub: newUser.allowedModules.includes('social-hub'),
+          gestaoEstoque: newUser.allowedModules.includes('estoque'),
+          kanbanProjetos: newUser.allowedModules.includes('kanban'),
+        };
+
+        try {
+          await addEmployeeToCompany({
+            email: cleanEmail,
+            name: newUser.name.trim() || cleanEmail.split('@')[0],
+            jobTitle: newUser.role.trim() || 'Colaborador',
+            organizationId: currentUser?.organizationId || currentUser?.uid || 'agency-master-owner',
+            permissions: perms,
+            organizationSubscription: currentUser?.subscription || {
+              plan: 'professional',
+              status: 'active',
+              trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+            },
+          });
+        } catch (e) {
+          console.warn('Erro ao salvar em invited_employees:', e);
+        }
+      }
 
       const label = newUser.userType === 'employee' ? 'Funcionário/Membro da Equipe' : 'Cliente do AgencyOS';
       showToast(`${label} ${cleanEmail} cadastrado com sucesso!`);

@@ -47,6 +47,7 @@ import { AuthModal } from './components/AuthModal';
 import { TrialPaywallOverlay } from './components/TrialPaywallOverlay';
 import { EmailVerificationGuard } from './components/EmailVerificationGuard';
 import { LockedModuleView } from './components/LockedModuleView';
+import { TrialCountdownBanner } from './components/TrialCountdownBanner';
 import { hasModuleAccess, isUserMasterAdmin, ALL_OPERATIONAL_MODULE_IDS, ALL_MODULE_IDS } from './lib/permissions';
 
 // Views
@@ -1633,6 +1634,23 @@ export default function App() {
 
         {/* Main Content View Area */}
         <main className="flex-1 h-full min-h-0 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full overflow-y-auto">
+          {/* Trial Countdown Banner (14 Dias Grátis) */}
+          {!isMasterUser &&
+            !userProfile?.subscription?.isMasterAccount &&
+            (userProfile?.subscription?.trialEndsAt || (userProfile as any)?.trialEndsAt) && (
+              <div className="mb-4">
+                <TrialCountdownBanner
+                  trialEndsAt={
+                    userProfile?.subscription?.trialEndsAt ||
+                    (typeof (userProfile as any)?.trialEndsAt === 'number'
+                      ? new Date((userProfile as any).trialEndsAt).toISOString()
+                      : String((userProfile as any)?.trialEndsAt))
+                  }
+                  onExpire={() => setShowUpgradeModal(true)}
+                />
+              </div>
+            )}
+
           {isCurrentViewLocked ? (
             <LockedModuleView
               moduleId={state.activeView}

@@ -1,5 +1,22 @@
 import { ViewType, ViewMode } from '../types';
 import { FirestoreUserProfile } from './firebase';
+import { PLAN_MODULES } from './plans';
+
+export const VIEW_TO_PERMISSION_KEY: Partial<Record<ViewType, string>> = {
+  dashboard: 'dashboardGeral',
+  ponto: 'pontoEletronico',
+  kpis: 'kpisMetricas',
+  'fluxo-caixa': 'fluxoCaixa',
+  campanhas: 'campanhasTrafego',
+  marketing: 'marketingLancamentos',
+  agenda: 'agendaReunioes',
+  prospection: 'prospeccaoFechamento',
+  'maps-scraper': 'mapsScraper',
+  designer: 'areaDesigner',
+  'social-hub': 'socialMediaHub',
+  estoque: 'gestaoEstoque',
+  kanban: 'kanbanProjetos',
+};
 
 export interface SystemModuleInfo {
   id: ViewType;
@@ -268,6 +285,21 @@ export function hasModuleAccess(
       return true;
     }
     return profile?.allowedModules?.includes('admin') || false;
+  }
+
+  // For employees or users with granular UserPermissions object
+  const permKey = VIEW_TO_PERMISSION_KEY[moduleId];
+  if (permKey && profile?.permissions && typeof profile.permissions[permKey] === 'boolean') {
+    return profile.permissions[permKey];
+  }
+
+  // Plan-based restrictions for active subscription
+  if (profile?.subscription?.plan && permKey) {
+    const planKey = profile.subscription.plan;
+    const planAllowedModules = PLAN_MODULES[planKey];
+    if (planAllowedModules && !planAllowedModules.includes(permKey as any)) {
+      return false;
+    }
   }
 
   // For employees: strictly check allowedModules configured by their CEO!
