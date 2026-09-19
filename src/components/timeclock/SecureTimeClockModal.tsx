@@ -76,6 +76,7 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
   const [notes, setNotes] = useState('');
   const [overrideJustification, setOverrideJustification] = useState('');
   const [showOverrideInput, setShowOverrideInput] = useState(false);
+  const [selectedPunchType, setSelectedPunchType] = useState<TimeClockType | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Geolocation State
@@ -228,11 +229,8 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
     showOverrideInput && overrideJustification.trim().length > 5
   );
 
-  // Determine if punch button can be pressed
-  const canPunchNow =
-    seqRule.isAllowed &&
-    (!schedValidation.isStrictlyBlocked ||
-      (showOverrideInput && overrideJustification.trim().length > 5));
+  // Active target punch type
+  const activePunchType: TimeClockType = selectedPunchType || seqRule.nextType;
 
   // Punch step definitions for visual stepper
   const stepsList = [
@@ -265,6 +263,18 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
       record: todayRecords.find((r) => r.type === 'exit'),
     },
   ];
+
+  const typeLabels: Record<TimeClockType, string> = {
+    entry: 'Entrada da Manhã',
+    lunch_start: 'Saída para Almoço',
+    lunch_end: 'Retorno do Almoço',
+    exit: 'Saída do Expediente',
+    extra_start: 'Início de Hora Extra',
+    extra_end: 'Fim de Hora Extra',
+  };
+
+  const activePunchLabel = typeLabels[activePunchType] || seqRule.nextLabel;
+  const canPunchNow = !loading;
 
   // Calculate worked hours today
   const calculateWorkedHoursToday = () => {
@@ -304,7 +314,7 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    const targetType = seqRule.nextType;
+    const targetType = activePunchType;
     const now = new Date();
     const dateStr = now.toISOString().split('T')[0];
     const timeFormatted = now.toLocaleTimeString('pt-BR', {
@@ -312,15 +322,6 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
       minute: '2-digit',
       second: '2-digit',
     });
-
-    const typeLabels: Record<TimeClockType, string> = {
-      entry: 'Entrada da Manhã',
-      lunch_start: 'Saída para Almoço',
-      lunch_end: 'Retorno do Almoço',
-      exit: 'Saída do Expediente',
-      extra_start: 'Início de Hora Extra',
-      extra_end: 'Fim de Hora Extra',
-    };
 
     const securityHash = generateSecurityHash(
       userProfile?.uid || 'user',
@@ -539,20 +540,24 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                   {stepsList.map((step, idx) => {
                     const isDone = !!step.record;
+                    const isSelected = activePunchType === step.type;
                     const isCurrent = !isDone && seqRule.nextType === step.type;
-                    const isLocked = !isDone && !isCurrent;
                     const StepIcon = step.icon;
 
                     return (
                       <div
                         key={step.type}
-                        className={`p-3 rounded-2xl border transition-all flex flex-col justify-between ${
-                          isDone
+                        onClick={() => setSelectedPunchType(step.type)}
+                        className={`p-3 rounded-2xl border transition-all flex flex-col justify-between cursor-pointer hover:border-neutral-500 ${
+                          isSelected
+                            ? 'bg-neutral-800 border-white text-white shadow-lg ring-2 ring-white/30'
+                            : isDone
                             ? 'bg-emerald-950/20 border-emerald-800/40 text-emerald-300'
                             : isCurrent
-                            ? 'bg-neutral-800 border-white text-white shadow-lg ring-1 ring-white/20'
-                            : 'bg-neutral-950/50 border-neutral-800/60 text-neutral-500 opacity-60'
+                            ? 'bg-neutral-900 border-amber-400/60 text-white'
+                            : 'bg-neutral-950/50 border-neutral-800/60 text-neutral-400'
                         }`}
+                        title="Clique para selecionar este tipo de registro"
                       >
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-1.5">
@@ -563,10 +568,12 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
                           </div>
                           {isDone ? (
                             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                          ) : isSelected ? (
+                            <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse" />
                           ) : isCurrent ? (
                             <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
                           ) : (
-                            <Lock className="w-3.5 h-3.5 text-neutral-500" />
+                            <span className="text-[10px] text-neutral-500">Toque</span>
                           )}
                         </div>
 
@@ -804,7 +811,7 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
                 ) : (
                   <>
                     <ShieldCheck className="w-5 h-5" />
-                    <span>CONFIRMAR REGISTRO: {seqRule.nextLabel.toUpperCase()}</span>
+                    <span>CONFIRMAR REGISTRO: {activePunchLabel.toUpperCase()}</span>
                   </>
                 )}
               </button>

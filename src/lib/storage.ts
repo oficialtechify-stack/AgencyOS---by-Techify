@@ -37,25 +37,22 @@ export const initialSocialPosts = [
 export const getDefaultState = (): AppState => ({
   activeView: 'landing',
   organization: {
-    agencyName: 'Sua Agência Scale',
+    agencyName: 'Minha Agência',
     plan: 'Pro',
     trialDaysRemaining: 14,
     trialActive: true,
-    licenseKey: 'AGENCYOS-PRO-TECHIFY-2026-889X',
+    licenseKey: 'AGENCYOS-PRO-2026',
   },
-  kpiPeriods: initialKPIPeriods,
-  transactions: initialCashTransactions,
-  campaigns: initialAdCampaigns,
-  leads: initialCRMLeads,
-  tasks: initialKanbanTasks,
-  stockItems: initialStockItems,
-  events: initialAgendaEvents.map((e) => ({
-    ...e,
-    meetUrl: 'https://meet.google.com/abc-defg-hij',
-  })),
-  socialPosts: initialSocialPosts,
-  prospectionDemands: initialProspectionDemands,
-  prospectionContracts: initialProspectionContracts,
+  kpiPeriods: [],
+  transactions: [],
+  campaigns: [],
+  leads: [],
+  tasks: [],
+  stockItems: [],
+  events: [],
+  socialPosts: [],
+  prospectionDemands: [],
+  prospectionContracts: [],
 });
 
 export const loadState = (): AppState => {

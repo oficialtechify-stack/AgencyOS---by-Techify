@@ -65,7 +65,8 @@ export const PontoView: React.FC<PontoViewProps> = ({
   onDeleteSchedule,
 }) => {
   const [activeTab, setActiveTab] = useState<'meu-ponto' | 'equipe' | 'escalas'>('meu-ponto');
-  const [selectedMonth, setSelectedMonth] = useState<string>('2026-08');
+  const currentYearMonth = new Date().toISOString().slice(0, 7);
+  const [selectedMonth, setSelectedMonth] = useState<string>(currentYearMonth);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('todos');
   const [filterEmployee, setFilterEmployee] = useState<string>('todos');
@@ -460,33 +461,29 @@ export const PontoView: React.FC<PontoViewProps> = ({
           <span>Meu Espelho de Ponto</span>
         </button>
 
-        {isMaster && (
-          <button
-            onClick={() => setActiveTab('equipe')}
-            className={`pb-3 px-4 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === 'equipe'
-                ? 'border-white text-white'
-                : 'border-transparent text-neutral-400 hover:text-neutral-200'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            <span>Todos os Pontos da Agência ({timeClockRecords.length} Registros • {Object.keys(teamTodayGrouped).length} Ativos Hoje)</span>
-          </button>
-        )}
+        <button
+          onClick={() => setActiveTab('equipe')}
+          className={`pb-3 px-4 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+            activeTab === 'equipe'
+              ? 'border-white text-white'
+              : 'border-transparent text-neutral-400 hover:text-neutral-200'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          <span>Funcionários que Bateram Ponto ({timeClockRecords.length} Registros • {Object.keys(teamTodayGrouped).length} Ativos Hoje)</span>
+        </button>
 
-        {isMaster && (
-          <button
-            onClick={() => setActiveTab('escalas')}
-            className={`pb-3 px-4 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === 'escalas'
-                ? 'border-white text-white'
-                : 'border-transparent text-neutral-400 hover:text-neutral-200'
-            }`}
-          >
-            <Sliders className="w-4 h-4" />
-            <span>Escalas Vinculadas ({effectiveSchedules.length})</span>
-          </button>
-        )}
+        <button
+          onClick={() => setActiveTab('escalas')}
+          className={`pb-3 px-4 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+            activeTab === 'escalas'
+              ? 'border-white text-white'
+              : 'border-transparent text-neutral-400 hover:text-neutral-200'
+          }`}
+        >
+          <Sliders className="w-4 h-4" />
+          <span>Escalas Vinculadas ({effectiveSchedules.length})</span>
+        </button>
       </div>
 
       {/* Tab: Meu Espelho de Ponto */}
@@ -717,8 +714,8 @@ export const PontoView: React.FC<PontoViewProps> = ({
         </div>
       )}
 
-      {/* Tab: Controle Geral da Equipe & Todos os Pontos (Master Admin) */}
-      {activeTab === 'equipe' && isMaster && (
+      {/* Tab: Controle Geral da Equipe & Todos os Pontos */}
+      {activeTab === 'equipe' && (
         <div className="space-y-6">
           {/* Team Members Today Presence Cards */}
           <div>
@@ -1081,8 +1078,8 @@ export const PontoView: React.FC<PontoViewProps> = ({
         </div>
       )}
 
-      {/* Tab: Gestão de Escalas Vinculadas (Master Admin) */}
-      {activeTab === 'escalas' && isMaster && (
+      {/* Tab: Gestão de Escalas Vinculadas */}
+      {activeTab === 'escalas' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
