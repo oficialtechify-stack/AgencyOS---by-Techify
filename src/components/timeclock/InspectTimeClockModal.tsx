@@ -49,9 +49,9 @@ export const InspectTimeClockModal: React.FC<InspectTimeClockModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-      <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 max-w-xl w-full shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+      <div role="dialog" aria-modal="true" aria-label="Detalhes do registro de ponto" className="bg-[#0E1C35] border border-[#24395E] rounded-[24px] p-6 max-w-xl w-full shadow-2xl space-y-5 max-h-[92dvh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-neutral-800 pb-4">
+        <div className="flex items-center justify-between border-b border-[#24395E] pb-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
               <ShieldCheck className="w-5 h-5" />
@@ -68,14 +68,14 @@ export const InspectTimeClockModal: React.FC<InspectTimeClockModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+            className="w-8 h-8 rounded-full bg-[#193055] hover:bg-[#294875] text-neutral-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Collaborator Card */}
-        <div className="p-4 rounded-2xl bg-neutral-950 border border-neutral-800 flex items-center justify-between gap-3">
+        <div className="p-4 rounded-2xl bg-[#091428] border border-[#24395E] flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white font-black text-sm">
               {record.userName?.substring(0, 2).toUpperCase() || 'US'}
@@ -94,7 +94,7 @@ export const InspectTimeClockModal: React.FC<InspectTimeClockModalProps> = ({
 
         {/* Punch Details Grid */}
         <div className="grid grid-cols-2 gap-3 text-xs">
-          <div className="p-3 rounded-2xl bg-neutral-950 border border-neutral-800">
+          <div className="p-3 rounded-2xl bg-[#091428] border border-[#24395E]">
             <span className="text-[11px] text-neutral-400 block mb-1 flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5" />
               Data & Horário Registrado
@@ -107,7 +107,7 @@ export const InspectTimeClockModal: React.FC<InspectTimeClockModalProps> = ({
             </span>
           </div>
 
-          <div className="p-3 rounded-2xl bg-neutral-950 border border-neutral-800">
+          <div className="p-3 rounded-2xl bg-[#091428] border border-[#24395E]">
             <span className="text-[11px] text-neutral-400 block mb-1 flex items-center gap-1">
               <Clock className="w-3.5 h-3.5" />
               Tipo & Status
@@ -116,7 +116,7 @@ export const InspectTimeClockModal: React.FC<InspectTimeClockModalProps> = ({
               {record.typeLabel || record.type}
             </div>
             <div className="flex items-center gap-1.5 mt-1">
-              <span className="px-2 py-0.5 rounded bg-black text-neutral-300 font-mono text-[10px] uppercase font-bold border border-neutral-700">
+              <span className="px-2 py-0.5 rounded bg-black text-neutral-300 font-mono text-[10px] uppercase font-bold border border-[#324C74]">
                 {record.status}
               </span>
               {record.scheduledTime && (
@@ -129,7 +129,7 @@ export const InspectTimeClockModal: React.FC<InspectTimeClockModalProps> = ({
         </div>
 
         {/* Security Hash Box */}
-        <div className="p-4 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-1.5">
+        <div className="p-4 rounded-2xl bg-[#091428] border border-[#24395E] space-y-1.5">
           <div className="flex items-center justify-between text-xs font-bold text-neutral-400">
             <span className="flex items-center gap-1.5 text-white">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
@@ -138,7 +138,7 @@ export const InspectTimeClockModal: React.FC<InspectTimeClockModalProps> = ({
             <button
               type="button"
               onClick={handleCopyHash}
-              className="text-[11px] text-neutral-300 hover:text-white flex items-center gap-1 cursor-pointer bg-neutral-800 hover:bg-neutral-700 px-2 py-1 rounded-lg transition-all"
+              className="text-[11px] text-neutral-300 hover:text-white flex items-center gap-1 cursor-pointer bg-[#193055] hover:bg-[#294875] px-2 py-1 rounded-lg transition-all"
             >
               {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
               <span>{copied ? 'Copiado!' : 'Copiar Hash'}</span>
@@ -150,7 +150,7 @@ export const InspectTimeClockModal: React.FC<InspectTimeClockModalProps> = ({
         </div>
 
         {/* GPS Geolocation Box */}
-        <div className="p-4 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-2 text-xs">
+        <div className="p-4 rounded-2xl bg-[#091428] border border-[#24395E] space-y-2 text-xs">
           <div className="flex items-center justify-between font-bold text-neutral-300">
             <span className="flex items-center gap-1.5 text-white">
               <MapPin className="w-4 h-4 text-cyan-400" />
@@ -216,7 +216,7 @@ export const InspectTimeClockModal: React.FC<InspectTimeClockModalProps> = ({
 
         {/* General Notes */}
         {record.notes && (
-          <div className="p-3.5 rounded-2xl bg-neutral-950 border border-neutral-800 text-xs">
+          <div className="p-3.5 rounded-2xl bg-[#091428] border border-[#24395E] text-xs">
             <span className="text-neutral-400 font-bold block mb-1 flex items-center gap-1">
               <FileText className="w-3.5 h-3.5" />
               Observações / Justificativas
@@ -226,7 +226,7 @@ export const InspectTimeClockModal: React.FC<InspectTimeClockModalProps> = ({
         )}
 
         {/* Actions */}
-        <div className="flex items-center justify-between pt-3 border-t border-neutral-800">
+        <div className="flex items-center justify-between pt-3 border-t border-[#24395E]">
           <div>
             {canEdit && onEdit && (
               <button
@@ -245,7 +245,7 @@ export const InspectTimeClockModal: React.FC<InspectTimeClockModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 rounded-xl bg-white hover:bg-neutral-200 text-black text-xs font-black transition-all cursor-pointer"
+            className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-black transition-all cursor-pointer"
           >
             Fechar
           </button>
