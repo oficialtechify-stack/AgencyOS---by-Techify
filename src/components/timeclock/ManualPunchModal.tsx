@@ -119,9 +119,9 @@ export const ManualPunchModal: React.FC<ManualPunchModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-      <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 max-w-xl w-full shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+      <div role="dialog" aria-modal="true" aria-label="Adicionar ponto manual" className="bg-[#0E1C35] border border-[#24395E] rounded-[24px] p-6 max-w-xl w-full shadow-2xl space-y-5 max-h-[92dvh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-neutral-800 pb-4">
+        <div className="flex items-center justify-between border-b border-[#24395E] pb-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
               <PlusCircle className="w-5 h-5" />
@@ -141,14 +141,14 @@ export const ManualPunchModal: React.FC<ManualPunchModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+            className="w-8 h-8 rounded-full bg-[#193055] hover:bg-[#294875] text-neutral-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Audit Warning */}
-        <div className="p-3.5 rounded-2xl bg-neutral-950 border border-neutral-800 text-xs flex items-start gap-2.5 text-neutral-300">
+        <div className="p-3.5 rounded-2xl bg-[#091428] border border-[#24395E] text-xs flex items-start gap-2.5 text-neutral-300">
           <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
           <div>
             <span className="font-bold text-white block">Auditoria de Segurança Ativa</span>
@@ -180,7 +180,7 @@ export const ManualPunchModal: React.FC<ManualPunchModalProps> = ({
                   setScheduledTime(s.entryTime);
                 }
               }}
-              className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-white"
+              className="w-full bg-[#091428] border border-[#324C74] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-blue-400"
             >
               {employeeWorkSchedules.map((sched) => (
                 <option key={sched.id} value={sched.id}>
@@ -192,7 +192,7 @@ export const ManualPunchModal: React.FC<ManualPunchModalProps> = ({
           </div>
 
           {selectedScheduleId === 'custom' && (
-            <div className="p-3.5 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-3">
+            <div className="p-3.5 rounded-2xl bg-[#091428] border border-[#24395E] space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-[11px] text-neutral-400 block mb-1">Nome Completo</label>
@@ -202,7 +202,7 @@ export const ManualPunchModal: React.FC<ManualPunchModalProps> = ({
                     value={customName}
                     onChange={(e) => setCustomName(e.target.value)}
                     placeholder="Nome do colaborador"
-                    className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white"
+                    className="w-full bg-[#0E1C35] border border-[#324C74] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400"
                   />
                 </div>
                 <div>
@@ -213,7 +213,7 @@ export const ManualPunchModal: React.FC<ManualPunchModalProps> = ({
                     value={customEmail}
                     onChange={(e) => setCustomEmail(e.target.value)}
                     placeholder="email@empresa.com"
-                    className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white"
+                    className="w-full bg-[#0E1C35] border border-[#324C74] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400"
                   />
                 </div>
               </div>
@@ -224,7 +224,7 @@ export const ManualPunchModal: React.FC<ManualPunchModalProps> = ({
                   value={customRole}
                   onChange={(e) => setCustomRole(e.target.value)}
                   placeholder="Ex: Gestor de Tráfego, Designer..."
-                  className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white"
+                  className="w-full bg-[#0E1C35] border border-[#324C74] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400"
                 />
               </div>
             </div>
@@ -242,7 +242,7 @@ export const ManualPunchModal: React.FC<ManualPunchModalProps> = ({
                 required
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-white font-mono"
+                className="w-full bg-[#091428] border border-[#324C74] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-blue-400 font-mono"
               />
             </div>
 
@@ -257,7 +257,7 @@ export const ManualPunchModal: React.FC<ManualPunchModalProps> = ({
                 required
                 value={time}
                 onChange={(e) => setTime(e.target.value)}
-                className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-white font-mono font-bold"
+                className="w-full bg-[#091428] border border-[#324C74] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-blue-400 font-mono font-bold"
               />
             </div>
           </div>
@@ -278,7 +278,7 @@ export const ManualPunchModal: React.FC<ManualPunchModalProps> = ({
                     else if (t === 'exit') setScheduledTime(selectedSchedule.exitTime);
                   }
                 }}
-                className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-white"
+                className="w-full bg-[#091428] border border-[#324C74] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-blue-400"
               >
                 <option value="entry">1. Entrada da Manhã</option>
                 <option value="lunch_start">2. Saída Almoço</option>
@@ -296,7 +296,7 @@ export const ManualPunchModal: React.FC<ManualPunchModalProps> = ({
                 onChange={(e) =>
                   setStatus(e.target.value as 'regular' | 'late' | 'overtime' | 'early_departure')
                 }
-                className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-white"
+                className="w-full bg-[#091428] border border-[#324C74] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-blue-400"
               >
                 <option value="regular">Regular (No Horário)</option>
                 <option value="late">Atraso</option>
@@ -316,7 +316,7 @@ export const ManualPunchModal: React.FC<ManualPunchModalProps> = ({
               value={scheduledTime}
               onChange={(e) => setScheduledTime(e.target.value)}
               placeholder="08:00"
-              className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-white font-mono"
+              className="w-full bg-[#091428] border border-[#324C74] rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-blue-400 font-mono"
             />
           </div>
 
@@ -332,24 +332,24 @@ export const ManualPunchModal: React.FC<ManualPunchModalProps> = ({
               value={justification}
               onChange={(e) => setJustification(e.target.value)}
               placeholder="Ex: Registro manual realizado após confirmação de presença em evento corporativo / reunião externa..."
-              className="w-full bg-neutral-950 border border-amber-800/60 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-amber-400"
+              className="w-full bg-[#091428] border border-amber-800/60 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-amber-400"
             />
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-neutral-800">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#24395E]">
             <button
               type="button"
               onClick={onClose}
               disabled={saving}
-              className="px-4 py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-bold transition-all cursor-pointer"
+              className="px-4 py-2.5 rounded-xl bg-[#193055] hover:bg-[#294875] text-neutral-300 text-xs font-bold transition-all cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="px-6 py-2.5 rounded-xl bg-white hover:bg-neutral-200 text-black text-xs font-black transition-all shadow-lg flex items-center gap-2 cursor-pointer"
+              className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-black transition-all shadow-lg flex items-center gap-2 cursor-pointer"
             >
               <CheckCircle2 className="w-4 h-4 text-black" />
               <span>{saving ? 'Registrando...' : 'Registrar Ponto Manual'}</span>

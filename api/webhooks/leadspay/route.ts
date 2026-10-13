@@ -1,4 +1,13 @@
-import { handleLeadsPayWebhookEvent } from '../../../src/server/leadspayHandler';
+import { timingSafeEqual } from 'node:crypto';
+
+function safeSignatureMatches(provided: string | null | undefined, secret: string): boolean {
+  if (!provided || !secret) return false;
+  const actual = Buffer.from(provided, 'utf8');
+  const expected = Buffer.from(secret, 'utf8');
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
+}
+
+import { handleLeadsPayWebhookEvent } from '../../../src/server/leadspayHandler.js';
 
 // Support Next.js Route Handler signature: export async function POST(req: Request)
 export async function POST(req: Request) {
@@ -6,11 +15,14 @@ export async function POST(req: Request) {
     const signature = req.headers.get('x-leadspay-signature');
     const secret = process.env.LEADSPAY_WEBHOOK_SECRET;
 
-    // Validação de Segurança
-    if (secret && signature !== secret) {
+    if (!secret) {
+      return new Response(JSON.stringify({ error: 'Webhook não configurado no servidor' }), {
+        status: 503, headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    if (!safeSignatureMatches(signature, secret)) {
       return new Response(JSON.stringify({ error: 'Assinatura inválida' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
+        status: 401, headers: { 'Content-Type': 'application/json' },
       });
     }
 

@@ -1,3 +1,4 @@
+import { auth } from './firebase';
 import { ViewType, ViewMode } from '../types';
 import { FirestoreUserProfile } from './firebase';
 import { PLAN_MODULES } from './plans';
@@ -182,45 +183,29 @@ export const ALL_OPERATIONAL_MODULE_IDS: ViewType[] = ALL_SYSTEM_MODULES.filter(
 
 export const ALL_MODULE_IDS: ViewType[] = ALL_SYSTEM_MODULES.map((m) => m.id);
 
-// Admin Master emails that always have full unrestricted access
+// This is a UI convenience check, NOT a server-side authorization mechanism.
+// Firestore Rules must enforce the platform_admin custom claim independently.
+
 export const MASTER_ADMIN_EMAILS = [
   'rickmarketing81@gmail.com',
-  'rickmarketing81@gamail.com',
   'agencyosoficial@gmail.com',
   'oficialtechify@gmail.com',
 ];
 
 /**
- * Check if the user is the global Master Admin (Super Admin of AgencyOS platform)
+ * Never trust profile fields, a supplied email or a user-controlled UID as
+ * evidence of Master access. Check the current verified Firebase Auth user.
  */
 export function isUserMasterAdmin(
   profile?: FirestoreUserProfile | null,
   userEmail?: string | null
 ): boolean {
-  const email = (profile?.email || userEmail || '').toLowerCase().trim();
-  const uid = (profile?.uid || '').toLowerCase().trim();
-
-  // If email matches rickmarketing81 or any master admin email
-  if (
-    MASTER_ADMIN_EMAILS.includes(email) ||
-    email.startsWith('rickmarketing81@') ||
-    email.includes('rickmarketing81') ||
-    email.includes('agencyosoficial') ||
-    email.includes('oficialtechify')
-  ) {
-    return true;
-  }
-
-  // If UID corresponds to Marcos Henrique / Master Owner
-  if (
-    uid === 'user-rick-marcos' ||
-    uid.includes('rick-marcos') ||
-    uid === 'agency-master-owner'
-  ) {
-    return true;
-  }
-
-  return false;
+  const verifiedUser = auth.currentUser;
+  if (!verifiedUser || !verifiedUser.emailVerified || !verifiedUser.email) return false;
+  const email = verifiedUser.email.toLowerCase().trim();
+  if (profile?.uid && profile.uid !== verifiedUser.uid) return false;
+  if (userEmail && userEmail.toLowerCase().trim() !== email) return false;
+  return MASTER_ADMIN_EMAILS.includes(email);
 }
 
 /**

@@ -77,74 +77,7 @@ export interface LeadsPayCompany {
   lastWebhookAt?: string;
 }
 
-const DEFAULT_COMPANIES: LeadsPayCompany[] = [
-  {
-    id: 'lp-comp-1',
-    name: 'Techify Agência Digital & Mídia',
-    email: 'rickmarketing81@gmail.com',
-    cnpjOrDoc: '48.912.341/0001-90',
-    plan: 'Enterprise',
-    monthlyFee: 997,
-    status: 'active',
-    totalRevenue: 14955,
-    apiKey: 'lp_live_sec_techify_8912aa',
-    createdAt: '2026-01-15T10:00:00.000Z',
-    lastWebhookAt: '2026-09-16T12:00:00.000Z',
-  },
-  {
-    id: 'lp-comp-2',
-    name: 'Vektor Performance & Tráfego',
-    email: 'financeiro@vektormidia.com.br',
-    cnpjOrDoc: '32.145.882/0001-12',
-    plan: 'Pro',
-    monthlyFee: 497,
-    status: 'active',
-    totalRevenue: 8946,
-    apiKey: 'lp_live_sec_vektor_4410b',
-    createdAt: '2026-02-01T14:30:00.000Z',
-    lastWebhookAt: '2026-09-15T18:22:00.000Z',
-  },
-  {
-    id: 'lp-comp-3',
-    name: 'Nexus Growth Partners',
-    email: 'contato@nexusgrowth.io',
-    cnpjOrDoc: '51.309.219/0001-44',
-    plan: 'Pro',
-    monthlyFee: 497,
-    status: 'active',
-    totalRevenue: 5964,
-    apiKey: 'lp_live_sec_nexus_9918c',
-    createdAt: '2026-03-10T09:15:00.000Z',
-    lastWebhookAt: '2026-09-14T11:45:00.000Z',
-  },
-  {
-    id: 'lp-comp-4',
-    name: 'Alpha Escala Tráfego & Lançamentos',
-    email: 'gestao@alphaescala.com',
-    cnpjOrDoc: '39.810.112/0001-78',
-    plan: 'Starter',
-    monthlyFee: 197,
-    status: 'active',
-    totalRevenue: 2364,
-    apiKey: 'lp_live_sec_alpha_1290d',
-    createdAt: '2026-04-05T16:00:00.000Z',
-    lastWebhookAt: '2026-09-12T08:10:00.000Z',
-  },
-  {
-    id: 'lp-comp-5',
-    name: 'Lumina Soluções Criativas',
-    email: 'adm@luminasolucoes.com.br',
-    cnpjOrDoc: '44.920.781/0001-05',
-    plan: 'Starter',
-    monthlyFee: 197,
-    status: 'pending',
-    totalRevenue: 0,
-    apiKey: 'lp_live_sec_lumina_7712e',
-    createdAt: '2026-08-20T11:20:00.000Z',
-    lastWebhookAt: '2026-08-20T11:20:00.000Z',
-  },
-];
-
+// No sample companies or API keys may be rendered or persisted in production.
 export const LeadsPayMasterView: React.FC<LeadsPayMasterViewProps> = ({
   currentUser,
   initialTab = 'dashboard',
@@ -160,7 +93,7 @@ export const LeadsPayMasterView: React.FC<LeadsPayMasterViewProps> = ({
   // Stats & Events
   const [stats, setStats] = useState<LeadsPayGlobalStats | null>(null);
   const [recentEvents, setRecentEvents] = useState<LeadsPayEvent[]>([]);
-  const [companies, setCompanies] = useState<LeadsPayCompany[]>(DEFAULT_COMPANIES);
+  const [companies, setCompanies] = useState<LeadsPayCompany[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Filter & Search in Companies
@@ -185,15 +118,8 @@ export const LeadsPayMasterView: React.FC<LeadsPayMasterViewProps> = ({
   const [testResult, setTestResult] = useState<string | null>(null);
   const [selectedEventFilter, setSelectedEventFilter] = useState<string>('all');
 
-  const storedSession = getStoredSession();
-  const email = (currentUser?.email || storedSession?.email || '').toLowerCase().trim();
-  const isMaster =
-    isUserMasterAdmin(currentUser, email) ||
-    email === 'agencyosoficial@gmail.com' ||
-    email === 'rickmarketing81@gmail.com' ||
-    email.includes('rickmarketing81') ||
-    storedSession?.uid === 'user-rick-marcos';
-
+  // Access is tied to the authenticated Firebase user, never an email string.
+  const isMaster = isUserMasterAdmin(currentUser, currentUser?.email);
   useEffect(() => {
     if (!isMaster) {
       setLoading(false);
@@ -207,12 +133,7 @@ export const LeadsPayMasterView: React.FC<LeadsPayMasterViewProps> = ({
         if (docSnap.exists()) {
           setStats(docSnap.data() as LeadsPayGlobalStats);
         } else {
-          setStats({
-            total_companies: DEFAULT_COMPANIES.length,
-            total_events: 18,
-            total_revenue: 32229,
-            last_updated: new Date().toISOString(),
-          });
+          setStats(null);
         }
         setLoading(false);
       },
@@ -234,46 +155,7 @@ export const LeadsPayMasterView: React.FC<LeadsPayMasterViewProps> = ({
           })) as LeadsPayEvent[];
           setRecentEvents(evs);
         } else {
-          // Pre-populate demonstrative initial events if empty
-          setRecentEvents([
-            {
-              id: 'ev-demo-1',
-              event: 'payment.success',
-              agency_id: 'lp-comp-1',
-              data: {
-                customer_name: 'Techify Agência Digital',
-                amount: 997,
-                status: 'completed',
-                product: 'Assinatura LeadsPay Enterprise',
-                payment_method: 'credit_card',
-              },
-              received_at: new Date().toISOString(),
-            },
-            {
-              id: 'ev-demo-2',
-              event: 'company.activated',
-              agency_id: 'lp-comp-2',
-              data: {
-                customer_name: 'Vektor Performance',
-                plan: 'Pro',
-                status: 'active',
-                activation_date: new Date().toISOString(),
-              },
-              received_at: new Date(Date.now() - 3600000).toISOString(),
-            },
-            {
-              id: 'ev-demo-3',
-              event: 'payment.success',
-              agency_id: 'lp-comp-3',
-              data: {
-                customer_name: 'Nexus Growth Partners',
-                amount: 497,
-                status: 'completed',
-                product: 'Assinatura LeadsPay Pro',
-              },
-              received_at: new Date(Date.now() - 86400000).toISOString(),
-            },
-          ]);
+          setRecentEvents([]);
         }
         setLoading(false);
       },
@@ -294,14 +176,7 @@ export const LeadsPayMasterView: React.FC<LeadsPayMasterViewProps> = ({
           })) as LeadsPayCompany[];
           setCompanies(comps);
         } else {
-          // Seed defaults into Firestore if first time
-          DEFAULT_COMPANIES.forEach(async (comp) => {
-            try {
-              await setDoc(doc(db, 'leadspay_companies', comp.id), comp, { merge: true });
-            } catch (e) {
-              console.warn('Seed company notice:', e);
-            }
-          });
+          setCompanies([]);
         }
       },
       (err) => {
@@ -366,66 +241,13 @@ export const LeadsPayMasterView: React.FC<LeadsPayMasterViewProps> = ({
     setTimeout(() => setCopiedSecret(false), 2500);
   };
 
-  // Simular Webhook
+  // Production must never synthesize payment-success webhook events.
+  // Test webhooks belong to an isolated staging environment with a test secret.
   const handleSimulateWebhook = async (
-    type: 'company.activated' | 'payment.success' | 'subscription.renewed',
-    companyTarget?: LeadsPayCompany
+    _type: 'company.activated' | 'payment.success' | 'subscription.renewed',
+    _companyTarget?: LeadsPayCompany
   ) => {
-    setSimulating(true);
-    setTestResult(null);
-    try {
-      const targetName = companyTarget?.name || 'Agência Exemplo LeadsPay';
-      const targetId = companyTarget?.id || 'agency-master-owner';
-      const targetFee = companyTarget?.monthlyFee || (type === 'company.activated' ? 0 : 497);
-
-      const res = await fetch('/api/webhooks/leadspay', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-leadspay-signature': 'demo_test_signature',
-        },
-        body: JSON.stringify({
-          event: type,
-          agency_id: targetId,
-          data: {
-            customer_name: targetName,
-            amount: targetFee,
-            status: 'completed',
-            product: `Plano ${companyTarget?.plan || 'Pro'} LeadsPay`,
-            payment_method: 'pix_or_card',
-            created_at: new Date().toISOString(),
-          },
-          timestamp: new Date().toISOString(),
-        }),
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        setTestResult(`Evento '${type}' disparado com sucesso para ${targetName}! O feed atualizou em tempo real.`);
-        // Also update local company lastWebhook if matched
-        if (companyTarget) {
-          try {
-            await setDoc(
-              doc(db, 'leadspay_companies', companyTarget.id),
-              {
-                lastWebhookAt: new Date().toISOString(),
-                totalRevenue: (companyTarget.totalRevenue || 0) + targetFee,
-              },
-              { merge: true }
-            );
-          } catch (e) {
-            console.warn('Update comp:', e);
-          }
-        }
-      } else {
-        setTestResult(`Aviso do Servidor: ${data.error || 'Erro na requisição'}`);
-      }
-    } catch (e: any) {
-      setTestResult(`Erro ao disparar simulação: ${e.message}`);
-    } finally {
-      setSimulating(false);
-      setTimeout(() => setTestResult(null), 6000);
-    }
+    setTestResult('Simulações desativadas: utilize um ambiente de testes isolado.');
   };
 
   // Toggle Company Status
@@ -487,19 +309,15 @@ export const LeadsPayMasterView: React.FC<LeadsPayMasterViewProps> = ({
       cnpjOrDoc: newCompanyDoc.trim() || 'Não informado',
       plan: newCompanyPlan,
       monthlyFee: fees[newCompanyPlan] || 497,
-      status: 'active',
-      totalRevenue: fees[newCompanyPlan] || 497,
-      apiKey: `lp_live_sec_${Math.random().toString(36).substring(2, 10)}`,
+      status: 'pending',
+      totalRevenue: 0,
+      apiKey: '', // Issued only by a trusted backend, never generated in the browser.
       createdAt: new Date().toISOString(),
-      lastWebhookAt: new Date().toISOString(),
     };
 
     try {
       await setDoc(doc(db, 'leadspay_companies', newComp.id), newComp);
       setCompanies((prev) => [newComp, ...prev]);
-
-      // Trigger automatic activation event
-      await handleSimulateWebhook('company.activated', newComp);
 
       setShowNewCompanyModal(false);
       setNewCompanyName('');
@@ -548,7 +366,7 @@ export const LeadsPayMasterView: React.FC<LeadsPayMasterViewProps> = ({
     if (ev.received_at) {
       return new Date(ev.received_at).toLocaleString('pt-BR');
     }
-    return 'Agora mesmo';
+    return 'Sem horário registrado';
   };
 
   const filteredEvents = useMemo(() => {

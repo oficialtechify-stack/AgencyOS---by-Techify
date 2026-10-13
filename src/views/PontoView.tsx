@@ -26,6 +26,11 @@ import {
   X,
   Smartphone,
   Flame,
+  Download,
+  Activity,
+  ClipboardCheck,
+  CalendarDays,
+  ChevronRight,
 } from 'lucide-react';
 import { EmployeeWorkSchedule, TimeClockRecord, TimeClockType } from '../types';
 import { FirestoreUserProfile } from '../lib/firebase';
@@ -64,8 +69,10 @@ export const PontoView: React.FC<PontoViewProps> = ({
   onSaveSchedule = async () => {},
   onDeleteSchedule,
 }) => {
-  const [activeTab, setActiveTab] = useState<'meu-ponto' | 'equipe' | 'escalas'>('meu-ponto');
-  const currentYearMonth = new Date().toISOString().slice(0, 7);
+  const [activeTab, setActiveTab] = useState<'meu-ponto' | 'equipe' | 'escalas' | 'auditoria'>('meu-ponto');
+  const dateNow = new Date();
+  const todayStr = `${dateNow.getFullYear()}-${String(dateNow.getMonth() + 1).padStart(2, '0')}-${String(dateNow.getDate()).padStart(2, '0')}`;
+  const currentYearMonth = todayStr.slice(0, 7);
   const [selectedMonth, setSelectedMonth] = useState<string>(currentYearMonth);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('todos');
@@ -81,16 +88,20 @@ export const PontoView: React.FC<PontoViewProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Exclusive Master Admin Permission check
-  const userEmail = userProfile?.email || 'rickmarketing81@gmail.com';
-  const userName = userProfile?.name || 'Marcos Henrique';
-  const userRole = userProfile?.role || 'Diretor Executivo / Master';
+  const userEmail = userProfile?.email || '';
+  const userName = userProfile?.name || 'Usuário';
+  const userRole = userProfile?.role || 'Colaborador';
 
   const isMaster = isUserMasterAdmin(userProfile, userEmail);
   const canEditOrAlter = isMaster;
   const canManageSchedules = isMaster;
 
-  const effectiveSchedules =
-    employeeWorkSchedules.length > 0 ? employeeWorkSchedules : DEFAULT_WORK_SCHEDULES;
+  // Only persisted staff schedules are listed as linked schedules. The
+  // legacy fallback is a suggestion for the clock validation flow, not a record.
+  const effectiveSchedules = employeeWorkSchedules;
+  const persistedSchedule = employeeWorkSchedules.find(
+    (schedule) => schedule.userEmail.toLowerCase().trim() === userEmail.toLowerCase().trim()
+  );
 
   const mySchedule = getEmployeeSchedule(effectiveSchedules, userEmail, userRole, userName);
 
@@ -98,7 +109,6 @@ export const PontoView: React.FC<PontoViewProps> = ({
     (r) => (r.userEmail || '').toLowerCase().trim() === userEmail.toLowerCase().trim()
   );
 
-  const todayStr = new Date().toISOString().split('T')[0];
   const myTodayRecords = myRecords.filter((r) => r.date === todayStr);
 
   const seqRule = getStrictSequentialStatus(
@@ -180,7 +190,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
   const overtimePunches = timeClockRecords.filter((r) => r.status === 'overtime').length;
   const editedPunches = timeClockRecords.filter((r) => r.isManuallyEdited).length;
   const regularPunches = timeClockRecords.filter((r) => r.status === 'regular').length;
-  const punctualityRate = totalPunches > 0 ? Math.round(((totalPunches - latePunches) / totalPunches) * 100) : 100;
+  const punctualityRate = totalPunches > 0 ? Math.round(((totalPunches - latePunches) / totalPunches) * 100) : null;
 
   // Filtered Records for Team Tab
   const filteredTeamRecords = timeClockRecords.filter((r) => {
@@ -221,7 +231,8 @@ export const PontoView: React.FC<PontoViewProps> = ({
 
   // Export CSV
   const handleExportCSV = () => {
-    const recordsToExport = activeTab === 'meu-ponto' ? myRecords : timeClockRecords;
+    const recordsToExport = (isMaster && activeTab === 'equipe' ? filteredTeamRecords : myRecords)
+      .filter((r) => (r.date || '').startsWith(selectedMonth));
     if (recordsToExport.length === 0) {
       alert('Nenhum registro para exportar.');
       return;
@@ -242,20 +253,27 @@ export const PontoView: React.FC<PontoViewProps> = ({
       'Dispositivo',
       'Observacoes',
     ];
+    const csvSafe = (value: unknown) => {
+      const raw = String(value ?? '');
+      // Spreadsheet programs interpret these leading characters as formulas.
+      const first = raw.trimStart().charAt(0);
+      const neutralized = ['=', '+', '-', '@'].includes(first) ? "'" + raw : raw;
+      return '"' + neutralized.replace(/"/g, '""') + '"';
+    };
     const rows = recordsToExport.map((r) => [
       r.date,
       r.time,
-      `"${r.userName || ''}"`,
-      `"${r.userEmail || ''}"`,
-      `"${r.userRole || ''}"`,
-      `"${r.typeLabel || r.type}"`,
-      `"${r.scheduledTime || ''}"`,
-      `"${r.status || 'regular'}"`,
-      `"${r.isManuallyEdited ? 'SIM' : 'NAO'}"`,
-      `"${r.editedBy || ''}"`,
-      `"${r.securityHash || ''}"`,
-      `"${r.deviceInfo || ''}"`,
-      `"${(r.notes || r.editReason || '').replace(/"/g, '""')}"`,
+      csvSafe(r.userName || ''),
+      csvSafe(r.userEmail || ''),
+      csvSafe(r.userRole || ''),
+      csvSafe(r.typeLabel || r.type),
+      csvSafe(r.scheduledTime || ''),
+      csvSafe(r.status || 'regular'),
+      csvSafe(r.isManuallyEdited ? 'SIM' : 'NAO'),
+      csvSafe(r.editedBy || ''),
+      csvSafe(r.securityHash || ''),
+      csvSafe(r.deviceInfo || ''),
+      csvSafe(r.notes || r.editReason || ''),
     ]);
 
     const csvContent =
@@ -301,429 +319,384 @@ export const PontoView: React.FC<PontoViewProps> = ({
     },
   ];
 
+  const completedSteps = stepsList.filter((step) => Boolean(step.record)).length;
+  const lastRecord = [...myRecords].sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''))[0];
+  const currentMonthName = new Date(Number(selectedMonth.slice(0, 4)), Number(selectedMonth.slice(5, 7)) - 1, 1)
+    .toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  const punchStatusLabel = (status?: string) => ({
+    late: 'Atraso', overtime: 'Hora extra', early_departure: 'Saída antecipada', regular: 'Regular',
+  }[status || ''] || 'Não avaliado');
+  const groupedHistory = Object.entries(
+    monthlyRecords.reduce<Record<string, TimeClockRecord[]>>((acc, record) => {
+      if (!record.date) return acc;
+      (acc[record.date] ||= []).push(record);
+      return acc;
+    }, {})
+  ).sort(([left], [right]) => right.localeCompare(left));
+  const showRecordedTime = (items: TimeClockRecord[], type: TimeClockType) =>
+    items.find((item) => item.type === type)?.time?.slice(0, 5) || '—';
+  const getWorkedMinutes = (items: TimeClockRecord[]): number | null => {
+    const parseTime = (value?: string) => {
+      if (!value || !/^\d{2}:\d{2}/.test(value)) return null;
+      const [hour, minute] = value.split(':').map(Number);
+      return hour * 60 + minute;
+    };
+    const start = parseTime(items.find((item) => item.type === 'entry')?.time);
+    const end = parseTime(items.find((item) => item.type === 'exit')?.time);
+    if (start === null || end === null) return null;
+    const total = end >= start ? end - start : end + 1440 - start;
+    const lunchStart = parseTime(items.find((item) => item.type === 'lunch_start')?.time);
+    const lunchEnd = parseTime(items.find((item) => item.type === 'lunch_end')?.time);
+    // A partial lunch pair is not enough to calculate a trustworthy total.
+    if ((lunchStart === null) !== (lunchEnd === null)) return null;
+    const lunch = lunchStart !== null && lunchEnd !== null
+      ? (lunchEnd >= lunchStart ? lunchEnd - lunchStart : lunchEnd + 1440 - lunchStart) : 0;
+    return Math.max(0, total - lunch);
+  };
+  const formatWorkedTime = (value: number | null) =>
+    value === null ? '—' : `${Math.floor(value / 60)}h ${String(value % 60).padStart(2, '0')}min`;
+  const totalMonthlyDays = groupedHistory.length;
+  const monthlyLateCount = monthlyRecords.filter((record) => record.status === 'late').length;
+
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
-      {/* Top Banner / Header */}
-      <div className="p-6 rounded-3xl bg-gradient-to-r from-neutral-900 via-neutral-950 to-neutral-900 border border-neutral-800 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-white text-black flex items-center justify-center font-black shadow-lg">
-            <Clock className="w-6 h-6 text-black" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                Ponto Eletrônico Seguro
-              </h2>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                Auditado por GPS & Biometria
-              </span>
-              <span
-                className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${currentStatusBadge.color}`}
-              >
-                {currentStatusBadge.text}
-              </span>
-              {isMaster && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/10 text-amber-300 border border-amber-500/30 flex items-center gap-1">
-                  <ShieldCheck className="w-3 h-3 text-amber-400" />
-                  Controle Master (Edição & Exclusão Exclusivas)
-                </span>
-              )}
+    <div className="space-y-6 animate-in fade-in duration-200 text-slate-100 max-w-[1600px] mx-auto pb-10">
+      {/* Header with clear primary action, without unverified security claims */}
+      <section className="relative overflow-hidden rounded-[26px] border border-[#1B3262] bg-gradient-to-br from-[#10234D] via-[#0B1732] to-[#0A1021] p-5 sm:p-7 lg:p-8 shadow-xl shadow-blue-950/10">
+        <div className="pointer-events-none absolute -right-20 -top-32 h-72 w-72 rounded-full bg-blue-600/10 blur-3xl" />
+        <div className="relative flex flex-col xl:flex-row xl:items-center justify-between gap-6">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.17em] text-blue-300 mb-3">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-blue-500/30 bg-blue-500/15"><Clock className="h-4 w-4" /></span>
+              Gestão de jornada
             </div>
-            <p className="text-xs sm:text-sm text-neutral-400 font-medium mt-1">
-              Todos os colaboradores registram ponto com 1 clique. Somente o Gestor Master pode alterar e editar registros.
+            <div className="flex flex-wrap items-center gap-3">
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Meu ponto eletrônico</h2>
+              <span className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-bold ${currentStatusBadge.color}`}>{currentStatusBadge.text}</span>
+            </div>
+            <p className="text-slate-400 text-sm mt-3 max-w-xl">
+              Acompanhe sua jornada, confira registros e consulte o espelho de ponto em um só lugar.
             </p>
+            <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-400 mt-4">
+              <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5 text-blue-400" />{dateNow.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}</span>
+              <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-blue-400" />Histórico com dados dos registros</span>
+            </div>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2.5 flex-wrap">
-          {canManageSchedules && (
-            <button
-              type="button"
-              onClick={() => setShowScheduleModal(true)}
-              className="px-4 py-3 rounded-2xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-white font-bold text-xs transition-all flex items-center gap-2 cursor-pointer shadow-sm"
-              title="Ajustar e vincular horários para cada funcionário"
-            >
-              <Sliders className="w-4 h-4 text-amber-400" />
-              <span>Ajustar Escalas</span>
+          <div className="flex flex-wrap items-center gap-2.5 xl:justify-end">
+            <button type="button" onClick={handleExportCSV}
+              className="inline-flex items-center gap-2 rounded-xl border border-[#2C4270] bg-[#142548]/70 px-4 py-3 text-xs font-semibold text-slate-200 hover:bg-[#1B315B] transition-colors">
+              <Download className="h-4 w-4" />Exportar espelho
             </button>
-          )}
-
-          {canEditOrAlter && (
-            <button
-              type="button"
-              onClick={() => setShowManualPunchModal(true)}
-              className="px-4 py-3 rounded-2xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-amber-300 font-bold text-xs transition-all flex items-center gap-2 cursor-pointer shadow-sm"
-              title="Adicionar ponto retroativo ou manual para qualquer colaborador"
-            >
-              <PlusCircle className="w-4 h-4 text-amber-400" />
-              <span>+ Ponto Manual</span>
+            {canManageSchedules && (
+              <button type="button" onClick={() => setShowScheduleModal(true)}
+                className="inline-flex items-center gap-2 rounded-xl border border-[#2C4270] bg-[#142548]/70 px-4 py-3 text-xs font-semibold text-slate-200 hover:bg-[#1B315B] transition-colors">
+                <Sliders className="h-4 w-4" />Gerenciar escalas
+              </button>
+            )}
+            <button type="button" onClick={onOpenPunchModal}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-xs sm:text-sm font-bold text-white shadow-lg shadow-blue-700/20 hover:bg-blue-500 transition-colors">
+              <Clock className="h-4 w-4" />Bater ponto agora <ArrowRight className="h-4 w-4" />
             </button>
-          )}
-
-          <button
-            type="button"
-            onClick={onOpenPunchModal}
-            className="px-5 py-3 rounded-2xl bg-white hover:bg-neutral-200 text-black font-black text-xs sm:text-sm transition-all shadow-lg flex items-center gap-2 cursor-pointer"
-          >
-            <Clock className="w-4 h-4" />
-            <span>Bater Ponto Agora</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleExportCSV}
-            className="px-4 py-3 rounded-2xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-white font-bold text-xs transition-all flex items-center gap-2 cursor-pointer"
-          >
-            <FileSpreadsheet className="w-4 h-4" />
-            <span>Exportar CSV</span>
-          </button>
+          </div>
         </div>
+      </section>
+
+      {/* Summary cards. No invented attendance, GPS, hours or schedule metrics. */}
+      <section aria-label="Resumo do ponto" className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5 sm:gap-4">
+        <div className="rounded-2xl border border-[#1B2B4C] bg-[#0E172B] p-5 min-h-36">
+          <div className="flex items-center justify-between text-xs text-slate-400 font-medium"><span>Status de hoje</span><Clock className="w-4 h-4 text-blue-400" /></div>
+          <div className="mt-3 text-xl font-extrabold tracking-tight text-white">{hasExit ? 'Jornada concluída' : hasLunchStart && !hasLunchEnd ? 'Em intervalo' : hasEntry ? 'Em expediente' : 'Aguardando entrada'}</div>
+          <p className="mt-2 text-[11px] text-slate-400">Próximo passo: {hasExit ? 'Expediente encerrado' : nextPunchLabel.replace(/^\d+\.\s*/, '')}</p>
+        </div>
+        <div className="rounded-2xl border border-[#1B2B4C] bg-[#0E172B] p-5 min-h-36">
+          <div className="flex items-center justify-between text-xs text-slate-400 font-medium"><span>Registros de hoje</span><ClipboardCheck className="w-4 h-4 text-blue-400" /></div>
+          <div className="mt-3 text-3xl font-extrabold text-white tabular-nums">{myTodayRecords.length}</div>
+          <p className="mt-1 text-[11px] text-slate-400">{completedSteps} de 4 etapas principais concluídas</p>
+        </div>
+        <div className="rounded-2xl border border-[#1B2B4C] bg-[#0E172B] p-5 min-h-36">
+          <div className="flex items-center justify-between text-xs text-slate-400 font-medium"><span>Meu mês</span><CalendarDays className="w-4 h-4 text-blue-400" /></div>
+          <div className="mt-3 text-3xl font-extrabold text-white tabular-nums">{monthlyRecords.length}</div>
+          <p className="mt-1 text-[11px] text-slate-400">{totalMonthlyDays} dias com registros • {monthlyLateCount} registros em atraso</p>
+        </div>
+        <div className="rounded-2xl border border-[#1B2B4C] bg-[#0E172B] p-5 min-h-36">
+          <div className="flex items-center justify-between text-xs text-slate-400 font-medium"><span>Escala e segurança</span><ShieldCheck className="w-4 h-4 text-blue-400" /></div>
+          <div className={`mt-3 text-base sm:text-lg font-extrabold ${persistedSchedule ? 'text-emerald-400' : 'text-amber-300'}`}>
+            {persistedSchedule ? 'Escala vinculada' : 'Escala não vinculada'}
+          </div>
+          <p className="mt-2 text-[11px] text-slate-400">{persistedSchedule ? `Entrada prevista: ${persistedSchedule.entryTime}` : 'Configure uma escala para confirmar o horário oficial.'}</p>
+        </div>
+      </section>
+
+      {/* Concise, responsive navigation; management tabs are restricted */}
+      <div role="tablist" aria-label="Seções do ponto eletrônico"
+        className="flex w-full gap-1.5 overflow-x-auto rounded-2xl border border-[#1D2B4A] bg-[#0A1225] p-1.5">
+        {([
+          { id: 'meu-ponto', text: 'Meu ponto', icon: Clock },
+          ...(isMaster ? [{ id: 'equipe', text: 'Equipe', icon: Users }, { id: 'escalas', text: 'Escalas', icon: Calendar }] : []),
+          { id: 'auditoria', text: 'Auditoria', icon: ShieldCheck },
+        ] as { id: 'meu-ponto' | 'equipe' | 'escalas' | 'auditoria'; text: string; icon: typeof Clock }[]).map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <button key={tab.id} type="button" role="tab" aria-selected={activeTab === tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-xs sm:text-sm font-semibold transition-colors ${activeTab === tab.id
+                ? 'bg-[#1B376C] text-white shadow-sm ring-1 ring-blue-500/30'
+                : 'text-slate-400 hover:bg-[#142342] hover:text-white'}`}>
+              <Icon className="h-4 w-4" />{tab.text}
+              {tab.id === 'equipe' && <span className="rounded-full bg-white/10 px-1.5 py-0.5 text-[10px]">{Object.keys(teamTodayGrouped).length}</span>}
+            </button>
+          );
+        })}
       </div>
 
-      {/* KPI Cards Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-5 rounded-2xl bg-neutral-900 border border-neutral-800">
-          <div className="flex items-center justify-between text-neutral-400 text-xs font-bold mb-2">
-            <span>Meu Status Hoje</span>
-            <Clock className="w-4 h-4 text-neutral-400" />
-          </div>
-          <div className="text-lg font-black text-white">
-            {hasExit ? 'Expediente Encerrado' : hasEntry ? 'Em Expediente' : 'Pendente Entrada'}
-          </div>
-          <div className="text-[11px] text-neutral-400 mt-1">
-            Entrada vinculada:{' '}
-            <strong className="text-white font-mono">{mySchedule.entryTime}</strong>
-          </div>
-        </div>
-
-        <div className="p-5 rounded-2xl bg-neutral-900 border border-neutral-800">
-          <div className="flex items-center justify-between text-neutral-400 text-xs font-bold mb-2">
-            <span>Pontos no Mês</span>
-            <Calendar className="w-4 h-4 text-neutral-400" />
-          </div>
-          <div className="text-2xl font-black text-white">
-            {isMaster ? timeClockRecords.filter((r) => (r.date || '').startsWith(selectedMonth)).length : monthlyRecords.length}
-          </div>
-          <div className="text-[11px] text-neutral-400 mt-1">
-            {isMaster ? `Total geral na agência (${selectedMonth})` : `Meus registros em ${selectedMonth}`}
-          </div>
-        </div>
-
-        <div className="p-5 rounded-2xl bg-neutral-900 border border-neutral-800">
-          <div className="flex items-center justify-between text-neutral-400 text-xs font-bold mb-2">
-            <span>{isMaster ? 'Pontualidade da Agência' : 'Minha Escala Vinculada'}</span>
-            <Lock className="w-4 h-4 text-white" />
-          </div>
-          {isMaster ? (
-            <>
-              <div className="text-2xl font-black text-emerald-400">{punctualityRate}%</div>
-              <div className="text-[11px] text-neutral-400 mt-1">
-                {latePunches} atrasos registrados • {overtimePunches} horas extras
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="text-sm font-black text-white font-mono">
-                {mySchedule.entryTime} → {mySchedule.lunchStartTime} → {mySchedule.exitTime}
-              </div>
-              <div className="text-[11px] text-neutral-400 mt-1">
-                Tolerância: ±{mySchedule.toleranceMinutes} min (Trava:{' '}
-                {mySchedule.strictEnforcement ? 'Ativa' : 'Off'})
-              </div>
-            </>
-          )}
-        </div>
-
-        <div className="p-5 rounded-2xl bg-neutral-900 border border-neutral-800">
-          <div className="flex items-center justify-between text-neutral-400 text-xs font-bold mb-2">
-            <span>Identificação & Auditoria</span>
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-          </div>
-          <div className="text-xs font-black text-white truncate">{userName}</div>
-          <div className="text-[11px] text-neutral-400 truncate">
-            {userRole} {isMaster && '• Permissão Master'}
-          </div>
-        </div>
-      </div>
-
-      {/* Tabs Switcher */}
-      <div className="flex border-b border-neutral-800 gap-3">
-        <button
-          onClick={() => setActiveTab('meu-ponto')}
-          className={`pb-3 px-4 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
-            activeTab === 'meu-ponto'
-              ? 'border-white text-white'
-              : 'border-transparent text-neutral-400 hover:text-neutral-200'
-          }`}
-        >
-          <User className="w-4 h-4" />
-          <span>Meu Espelho de Ponto</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('equipe')}
-          className={`pb-3 px-4 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
-            activeTab === 'equipe'
-              ? 'border-white text-white'
-              : 'border-transparent text-neutral-400 hover:text-neutral-200'
-          }`}
-        >
-          <Users className="w-4 h-4" />
-          <span>Funcionários que Bateram Ponto ({timeClockRecords.length} Registros • {Object.keys(teamTodayGrouped).length} Ativos Hoje)</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('escalas')}
-          className={`pb-3 px-4 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
-            activeTab === 'escalas'
-              ? 'border-white text-white'
-              : 'border-transparent text-neutral-400 hover:text-neutral-200'
-          }`}
-        >
-          <Sliders className="w-4 h-4" />
-          <span>Escalas Vinculadas ({effectiveSchedules.length})</span>
-        </button>
-      </div>
-
-      {/* Tab: Meu Espelho de Ponto */}
+      {/* Personal workspace: jornada -> schedule/audit -> historical mirror */}
       {activeTab === 'meu-ponto' && (
         <div className="space-y-5">
-          {/* Stepper Card (Sequência Obrigatória 1 a 1) */}
-          <div className="p-5 rounded-3xl bg-neutral-900 border border-neutral-800 space-y-3 shadow-lg">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <span className="text-xs font-black text-white uppercase tracking-wider block">
-                  Sequência do Dia: 1 por vez na ordem legal
-                </span>
-                <span className="text-xs text-neutral-400">
-                  Próximo registro disponível:{' '}
-                  <strong className="text-white font-bold">{nextPunchLabel}</strong>
-                </span>
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
+            <section className="xl:col-span-8 rounded-[24px] border border-[#1C2E52] bg-[#0E172B] p-5 sm:p-6">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2 text-blue-400 text-[10px] font-extrabold tracking-widest uppercase mb-2">
+                    <Activity className="h-3.5 w-3.5" />Acompanhe seu dia
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-extrabold text-white">Jornada de hoje</h3>
+                  <p className="mt-1 text-xs text-slate-400">
+                    {hasExit ? 'Você concluiu as quatro etapas da jornada.' : `Próximo registro: ${nextPunchLabel.replace(/^\d+\.\s*/, '')}`}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-[#2C4876] bg-[#14284D] px-3 py-2 text-xs text-blue-200 font-bold">
+                  {completedSteps}/4 concluídos
+                </div>
               </div>
 
-              <button
-                type="button"
-                onClick={onOpenPunchModal}
-                className="px-5 py-2.5 rounded-xl bg-white hover:bg-neutral-200 text-black font-black text-xs transition-all shadow-md flex items-center gap-2 cursor-pointer shrink-0"
-              >
-                <Clock className="w-3.5 h-3.5" />
-                <span>Bater: {nextPunchLabel}</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
+              <div className="mt-6 h-2 rounded-full bg-[#1A2846] overflow-hidden" role="progressbar"
+                aria-valuenow={completedSteps} aria-valuemin={0} aria-valuemax={4} aria-label="Etapas concluídas">
+                <div className="h-full bg-gradient-to-r from-blue-600 via-blue-400 to-cyan-400 rounded-full transition-all duration-500"
+                  style={{ width: `${completedSteps * 25}%` }} />
+              </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-              {stepsList.map((step, idx) => {
-                const isDone = !!step.record;
-                const isCurrent = !isDone && seqRule.nextType === step.type;
-                const StepIcon = step.icon;
-
-                return (
-                  <div
-                    key={step.type}
-                    className={`p-3.5 rounded-2xl border transition-all ${
-                      isDone
-                        ? 'bg-emerald-950/20 border-emerald-800/40 text-emerald-300'
-                        : isCurrent
-                        ? 'bg-neutral-800 border-white text-white shadow-md ring-1 ring-white/20'
-                        : 'bg-neutral-950/50 border-neutral-800/50 text-neutral-500 opacity-60'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-black/40">
-                        Passo #{idx + 1}
-                      </span>
-                      {isDone ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                      ) : isCurrent ? (
-                        <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-                      ) : (
-                        <Lock className="w-3.5 h-3.5 text-neutral-500" />
-                      )}
-                    </div>
-                    <div className="text-xs font-black truncate">{step.label}</div>
-                    <div className="text-[11px] font-mono text-neutral-400 mt-1 flex justify-between">
-                      <span>Previsto: {step.timeExpected}</span>
-                      {isDone && (
-                        <span className="text-emerald-400 font-bold">
-                          {step.record?.time.substring(0, 5)}
+              <div className="relative grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5">
+                {stepsList.map((step, index) => {
+                  const Icon = step.icon;
+                  const finished = Boolean(step.record);
+                  const current = !finished && !hasExit && seqRule.nextType === step.type;
+                  return (
+                    <div key={step.type} className={`relative rounded-2xl border p-4 min-w-0 transition-colors ${finished
+                      ? 'border-emerald-500/30 bg-emerald-500/[0.06]'
+                      : current
+                        ? 'border-blue-500/70 bg-blue-500/[0.09] shadow-lg shadow-blue-950/20'
+                        : 'border-[#253554] bg-[#0B1324]'}`}>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${finished ? 'bg-emerald-500/15 text-emerald-400' : current ? 'bg-blue-500/20 text-blue-300' : 'bg-[#182743] text-slate-500'}`}>
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        {finished ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : current
+                          ? <span className="rounded-full bg-blue-500/15 px-2.5 py-1 text-[10px] text-blue-300 font-bold">Próximo</span>
+                          : <Lock className="w-3.5 h-3.5 text-slate-600" />}
+                      </div>
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Etapa {index + 1}</p>
+                      <h4 className="text-sm font-bold text-white mt-1">{step.label.replace(/^\d+\.\s*/, '')}</h4>
+                      <div className="flex items-center justify-between gap-2 mt-3 text-[11px]">
+                        <span className="text-slate-400">Previsto: {persistedSchedule ? step.timeExpected : 'Sem escala'}</span>
+                        <span className={finished ? 'text-emerald-400 font-bold tabular-nums' : 'text-slate-500'}>
+                          {finished ? step.record?.time.slice(0, 5) : '—'}
                         </span>
-                      )}
+                      </div>
                     </div>
+                  );
+                })}
+              </div>
+
+              <div className="mt-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl border border-[#263D68] bg-[#112346] p-4">
+                <div>
+                  <p className="font-bold text-white text-sm">{hasExit ? 'Jornada principal finalizada' : 'Pronto para registrar?'}</p>
+                  <p className="text-[11px] text-slate-400 mt-1">{hasExit ? 'Consulte o histórico abaixo. Horas extras seguem as regras da sua escala.' : seqRule.isAllowed ? 'O registro será confirmado no fluxo de ponto seguro.' : seqRule.reason || 'Respeite o intervalo mínimo entre registros.'}</p>
+                </div>
+                <button type="button" onClick={onOpenPunchModal}
+                  className="w-full sm:w-auto inline-flex shrink-0 justify-center items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-xs font-bold text-white hover:bg-blue-500 transition-colors">
+                  <Clock className="w-4 h-4" />{hasExit ? 'Consultar ponto' : 'Registrar agora'}<ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </section>
+
+            <aside className="xl:col-span-4 space-y-4">
+              <section className="rounded-[24px] border border-[#1C2E52] bg-[#0E172B] p-5">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-white text-sm">Minha escala</h3>
+                  <Calendar className="h-4 w-4 text-blue-400" />
+                </div>
+                {persistedSchedule ? (
+                  <>
+                    <p className="text-xs text-slate-400 mt-2">Horários oficialmente cadastrados</p>
+                    <div className="mt-4 grid grid-cols-2 gap-2.5">
+                      {[
+                        ['Entrada', persistedSchedule.entryTime],
+                        ['Saída almoço', persistedSchedule.lunchStartTime],
+                        ['Retorno', persistedSchedule.lunchEndTime],
+                        ['Saída', persistedSchedule.exitTime],
+                      ].map(([label, time]) => (
+                        <div key={label} className="rounded-xl border border-[#243756] bg-[#0A1428] p-3">
+                          <p className="text-[10px] text-slate-500">{label}</p>
+                          <p className="text-sm font-extrabold text-white mt-1 tabular-nums">{time}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-[11px] text-slate-400">Tolerância: {persistedSchedule.toleranceMinutes} min • {persistedSchedule.strictEnforcement ? 'Controle restrito' : 'Controle flexível'}</p>
+                  </>
+                ) : (
+                  <div className="mt-4 rounded-2xl border border-dashed border-amber-500/25 bg-amber-500/[0.05] p-4">
+                    <p className="text-sm text-amber-200 font-bold">Nenhuma escala vinculada</p>
+                    <p className="text-xs text-slate-400 mt-2">Os horários padrão do registro não representam uma escala aprovada pela empresa.</p>
+                    {canManageSchedules && (
+                      <button type="button" onClick={() => setShowScheduleModal(true)}
+                        className="mt-3 text-xs font-bold text-blue-300 hover:text-blue-200">Configurar escala →</button>
+                    )}
                   </div>
-                );
-              })}
-            </div>
+                )}
+              </section>
+
+              <section className="rounded-[24px] border border-[#1C2E52] bg-[#0E172B] p-5">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-white text-sm">Último registro</h3>
+                  <ShieldCheck className="h-4 w-4 text-blue-400" />
+                </div>
+                {lastRecord ? (
+                  <div className="space-y-3 mt-4">
+                    <div>
+                      <div className="text-lg font-extrabold text-white">{lastRecord.time.slice(0, 5)}</div>
+                      <div className="text-xs text-slate-400">{lastRecord.typeLabel || lastRecord.type} • {lastRecord.date}</div>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-slate-300">
+                      <MapPin className="h-3.5 w-3.5 text-blue-400" />
+                      {lastRecord.location ? (lastRecord.location.city || 'Coordenadas registradas') : 'Localização não registrada'}
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-slate-300">
+                      <ShieldCheck className="h-3.5 w-3.5 text-blue-400" />
+                      {lastRecord.securityHash ? 'Identificador de auditoria presente' : 'Sem identificador de auditoria'}
+                    </div>
+                    <button type="button" onClick={() => setRecordToInspect(lastRecord)}
+                      className="w-full mt-1 inline-flex items-center justify-center gap-2 rounded-xl border border-[#2A4270] bg-[#13274A] hover:bg-[#1A3360] py-2.5 text-xs font-bold text-blue-200">
+                      <Eye className="h-4 w-4" />Ver detalhes da auditoria
+                    </button>
+                  </div>
+                ) : (
+                  <p className="mt-4 text-xs text-slate-400 leading-relaxed">Os dados de localização, dispositivo e auditoria serão mostrados aqui após o primeiro registro.</p>
+                )}
+              </section>
+            </aside>
           </div>
 
-          {/* Table Header Controls */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-neutral-950 p-4 rounded-2xl border border-neutral-800">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-neutral-300">Mês de Referência:</span>
-              <input
-                type="month"
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-white font-mono"
-              />
+          <section className="rounded-[24px] border border-[#1C2E52] bg-[#0E172B] overflow-hidden">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6 border-b border-[#1E2D4C]">
+              <div>
+                <h3 className="text-lg font-extrabold text-white">Espelho de ponto</h3>
+                <p className="mt-1 text-xs text-slate-400">Histórico das jornadas e horários registrados por dia.</p>
+              </div>
+              <div className="flex items-center flex-wrap gap-2">
+                <label className="sr-only" htmlFor="ponto-mes">Mês de referência</label>
+                <input id="ponto-mes" aria-label="Mês de referência" type="month" value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="rounded-xl border border-[#2A3D60] bg-[#0A1427] px-3 py-2.5 text-xs text-white focus:border-blue-500 focus:outline-none" />
+                <label className="sr-only" htmlFor="ponto-filtro">Filtrar histórico</label>
+                <select id="ponto-filtro" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
+                  className="rounded-xl border border-[#2A3D60] bg-[#0A1427] px-3 py-2.5 text-xs text-white focus:border-blue-500 focus:outline-none">
+                  <option value="todos">Todos os status</option>
+                  <option value="regular">Regulares</option>
+                  <option value="late">Atrasos</option>
+                  <option value="overtime">Horas extras</option>
+                  <option value="early_departure">Saídas antecipadas</option>
+                  <option value="edited">Editados</option>
+                </select>
+              </div>
             </div>
 
-            <div className="text-xs text-neutral-400">
-              Total de registros no mês:{' '}
-              <strong className="text-white font-mono">{monthlyRecords.length}</strong>
-            </div>
-          </div>
-
-          {/* Records Table */}
-          <div className="bg-neutral-900 border border-neutral-800 rounded-3xl overflow-hidden shadow-xl">
-            {monthlyRecords.length === 0 ? (
-              <div className="p-12 text-center text-neutral-500 text-xs">
-                Nenhum ponto registrado em {selectedMonth}.
+            {groupedHistory.filter(([, items]) => filterStatus === 'todos' || items.some((record) => filterStatus === 'edited' ? record.isManuallyEdited : record.status === filterStatus)).length === 0 ? (
+              <div className="px-6 py-16 text-center max-w-lg mx-auto">
+                <div className="h-14 w-14 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mx-auto"><CalendarDays className="w-7 h-7 text-blue-400" /></div>
+                <h4 className="text-base font-bold text-white mt-4">Nenhum registro encontrado</h4>
+                <p className="text-xs text-slate-400 mt-2 leading-relaxed">{monthlyRecords.length === 0 ? `Ainda não existem registros em ${currentMonthName}. Assim que você registrar seu ponto, eles aparecerão aqui.` : 'Nenhum dia corresponde ao filtro selecionado.'}</p>
+                <button type="button" onClick={monthlyRecords.length === 0 ? onOpenPunchModal : () => setFilterStatus('todos')}
+                  className="mt-5 px-4 py-2.5 rounded-xl border border-blue-500/30 bg-[#163264] text-blue-200 text-xs font-bold hover:bg-[#1D3B72]">
+                  {monthlyRecords.length === 0 ? 'Registrar ponto' : 'Limpar filtro'}
+                </button>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-neutral-300">
-                  <thead className="bg-neutral-950 text-[10px] uppercase font-black text-neutral-400 tracking-wider border-b border-neutral-800">
-                    <tr>
-                      <th className="p-3.5 pl-5">Data</th>
-                      <th className="p-3.5">Horário Batido</th>
-                      <th className="p-3.5">Horário Vinculado</th>
-                      <th className="p-3.5">Tipo do Ponto</th>
-                      <th className="p-3.5">Status</th>
-                      <th className="p-3.5">Localização</th>
-                      <th className="p-3.5">Hash de Segurança</th>
-                      <th className="p-3.5 pr-5 text-right">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-800/60 font-sans">
-                    {monthlyRecords.map((r) => {
-                      const isToday = r.date === todayStr;
-                      return (
-                        <tr
-                          key={r.id}
-                          className={`hover:bg-neutral-800/40 transition-colors ${
-                            isToday ? 'bg-neutral-800/20' : ''
-                          }`}
-                        >
-                          <td className="p-3.5 pl-5 font-bold text-white font-mono">
-                            <div className="flex items-center gap-2">
-                              <span>{r.date}</span>
-                              {isToday && (
-                                <span className="text-[9px] bg-white text-black px-1.5 py-0.5 rounded font-black">
-                                  HOJE
-                                </span>
-                              )}
-                              {r.isManuallyEdited && (
-                                <span
-                                  className="text-[9px] bg-amber-500/10 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded font-bold"
-                                  title={`Editado por ${r.editedBy || 'Master'}`}
-                                >
-                                  EDITADO
-                                </span>
-                              )}
-                            </div>
+              <>
+                <div className="lg:hidden divide-y divide-[#1C2E4D]">
+                  {groupedHistory.filter(([, records]) => filterStatus === 'todos' || records.some((r) => filterStatus === 'edited' ? r.isManuallyEdited : r.status === filterStatus)).map(([date, records]) => (
+                    <div key={date} className="p-4">
+                      <div className="flex items-center justify-between"><p className="font-bold text-white text-sm">{new Date(date + 'T12:00:00').toLocaleDateString('pt-BR')}</p>
+                        <span className="text-blue-300 font-bold text-xs">{formatWorkedTime(getWorkedMinutes(records))}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 mt-3 text-xs">
+                        {(['entry', 'lunch_start', 'lunch_end', 'exit'] as TimeClockType[]).map((type, index) => (
+                          <div key={type} className="rounded-xl bg-[#0A1427] border border-[#203457] p-2.5">
+                            <p className="text-[10px] text-slate-500">{['Entrada', 'Saída almoço', 'Retorno', 'Saída'][index]}</p>
+                            <p className="text-white font-bold mt-1 tabular-nums">{showRecordedTime(records, type)}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <button type="button" onClick={() => setRecordToInspect(records[0])}
+                        className="mt-3 text-xs font-semibold text-blue-300 hover:text-blue-200">Ver detalhes →</button>
+                    </div>
+                  ))}
+                </div>
+                <div className="hidden lg:block overflow-x-auto">
+                  <table className="w-full text-left text-xs text-slate-300">
+                    <thead className="bg-[#0A1324] text-[10px] uppercase tracking-wider text-slate-500">
+                      <tr>
+                        <th className="px-5 py-4">Data</th>
+                        <th className="px-3 py-4">Entrada</th>
+                        <th className="px-3 py-4">Saída almoço</th>
+                        <th className="px-3 py-4">Retorno</th>
+                        <th className="px-3 py-4">Saída</th>
+                        <th className="px-3 py-4">Horas</th>
+                        <th className="px-3 py-4">Ocorrências</th>
+                        <th className="px-5 py-4 text-right">Detalhes</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#1B2D4E]">
+                      {groupedHistory.filter(([, records]) => filterStatus === 'todos' || records.some((r) => filterStatus === 'edited' ? r.isManuallyEdited : r.status === filterStatus)).map(([date, records]) => (
+                        <tr key={date} className="hover:bg-[#122342]/60 transition-colors">
+                          <td className="px-5 py-4 font-semibold text-white">{new Date(date + 'T12:00:00').toLocaleDateString('pt-BR')}</td>
+                          {(['entry', 'lunch_start', 'lunch_end', 'exit'] as TimeClockType[]).map((type) => (
+                            <td key={type} className="px-3 py-4 font-mono tabular-nums">{showRecordedTime(records, type)}</td>
+                          ))}
+                          <td className="px-3 py-4 font-bold text-blue-300 whitespace-nowrap">{formatWorkedTime(getWorkedMinutes(records))}</td>
+                          <td className="px-3 py-4">
+                            {records.some((r) => r.status === 'late') ? <span className="text-amber-300">Atraso</span>
+                              : records.some((r) => r.isManuallyEdited) ? <span className="text-purple-300">Editado</span>
+                              : records.some((r) => r.status === 'early_departure') ? <span className="text-amber-300">Saída antecipada</span>
+                              : <span className="text-slate-400">Sem ocorrências</span>}
                           </td>
-                          <td className="p-3.5 font-mono font-black text-white text-sm">
-                            {r.time}
-                          </td>
-                          <td className="p-3.5 font-mono text-neutral-400">
-                            {r.scheduledTime || '--:--'}
-                          </td>
-                          <td className="p-3.5">
-                            <span className="inline-flex items-center gap-1.5 font-bold text-white">
-                              {r.typeLabel || r.type}
-                            </span>
-                          </td>
-                          <td className="p-3.5">
-                            {r.status === 'late' ? (
-                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-950 border border-amber-800 text-amber-300">
-                                Atraso
-                              </span>
-                            ) : r.status === 'overtime' ? (
-                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-950 border border-blue-800 text-blue-300">
-                                Hora Extra
-                              </span>
-                            ) : r.status === 'early_departure' ? (
-                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-950 border border-purple-800 text-purple-300">
-                                Saída Antecipada
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-neutral-800 border border-neutral-700 text-neutral-300">
-                                Regular
-                              </span>
-                            )}
-                          </td>
-                          <td className="p-3.5 text-neutral-400">
-                            {r.location ? (
-                              <span className="flex items-center gap-1 text-[11px] text-neutral-300">
-                                <MapPin className="w-3 h-3 text-neutral-400 shrink-0" />
-                                {r.location.city || 'GPS'}
-                              </span>
-                            ) : (
-                              <span className="text-[11px] text-neutral-500">Auditado (Rede)</span>
-                            )}
-                          </td>
-                          <td className="p-3.5 font-mono text-[10px] text-neutral-400 font-bold">
-                            {r.securityHash}
-                          </td>
-                          <td className="p-3.5 pr-5 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => setRecordToInspect(r)}
-                                className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-all cursor-pointer"
-                                title="Inspecionar detalhes de auditoria"
-                              >
-                                <Eye className="w-3.5 h-3.5" />
-                              </button>
-
-                              {canEditOrAlter && (
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={() => setRecordToEdit(r)}
-                                    className="p-1.5 rounded-lg text-amber-400 hover:text-amber-200 hover:bg-amber-950/40 border border-amber-900/40 transition-all cursor-pointer flex items-center gap-1"
-                                    title="Editar horário e dados deste ponto (Master Admin)"
-                                  >
-                                    <Edit3 className="w-3.5 h-3.5" />
-                                    <span className="hidden sm:inline text-[11px] font-bold">Editar</span>
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    onClick={() => setRecordToDelete(r)}
-                                    className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-red-950/40 border border-transparent hover:border-red-800/60 transition-all cursor-pointer flex items-center gap-1"
-                                    title="Apagar este ponto errado (Master Admin)"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                    <span className="hidden sm:inline text-[11px]">Apagar</span>
-                                  </button>
-                                </>
-                              )}
-                            </div>
+                          <td className="px-5 py-4 text-right">
+                            <button type="button" onClick={() => setRecordToInspect(records[0])}
+                              className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-300 hover:text-blue-100"><Eye className="h-3.5 w-3.5" />Ver</button>
                           </td>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
-          </div>
+            <div className="px-5 py-3 border-t border-[#1E2D4C] bg-[#0B1427] text-[11px] text-slate-400 flex flex-wrap justify-between gap-2">
+              <span>{totalMonthlyDays} dias com registros em {currentMonthName}</span>
+              <button type="button" onClick={() => setActiveTab('auditoria')} className="text-blue-300 font-bold hover:text-blue-200">Abrir auditoria detalhada →</button>
+            </div>
+          </section>
         </div>
       )}
 
       {/* Tab: Controle Geral da Equipe & Todos os Pontos */}
-      {activeTab === 'equipe' && (
+      {activeTab === 'equipe' && isMaster && (
         <div className="space-y-6">
           {/* Team Members Today Presence Cards */}
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                <span>Presença da Equipe Hoje ({todayStr})</span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+              <h3 className="text-sm sm:text-base font-extrabold text-white flex flex-wrap items-center gap-2">
+                <span>Presença da equipe hoje</span>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                  {Object.keys(teamTodayGrouped).length} com registro ativo
+                  {Object.keys(teamTodayGrouped).length} pessoas com batidas hoje
                 </span>
               </h3>
               <div className="flex items-center gap-2">
@@ -739,7 +712,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowScheduleModal(true)}
-                  className="text-xs text-neutral-300 hover:text-white bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 px-3 py-1 rounded-xl font-bold flex items-center gap-1 cursor-pointer transition-all"
+                  className="text-xs text-neutral-300 hover:text-white bg-[#0E172B] hover:bg-[#20385F] border border-[#365079] px-3 py-1 rounded-xl font-bold flex items-center gap-1 cursor-pointer transition-all"
                 >
                   <Sliders className="w-3.5 h-3.5 text-amber-400" />
                   Gerenciar Escalas
@@ -748,6 +721,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+              {effectiveSchedules.length === 0 && <p className="col-span-full text-sm text-slate-400 p-8 border border-dashed border-[#253B60] rounded-2xl">Nenhuma escala cadastrada. Configure a equipe para acompanhar os registros de jornada.</p>}
               {effectiveSchedules.map((sched) => {
                 const userRecords = timeClockRecords.filter(
                   (r) =>
@@ -761,7 +735,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
                 const badge = getRoleBadgeStyle(sched.userRole, sched.leadershipRole);
 
                 let statusText = 'Pendente';
-                let statusColor = 'bg-neutral-800 text-neutral-400 border-neutral-700';
+                let statusColor = 'bg-[#172945] text-neutral-400 border-[#365079]';
                 if (exit) {
                   statusText = 'Expediente Encerrado';
                   statusColor = 'bg-blue-950 text-blue-300 border-blue-800';
@@ -776,7 +750,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
                 return (
                   <div
                     key={sched.id}
-                    className="p-4 rounded-3xl bg-neutral-900 border border-neutral-800 flex flex-col justify-between space-y-3 shadow-md"
+                    className="p-4 rounded-[24px] bg-[#0E172B] border border-[#21375B] flex flex-col justify-between space-y-3 shadow-md"
                   >
                     <div>
                       <div className="flex items-start justify-between gap-2">
@@ -812,7 +786,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
                     </div>
 
                     {/* Today's Punch Timeline */}
-                    <div className="grid grid-cols-4 gap-1.5 text-center text-[10px] font-mono bg-black/40 p-2 rounded-xl border border-neutral-800/80">
+                    <div className="grid grid-cols-4 gap-1.5 text-center text-[10px] font-mono bg-black/40 p-2 rounded-xl border border-[#21375B]/80">
                       <div>
                         <span className="text-neutral-500 block text-[9px]">Entrada</span>
                         <span
@@ -859,7 +833,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
           </div>
 
           {/* Full Audit Filter and Table Controls */}
-          <div className="p-4 bg-neutral-950 rounded-2xl border border-neutral-800 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+          <div className="p-4 bg-[#0A1428] rounded-2xl border border-[#21375B] flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
             <div className="flex items-center gap-2 flex-1">
               <Search className="w-4 h-4 text-neutral-400 shrink-0" />
               <input
@@ -867,7 +841,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
                 placeholder="Buscar por colaborador (Nome), cargo, e-mail, hash ou cidade..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white w-full focus:outline-none focus:border-white"
+                className="bg-[#0E172B] border border-[#365079] rounded-xl px-3 py-2 text-xs text-white w-full focus:outline-none focus:border-blue-500"
               />
             </div>
 
@@ -876,7 +850,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
               <select
                 value={filterEmployee}
                 onChange={(e) => setFilterEmployee(e.target.value)}
-                className="bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white"
+                className="bg-[#0E172B] border border-[#365079] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
               >
                 <option value="todos">Todos os Colaboradores</option>
                 {uniqueEmployees.map((emp) => (
@@ -890,7 +864,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white"
+                className="bg-[#0E172B] border border-[#365079] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
               >
                 <option value="todos">Todos os Status</option>
                 <option value="regular">No Horário / Regular</option>
@@ -904,15 +878,15 @@ export const PontoView: React.FC<PontoViewProps> = ({
               <select
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value)}
-                className="bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white"
+                className="bg-[#0E172B] border border-[#365079] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
               >
                 <option value="todos">Todos os Tipos</option>
                 <option value="entry">1. Entrada</option>
                 <option value="lunch_start">2. Saída Almoço</option>
                 <option value="lunch_end">3. Retorno Almoço</option>
                 <option value="exit">4. Saída Expediente</option>
-                <option value="overtime_in">5. Início Horas Extras</option>
-                <option value="overtime_out">6. Término Horas Extras</option>
+                <option value="extra_start">5. Início Horas Extras</option>
+                <option value="extra_end">6. Término Horas Extras</option>
               </select>
 
               {/* Month */}
@@ -920,23 +894,23 @@ export const PontoView: React.FC<PontoViewProps> = ({
                 type="month"
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
-                className="bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white font-mono"
+                className="bg-[#0E172B] border border-[#365079] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500 font-mono"
               />
             </div>
           </div>
 
           {/* All Team Records Table */}
-          <div className="bg-neutral-900 border border-neutral-800 rounded-3xl overflow-hidden shadow-xl">
-            <div className="p-4 border-b border-neutral-800 flex items-center justify-between">
+          <div className="bg-[#0E172B] border border-[#21375B] rounded-[24px] overflow-hidden shadow-xl">
+            <div className="p-4 border-b border-[#21375B] flex items-center justify-between">
               <span className="font-extrabold text-white text-sm flex items-center gap-2">
                 <span>Auditoria Consolidada de Pontos</span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-300 font-mono">
+                <span className="text-xs px-2 py-0.5 rounded-full bg-[#172945] text-neutral-300 font-mono">
                   {filteredTeamRecords.length} de {timeClockRecords.length} registros
                 </span>
               </span>
-              <span className="text-xs text-amber-400 font-mono flex items-center gap-1 font-bold">
+              <span className="text-[11px] text-blue-300 font-semibold flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5" />
-                Painel Master Exclusivo (Editar & Apagar Liberados)
+                Registros da equipe · acesso administrativo
               </span>
             </div>
 
@@ -947,7 +921,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs text-neutral-300">
-                  <thead className="bg-neutral-950 text-[10px] uppercase font-black text-neutral-400 tracking-wider border-b border-neutral-800">
+                  <thead className="bg-[#0A1428] text-[10px] uppercase font-black text-neutral-400 tracking-wider border-b border-[#21375B]">
                     <tr>
                       <th className="p-3.5 pl-5">Colaborador</th>
                       <th className="p-3.5">Cargo Oficial</th>
@@ -964,7 +938,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
                     {filteredTeamRecords.map((r) => {
                       const badge = getRoleBadgeStyle(r.userRole, r.leadershipRole);
                       return (
-                        <tr key={r.id} className="hover:bg-neutral-800/40 transition-colors">
+                        <tr key={r.id} className="hover:bg-[#20385F]/40 transition-colors">
                           <td className="p-3.5 pl-5 font-bold text-white">
                             <div className="flex items-center gap-2.5">
                               <div className="w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center font-bold text-xs shrink-0">
@@ -1019,7 +993,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
                                 Saída Antecipada
                               </span>
                             ) : (
-                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-neutral-800 border border-neutral-700 text-neutral-300">
+                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#172945] border border-[#365079] text-neutral-300">
                                 Regular
                               </span>
                             )}
@@ -1038,7 +1012,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
                               <button
                                 type="button"
                                 onClick={() => setRecordToInspect(r)}
-                                className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-all cursor-pointer"
+                                className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-[#20385F] transition-all cursor-pointer"
                                 title="Inspecionar metadados de auditoria"
                               >
                                 <Eye className="w-3.5 h-3.5" />
@@ -1079,11 +1053,11 @@ export const PontoView: React.FC<PontoViewProps> = ({
       )}
 
       {/* Tab: Gestão de Escalas Vinculadas */}
-      {activeTab === 'escalas' && (
+      {activeTab === 'escalas' && isMaster && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-black text-white uppercase tracking-wider">
+              <h3 className="text-base sm:text-lg font-extrabold text-white">
                 Jornadas e Horários Vinculados por Colaborador
               </h3>
               <p className="text-xs text-neutral-400">
@@ -1101,12 +1075,13 @@ export const PontoView: React.FC<PontoViewProps> = ({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {effectiveSchedules.length === 0 && <div className="col-span-full rounded-2xl border border-dashed border-[#253B60] bg-[#0C1830] p-10 text-center text-sm text-slate-400">Nenhuma escala vinculada. Use Gerenciar Escalas para cadastrar os horários reais da equipe.</div>}
             {effectiveSchedules.map((s) => {
               const badge = getRoleBadgeStyle(s.userRole, s.leadershipRole);
               return (
                 <div
                   key={s.id}
-                  className="p-5 rounded-3xl bg-neutral-900 border border-neutral-800 space-y-3 shadow-md hover:border-neutral-700 transition-all"
+                  className="p-5 rounded-[24px] bg-[#0E172B] border border-[#21375B] space-y-3 shadow-md hover:border-[#3A5786] transition-all"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>
@@ -1120,7 +1095,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
                     </span>
                   </div>
 
-                  <div className="p-3 rounded-2xl bg-black/40 border border-neutral-800 text-xs font-mono space-y-1">
+                  <div className="p-3 rounded-2xl bg-black/40 border border-[#21375B] text-xs font-mono space-y-1">
                     <div className="flex justify-between">
                       <span className="text-neutral-400 font-sans">1. Entrada:</span>
                       <span className="font-bold text-white">{s.entryTime}</span>
@@ -1154,6 +1129,79 @@ export const PontoView: React.FC<PontoViewProps> = ({
             })}
           </div>
         </div>
+      )}
+
+      {/* Personal audit: every item opens the existing inspection modal */}
+      {activeTab === 'auditoria' && (
+        <section className="rounded-[24px] border border-[#1C2E52] bg-[#0E172B] overflow-hidden">
+          <div className="p-5 sm:p-6 border-b border-[#1F3256] flex flex-col sm:flex-row gap-4 justify-between sm:items-center">
+            <div>
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-blue-400" />
+                <h3 className="text-lg font-extrabold text-white">Auditoria dos meus registros</h3>
+              </div>
+              <p className="mt-2 text-xs text-slate-400">Consulte data, horário, localização informada, dispositivo e alterações dos registros.</p>
+            </div>
+            <button type="button" onClick={handleExportCSV}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#17315C] hover:bg-[#1D3D73] border border-[#2A4A78] px-4 py-2.5 text-xs font-bold text-blue-200">
+              <Download className="w-4 h-4" />Exportar registros
+            </button>
+          </div>
+          <div className="p-4 sm:p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+              <div className="rounded-xl border border-[#23385C] bg-[#0A1428] p-4">
+                <p className="text-[11px] text-slate-400">Registros no período</p>
+                <p className="mt-1 text-2xl font-extrabold text-white">{monthlyRecords.length}</p>
+              </div>
+              <div className="rounded-xl border border-[#23385C] bg-[#0A1428] p-4">
+                <p className="text-[11px] text-slate-400">Com localização registrada</p>
+                <p className="mt-1 text-2xl font-extrabold text-white">{monthlyRecords.filter((r) => Boolean(r.location)).length}</p>
+              </div>
+              <div className="rounded-xl border border-[#23385C] bg-[#0A1428] p-4">
+                <p className="text-[11px] text-slate-400">Corrigidos manualmente</p>
+                <p className="mt-1 text-2xl font-extrabold text-white">{monthlyRecords.filter((r) => Boolean(r.isManuallyEdited)).length}</p>
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+              <div className="text-sm font-bold text-slate-200">Detalhes do espelho</div>
+              <input type="month" aria-label="Mês da auditoria" value={selectedMonth}
+                onChange={(event) => setSelectedMonth(event.target.value)}
+                className="rounded-xl border border-[#2A3D60] bg-[#0A1427] px-3 py-2.5 text-xs text-white focus:border-blue-500 focus:outline-none" />
+            </div>
+            {monthlyRecords.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-[#263B60] p-12 text-center">
+                <ShieldCheck className="w-9 h-9 text-blue-400 mx-auto" />
+                <h4 className="mt-3 text-sm font-bold text-white">Nenhuma evidência disponível neste mês</h4>
+                <p className="text-xs text-slate-400 mt-2">Os detalhes aparecem automaticamente após o registro de ponto.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {[...monthlyRecords].sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || '')).map((record) => (
+                  <div key={record.id} className="rounded-xl border border-[#243858] bg-[#0A152B] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-[#355787] transition-colors">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="rounded-xl bg-blue-500/10 text-blue-400 p-2.5 shrink-0"><Clock className="w-4 h-4" /></div>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-bold text-white">{record.typeLabel || record.type}</p>
+                          {record.isManuallyEdited && <span className="rounded bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-300">Editado</span>}
+                        </div>
+                        <p className="mt-1 text-xs text-slate-400">{new Date(record.date + 'T12:00:00').toLocaleDateString('pt-BR')} às {record.time} • {punchStatusLabel(record.status)}</p>
+                        <p className="mt-1 text-[11px] text-slate-500 flex gap-1.5 items-center">
+                          <MapPin className="h-3 w-3 shrink-0" />
+                          {record.location ? (record.location.city || 'Coordenadas disponíveis') : 'Localização não registrada'}
+                        </p>
+                      </div>
+                    </div>
+                    <button type="button" onClick={() => setRecordToInspect(record)}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#2B4777] bg-[#142A50] px-4 py-2.5 text-xs font-bold text-blue-200 hover:bg-[#1A3564] shrink-0">
+                      <Eye className="w-4 h-4" />Inspecionar
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
       )}
 
       {/* Employee Schedule Modal */}

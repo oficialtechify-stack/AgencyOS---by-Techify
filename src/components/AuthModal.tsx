@@ -10,19 +10,13 @@ import {
   Sparkles,
   AlertCircle,
   Globe,
-  ArrowRight,
-  CheckCircle2,
-  Zap,
 } from 'lucide-react';
 import {
   loginWithEmailOrFirestoreCredentials,
   signUpWithEmailOrFirestore,
-  loginWithGoogle,
-  loginOrCreateAccountWithGoogleEmail,
 } from '../lib/firebase';
 import {
   loginWithGoogle as authServiceLoginWithGoogle,
-  authenticateWithGoogleEmailDirect,
 } from '../lib/authService';
 import { PlanType } from '../types/auth';
 
@@ -47,8 +41,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [agencyName, setAgencyName] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [showGoogleFallback, setShowGoogleFallback] = useState(false);
-  const [googleFallbackEmail, setGoogleFallbackEmail] = useState('');
 
   if (!isOpen) return null;
 
@@ -98,83 +90,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setErrorMsg('');
     setLoading(true);
     try {
+      // Only the Firebase Auth Google popup can prove ownership of a Google account.
       await authServiceLoginWithGoogle(selectedPlan);
-      setLoading(false);
       if (onSuccess) onSuccess();
       onClose();
     } catch (err: any) {
-      console.error('Google auth error:', err);
-      if (
-        err?.code === 'auth/unauthorized-domain' ||
-        err?.code === 'auth/popup-blocked' ||
-        err?.message?.includes('unauthorized domain') ||
-        err?.message?.includes('popup')
-      ) {
-        // Automatically authenticate with Master Google Account to seamlessly unblock the user
-        try {
-          await authenticateWithGoogleEmailDirect(
-            'rickmarketing81@gmail.com',
-            'Marcos Henrique (CEO)',
-            '',
-            'enterprise'
-          );
-          setLoading(false);
-          if (onSuccess) onSuccess();
-          onClose();
-          return;
-        } catch (directErr: any) {
-          setLoading(false);
-          setShowGoogleFallback(true);
-          return;
-        }
-      }
-      setLoading(false);
-      if (err?.code === 'auth/popup-closed-by-user') {
-        setErrorMsg('A janela de login do Google foi fechada.');
-      } else if (err?.code === 'auth/cancelled-popup-request') {
-        setErrorMsg('Tentativa de login cancelada.');
+      console.error('Erro no login Google:', err);
+      if (err?.code === 'auth/unauthorized-domain') {
+        setErrorMsg('Este domínio não está autorizado no Firebase. Adicione agency-os-by-techify.vercel.app em Authentication > Settings > Authorized domains.');
+      } else if (err?.code === 'auth/popup-blocked') {
+        setErrorMsg('O navegador bloqueou a janela do Google. Autorize pop-ups para este site e tente novamente.');
+      } else if (err?.code === 'auth/popup-closed-by-user') {
+        setErrorMsg('O login do Google foi cancelado.');
       } else {
-        setErrorMsg(err?.message || 'Erro ao autenticar com a conta Google.');
+        setErrorMsg(err?.message || 'Não foi possível entrar com o Google.');
       }
-    }
-  };
-
-  const handleQuickMasterLogin = async () => {
-    setLoading(true);
-    setErrorMsg('');
-    try {
-      await authenticateWithGoogleEmailDirect(
-        'rickmarketing81@gmail.com',
-        'Marcos Henrique (CEO)',
-        '',
-        'enterprise'
-      );
+    } finally {
       setLoading(false);
-      if (onSuccess) onSuccess();
-      onClose();
-    } catch (err: any) {
-      setLoading(false);
-      setErrorMsg(err?.message || 'Erro ao autenticar com a conta Google Master.');
-    }
-  };
-
-  const handleGoogleFallbackSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanG = googleFallbackEmail.trim().toLowerCase();
-    if (!cleanG || !cleanG.includes('@')) {
-      setErrorMsg('Informe um e-mail Google válido.');
-      return;
-    }
-    setLoading(true);
-    setErrorMsg('');
-    try {
-      await authenticateWithGoogleEmailDirect(cleanG, undefined, undefined, selectedPlan);
-      setLoading(false);
-      if (onSuccess) onSuccess();
-      onClose();
-    } catch (err: any) {
-      setLoading(false);
-      setErrorMsg(err?.message || 'Erro ao autenticar com e-mail Google.');
     }
   };
 
@@ -195,7 +127,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             onClick={() => {
               setMode('login');
               setErrorMsg('');
-              setShowGoogleFallback(false);
             }}
             className={`flex-1 py-2.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
               mode === 'login'
@@ -210,7 +141,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             onClick={() => {
               setMode('signup');
               setErrorMsg('');
-              setShowGoogleFallback(false);
             }}
             className={`flex-1 py-2.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
               mode === 'signup'
@@ -228,7 +158,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </h3>
           <p className="text-xs text-neutral-400 mt-1">
             {mode === 'login'
-              ? 'Informe o seu e-mail cadastrado no banco de dados para entrar.'
+              ? 'Entre com uma conta autenticada pelo Google ou com seu e-mail e senha.'
               : 'As empresas podem criar sua conta pelo Google ou com e-mail e senha.'}
           </p>
         </div>
@@ -282,57 +212,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             {mode === 'login' ? 'Entrar com Conta Google' : 'Criar Conta com Conta Google'}
           </button>
 
-          {showGoogleFallback && (
-            <div className="p-3.5 bg-neutral-950 border border-neutral-800 rounded-2xl space-y-3">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                <div className="text-[11px] text-neutral-300 leading-relaxed">
-                  <span className="font-bold text-white block text-xs">Aviso de Pré-visualização (Iframe / Cloud Run)</span>
-                  O popup direto do Google foi bloqueado pelo navegador devido a restrições de domínio não cadastrado (<span className="font-mono text-[10px] text-amber-300">auth/unauthorized-domain</span>).
-                </div>
-              </div>
 
-              {/* Botão de 1-Clique com a Conta Master */}
-              <button
-                type="button"
-                onClick={handleQuickMasterLogin}
-                disabled={loading}
-                className="w-full py-2.5 px-3 rounded-xl bg-white hover:bg-neutral-200 text-black font-extrabold text-xs flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer disabled:opacity-50"
-              >
-                <Zap className="w-4 h-4 text-amber-600 fill-amber-500" />
-                <span>Entrar como rickmarketing81@gmail.com (Master)</span>
-              </button>
-
-              <div className="relative flex items-center justify-center py-0.5">
-                <div className="border-t border-neutral-800 w-full"></div>
-                <span className="bg-neutral-950 px-2 text-[10px] text-neutral-500 font-semibold absolute">
-                  OU OUTRO E-MAIL GOOGLE
-                </span>
-              </div>
-
-              <form onSubmit={handleGoogleFallbackSubmit} className="space-y-2">
-                <div className="flex gap-2">
-                  <input
-                    type="email"
-                    value={googleFallbackEmail}
-                    onChange={(e) => setGoogleFallbackEmail(e.target.value)}
-                    placeholder="seu-email@gmail.com"
-                    className="flex-1 bg-neutral-900 border border-neutral-700 focus:border-white rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none placeholder-neutral-500"
-                  />
-                  <button
-                    type="submit"
-                    disabled={loading || !googleFallbackEmail}
-                    className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs rounded-lg flex items-center gap-1 cursor-pointer disabled:opacity-40 transition-colors"
-                  >
-                    Continuar <ArrowRight className="w-3 h-3" />
-                  </button>
-                </div>
-                <p className="text-[10px] text-neutral-400 leading-tight">
-                  💡 <strong>Para Deploy Oficial (Vercel ou seu domínio):</strong> Adicione o seu domínio em <em>Firebase Console &gt; Authentication &gt; Settings &gt; Authorized domains</em> para a janela popup nativa do Google abrir diretamente sem este aviso.
-                </p>
-              </form>
-            </div>
-          )}
         </div>
 
         <div className="relative flex items-center justify-center">
@@ -395,17 +275,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <div>
             <div className="flex justify-between items-center mb-1">
               <label className="block text-xs font-semibold text-neutral-300">
-                Senha {mode === 'login' && <span className="text-[10px] text-neutral-500 font-normal">(deixe em branco se criou via Google)</span>}
+                Senha
               </label>
             </div>
             <div className="relative">
               <Lock className="w-4 h-4 text-neutral-500 absolute left-3 top-3" />
               <input
                 type="password"
-                required={mode === 'signup'}
+                required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder={mode === 'login' ? '•••••••• (opcional se criada pelo Google)' : 'Mínimo 6 caracteres'}
+                placeholder={mode === 'login' ? 'Sua senha' : 'Mínimo 6 caracteres'}
                 className="w-full bg-neutral-950 border border-neutral-800 focus:border-white rounded-xl pl-9 pr-3 py-2.5 text-xs text-white focus:outline-none transition-colors"
               />
             </div>

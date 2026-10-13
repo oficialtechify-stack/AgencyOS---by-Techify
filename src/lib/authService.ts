@@ -66,7 +66,7 @@ export async function handleUserAuthentication(user: User, plan: 'starter' | 'pr
   }
 
   // 3. Caso especial: Conta Master / Empresa Principal (rickmarketing81@gmail.com)
-  if (user.email === 'rickmarketing81@gmail.com') {
+  if (user.emailVerified && user.email?.toLowerCase() === 'rickmarketing81@gmail.com') {
     const masterProfile: UserProfile = {
       uid: user.uid,
       email: user.email,
@@ -122,105 +122,13 @@ export async function handleUserAuthentication(user: User, plan: 'starter' | 'pr
   return newCompanyProfile;
 }
 
-// Suporte para autenticação direta por e-mail (contingência e pré-visualização)
+// A direct email string must never authenticate a user.
+// This deprecated entry point explicitly refuses legacy impersonation calls.
 export async function authenticateWithGoogleEmailDirect(
   email: string,
   displayName?: string,
   photoURL?: string,
   plan: 'starter' | 'professional' | 'enterprise' = 'professional'
 ): Promise<UserProfile> {
-  const cleanEmail = email.trim().toLowerCase();
-  const simulatedUid = 'google_' + cleanEmail.replace(/[^a-zA-Z0-9]/g, '_');
-  
-  const userRef = doc(db, 'users', simulatedUid);
-  const userSnap = await getDoc(userRef);
-
-  if (userSnap.exists()) {
-    const existing = userSnap.data() as UserProfile;
-    setStoredSession({
-      uid: existing.uid || simulatedUid,
-      email: existing.email || cleanEmail,
-      name: existing.displayName || displayName || 'Usuário',
-    });
-    return existing;
-  }
-
-  // Verificar invited_employees
-  const invitedRef = doc(db, 'invited_employees', cleanEmail);
-  const invitedSnap = await getDoc(invitedRef);
-
-  if (invitedSnap.exists()) {
-    const inviteData = invitedSnap.data();
-    const employeeProfile: UserProfile = {
-      uid: simulatedUid,
-      email: cleanEmail,
-      displayName: displayName || inviteData.name || 'Colaborador',
-      photoURL: photoURL || '',
-      role: 'employee',
-      organizationId: inviteData.organizationId,
-      jobTitle: inviteData.jobTitle,
-      permissions: inviteData.permissions,
-      subscription: inviteData.organizationSubscription,
-    };
-    await setDoc(userRef, employeeProfile);
-    setStoredSession({
-      uid: employeeProfile.uid,
-      email: employeeProfile.email,
-      name: employeeProfile.displayName,
-    });
-    return employeeProfile;
-  }
-
-  // Master Account
-  if (cleanEmail === 'rickmarketing81@gmail.com') {
-    const masterProfile: UserProfile = {
-      uid: simulatedUid,
-      email: cleanEmail,
-      displayName: displayName || 'Marcos Henrique (CEO)',
-      photoURL: photoURL || '',
-      role: 'master',
-      organizationId: 'master_agency',
-      jobTitle: 'CEO / Admin Master',
-      permissions: getDefaultPermissionsForPlan('enterprise'),
-      subscription: {
-        plan: 'enterprise',
-        status: 'active',
-        trialEndsAt: new Date(Date.now() + 3650 * 24 * 60 * 60 * 1000).toISOString(),
-        isMasterAccount: true,
-      },
-    };
-    await setDoc(userRef, masterProfile);
-    setStoredSession({
-      uid: masterProfile.uid,
-      email: masterProfile.email,
-      name: masterProfile.displayName,
-    });
-    return masterProfile;
-  }
-
-  // Nova Empresa com 14 dias de Trial
-  const now = new Date();
-  const trialEnds = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
-  const newCompanyProfile: UserProfile = {
-    uid: simulatedUid,
-    email: cleanEmail,
-    displayName: displayName || 'Nova Agência',
-    photoURL: photoURL || '',
-    role: 'owner',
-    organizationId: `org_${simulatedUid}`,
-    jobTitle: 'Dono / CEO',
-    permissions: getDefaultPermissionsForPlan(plan),
-    subscription: {
-      plan,
-      status: 'trialing',
-      trialEndsAt: trialEnds.toISOString(),
-    },
-  };
-  await setDoc(userRef, newCompanyProfile);
-  setStoredSession({
-    uid: newCompanyProfile.uid,
-    email: newCompanyProfile.email,
-    name: newCompanyProfile.displayName,
-  });
-  return newCompanyProfile;
+  throw new Error('Acesso direto por e-mail foi desativado por segurança. Entre usando o Google ou e-mail e senha no Firebase Auth.');
 }

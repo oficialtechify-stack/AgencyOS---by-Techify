@@ -124,24 +124,6 @@ export default function App() {
       unsubs = [];
     };
 
-    // Global all users subscription for chat and team recognition
-    const unsubAllUsers = subscribeAllUsers((users) => {
-      setAllUsers(users);
-    });
-    unsubs.push(unsubAllUsers);
-
-    // Global Agency Chat Messages Subscription (Realtime, shared across entire team)
-    const unsubGlobalChatMessages = subscribeAgencyChatMessages((chatMessages) => {
-      setState((prev) => ({ ...prev, chatMessages }));
-    });
-    unsubs.push(unsubGlobalChatMessages);
-
-    // Global Agency Chat Channels Subscription
-    const unsubGlobalChatChannels = subscribeAgencyChatChannels((chatChannels) => {
-      setState((prev) => ({ ...prev, chatChannels }));
-    });
-    unsubs.push(unsubGlobalChatChannels);
-
     let activeDataUnsubs: (() => void)[] = [];
 
     const initDataSubscriptions = (dataOwnerUid: string) => {
@@ -259,27 +241,35 @@ export default function App() {
       activeDataUnsubs = [];
 
       const currentAuthUser = auth.currentUser;
-      const stored = getStoredSession();
 
-      let activeUid: string | null = null;
-      let activeUserObj: any = null;
-
-      if (currentAuthUser) {
-        activeUid = currentAuthUser.uid;
-        activeUserObj = currentAuthUser;
-      } else if (stored && stored.uid) {
-        activeUid = stored.uid;
-        activeUserObj = {
-          uid: stored.uid,
-          email: stored.email,
-          displayName: stored.name || stored.email?.split('@')[0] || 'Usuário',
-          emailVerified: true,
-        };
-      }
+      const activeUid = currentAuthUser?.uid || null;
+      const activeUserObj: User | null = currentAuthUser || null;
 
       setUser(activeUserObj);
 
       if (activeUid) {
+        // Start cross-workspace realtime listeners only after Firebase Auth
+        // has established a real user. They must be narrowed by tenant rules
+        // before a secure multi-tenant production rollout.
+      // Global all users subscription for chat and team recognition
+      const unsubAllUsers = subscribeAllUsers((users) => {
+        setAllUsers(users);
+      });
+      unsubs.push(unsubAllUsers);
+  
+      // Global Agency Chat Messages Subscription (Realtime, shared across entire team)
+      const unsubGlobalChatMessages = subscribeAgencyChatMessages((chatMessages) => {
+        setState((prev) => ({ ...prev, chatMessages }));
+      });
+      unsubs.push(unsubGlobalChatMessages);
+  
+      // Global Agency Chat Channels Subscription
+      const unsubGlobalChatChannels = subscribeAgencyChatChannels((chatChannels) => {
+        setState((prev) => ({ ...prev, chatChannels }));
+      });
+      unsubs.push(unsubGlobalChatChannels);
+  
+  
         let lastSubscribedDataUid = '';
 
         // Realtime subscription to User Profile with loop guard
@@ -375,8 +365,7 @@ export default function App() {
     };
 
     window.addEventListener('agencyos_session_changed', handleCustomSessionChange);
-    // Initial evaluation
-    resolveActiveUser();
+    // The Firebase Auth listener resolves the initial session when ready.
 
     return () => {
       unsubscribeAuth();
@@ -1586,38 +1575,15 @@ export default function App() {
         onNavigate={setView}
       />
 
-      {/* Firestore Permissions Notification Banner */}
+      {/* Firestore permission errors must never advise opening the database publicly. */}
       {firestorePermissionNotice && (
-        <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 text-xs flex flex-wrap items-center justify-between gap-3 text-amber-200 z-30 shrink-0">
-          <div className="flex items-center gap-2">
-            <span className="inline-block w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-            <span>
-              <strong>Banco Conectado (agencyos-1c3fc):</strong> Operando com dados locais seguros. Para ativar a sincronização em tempo real no Firestore, libere as regras no Console do Firebase.
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                const rulesText = `rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    match /{document=**} {\n      allow read, write: if true;\n    }\n  }\n}`;
-                navigator.clipboard.writeText(rulesText);
-                setCopiedRules(true);
-                setTimeout(() => setCopiedRules(false), 3000);
-              }}
-              className="px-2.5 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-medium transition cursor-pointer border border-amber-500/30"
-            >
-              {copiedRules ? '✓ Regras Copiadas!' : 'Copiar Regras Firestore'}
-            </button>
-            <button
-              onClick={() => setFirestorePermissionNotice(false)}
-              className="text-amber-400/70 hover:text-amber-300 text-sm px-1.5 py-0.5 cursor-pointer"
-              title="Dispensar aviso"
-            >
-              ✕
-            </button>
-          </div>
+        <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-3 text-xs text-amber-200 z-30 shrink-0 flex items-center justify-between gap-3">
+          <span>O Firestore negou acesso. Confira o login e as permissões da conta no Firebase.
+            Não publique regras abertas.</span>
+          <button onClick={() => setFirestorePermissionNotice(false)}
+            className="text-amber-300 hover:text-white px-2 py-1" title="Fechar aviso">✕</button>
         </div>
       )}
-
       <div className="flex flex-1 relative overflow-hidden min-h-0">
         {/* Sidebar */}
         <Sidebar
@@ -1738,11 +1704,7 @@ export default function App() {
               )}
 
               {state.activeView === 'social-hub' && (
-                <SocialHubView
-                  posts={state.socialPosts}
-                  onAddPost={handleAddSocialPost}
-                  onDeletePost={handleDeleteSocialPost}
-                />
+                <SocialHubView />
               )}
 
               {state.activeView === 'estoque' && (

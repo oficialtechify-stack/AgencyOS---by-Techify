@@ -191,18 +191,18 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
   if (!isOpen) return null;
 
   // Active User Info
-  const userEmail = userProfile?.email || 'rickmarketing81@gmail.com';
-  const userName = userProfile?.name || 'Marcos Henrique';
-  const userRole = userProfile?.role || 'Diretor Executivo / Master';
-  const leadershipRole = userProfile?.leadershipRole || 'lider_geral';
+  const userEmail = userProfile?.email || '';
+  const userName = userProfile?.name || 'Usuário';
+  const userRole = userProfile?.role || 'Colaborador';
+  const leadershipRole = userProfile?.leadershipRole || 'membro';
 
   const roleBadge = getRoleBadgeStyle(userRole, leadershipRole);
 
   const isMaster = isUserMasterAdmin(userProfile, userEmail);
 
   // Active User's Linked Work Schedule
-  const effectiveSchedules =
-    employeeWorkSchedules.length > 0 ? employeeWorkSchedules : DEFAULT_WORK_SCHEDULES;
+  const effectiveSchedules = employeeWorkSchedules;
+  const linkedSchedule = employeeWorkSchedules.find((schedule) => schedule.userEmail.toLowerCase().trim() === userEmail.toLowerCase().trim());
   const userSchedule = getEmployeeSchedule(effectiveSchedules, userEmail, userRole, userName);
 
   // Filter records for logged-in user
@@ -211,7 +211,7 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
   );
 
   // Today's records
-  const todayStr = currentTime.toISOString().split('T')[0];
+  const todayStr = `${currentTime.getFullYear()}-${String(currentTime.getMonth() + 1).padStart(2, '0')}-${String(currentTime.getDate()).padStart(2, '0')}`;
   const todayRecords = myRecords.filter((r) => r.date === todayStr);
 
   // 1. Strict Sequential Step Calculation
@@ -309,6 +309,10 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
   // Submit Clock In / Out
   const handleConfirmPunch = async () => {
     if (!canPunchNow) return;
+    if (!userProfile?.uid || !userProfile.email) {
+      setErrorMessage('Faça login com uma conta válida para registrar o ponto.');
+      return;
+    }
 
     setLoading(true);
     setErrorMessage(null);
@@ -316,7 +320,7 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
 
     const targetType = activePunchType;
     const now = new Date();
-    const dateStr = now.toISOString().split('T')[0];
+    const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const timeFormatted = now.toLocaleTimeString('pt-BR', {
       hour: '2-digit',
       minute: '2-digit',
@@ -324,7 +328,7 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
     });
 
     const securityHash = generateSecurityHash(
-      userProfile?.uid || 'user',
+      userProfile.uid,
       now.toISOString(),
       location ? { lat: location.latitude, lng: location.longitude } : undefined
     );
@@ -344,7 +348,7 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
       .join(' | ');
 
     const newRecord: Partial<TimeClockRecord> = {
-      userId: userProfile?.uid || 'user-default',
+      userId: userProfile.uid,
       userEmail,
       userName,
       userRole,
@@ -393,12 +397,12 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 overflow-y-auto animate-in fade-in duration-200">
-      <div className="bg-[#0b0c10] border border-neutral-800 rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl flex flex-col text-neutral-200 font-sans my-auto max-h-[92vh]">
+      <div role="dialog" aria-modal="true" aria-label="Registrar ponto eletrônico" className="bg-[#0A1326] border border-[#243D6B] rounded-[26px] w-full max-w-3xl overflow-hidden shadow-2xl shadow-blue-950/30 flex flex-col text-slate-200 font-sans my-auto max-h-[92dvh]">
         {/* Header with Identified User & Live Clock */}
-        <div className="p-4 sm:p-6 border-b border-neutral-800 flex items-center justify-between bg-neutral-950/80">
+        <div className="p-4 sm:p-6 border-b border-[#24395E] flex items-center justify-between bg-[#0D1C39]">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-white text-black flex items-center justify-center font-black shadow-md">
-              <Clock className="w-6 h-6 text-black" />
+            <div className="w-11 h-11 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black shadow-md shadow-blue-600/20">
+              <Clock className="w-6 h-6 text-white" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
@@ -407,14 +411,14 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
                 </h3>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
                   <ShieldCheck className="w-3 h-3 text-emerald-400" />
-                  Alô Seguro
+                  Registro de jornada
                 </span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                  Sequencial Obrigatório
+                  4 etapas principais
                 </span>
               </div>
               <p className="text-xs text-neutral-400 font-medium mt-0.5">
-                Validação de horário vinculado, geolocalização e assinatura auditável.
+                Confira os dados e as condições do registro antes de confirmar.
               </p>
             </div>
           </div>
@@ -422,14 +426,14 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+            className="w-8 h-8 rounded-full bg-[#14294C] hover:bg-neutral-700 text-neutral-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* User Identity Bar (Nome e Cargo em Destaque) */}
-        <div className="px-4 sm:px-6 py-3 bg-neutral-900/90 border-b border-neutral-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div className="px-4 sm:px-6 py-3 bg-[#0B1931] border-b border-[#24395E]/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white font-black text-xs">
               {userName.substring(0, 2).toUpperCase()}
@@ -448,9 +452,9 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
           </div>
 
           <div className="flex items-center gap-3 text-xs">
-            <div className="bg-black/50 px-3 py-1.5 rounded-xl border border-neutral-800 flex items-center gap-2">
+            <div className="bg-black/50 px-3 py-1.5 rounded-xl border border-[#24395E] flex items-center gap-2">
               <Clock className="w-3.5 h-3.5 text-neutral-400" />
-              <span className="text-neutral-400 font-medium">Trabalhado hoje:</span>
+              <span className="text-neutral-400 font-medium">Tempo estimado:</span>
               <span className="font-mono font-bold text-white">{calculateWorkedHoursToday()}</span>
             </div>
 
@@ -458,7 +462,7 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
               <button
                 type="button"
                 onClick={onOpenScheduleSettings}
-                className="px-2.5 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-bold flex items-center gap-1 cursor-pointer transition-all border border-neutral-700"
+                className="px-2.5 py-1.5 rounded-xl bg-[#14294C] hover:bg-neutral-700 text-neutral-300 text-xs font-bold flex items-center gap-1 cursor-pointer transition-all border border-neutral-700"
                 title="Ajustar horários da jornada vinculada"
               >
                 <Sliders className="w-3.5 h-3.5" />
@@ -469,42 +473,42 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
         </div>
 
         {/* Modal Tabs */}
-        <div className="flex border-b border-neutral-800 bg-neutral-950/40 px-4 sm:px-6">
+        <div className="flex border-b border-[#24395E] bg-[#0A142A] px-4 sm:px-6">
           <button
             type="button"
             onClick={() => setActiveTab('bater')}
             className={`py-3 px-4 text-xs font-black border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
               activeTab === 'bater'
-                ? 'border-white text-white'
+                ? 'border-blue-400 text-white'
                 : 'border-transparent text-neutral-400 hover:text-neutral-200'
             }`}
           >
             <Clock className="w-4 h-4" />
-            Bater Ponto do Dia
+            Registrar ponto
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('historico')}
             className={`py-3 px-4 text-xs font-black border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
               activeTab === 'historico'
-                ? 'border-white text-white'
+                ? 'border-blue-400 text-white'
                 : 'border-transparent text-neutral-400 hover:text-neutral-200'
             }`}
           >
             <History className="w-4 h-4" />
-            Meu Histórico ({todayRecords.length} hoje)
+            Histórico ({todayRecords.length})
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('escala')}
             className={`py-3 px-4 text-xs font-black border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
               activeTab === 'escala'
-                ? 'border-white text-white'
+                ? 'border-blue-400 text-white'
                 : 'border-transparent text-neutral-400 hover:text-neutral-200'
             }`}
           >
             <Calendar className="w-4 h-4" />
-            Minha Escala Vinculada
+            Horários
           </button>
         </div>
 
@@ -527,13 +531,13 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
           {activeTab === 'bater' && (
             <div className="space-y-5">
               {/* Sequential Stepper: Shows all 4 daily steps strictly */}
-              <div className="p-4 rounded-2xl bg-neutral-900/60 border border-neutral-800">
+              <div className="p-4 rounded-2xl bg-[#101F3A] border border-[#253B61]">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-[11px] font-black text-white uppercase tracking-wider">
-                    Sequência Obrigatória da Jornada (1 por vez)
+                    Etapas da jornada
                   </span>
                   <span className="text-[11px] text-neutral-400 font-mono">
-                    {todayRecords.length}/4 Concluídos
+                    {stepsList.filter((step) => Boolean(step.record)).length}/4 concluídos
                   </span>
                 </div>
 
@@ -550,12 +554,12 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
                         onClick={() => setSelectedPunchType(step.type)}
                         className={`p-3 rounded-2xl border transition-all flex flex-col justify-between cursor-pointer hover:border-neutral-500 ${
                           isSelected
-                            ? 'bg-neutral-800 border-white text-white shadow-lg ring-2 ring-white/30'
+                            ? 'bg-[#1B3052] border-white text-white shadow-lg ring-2 ring-white/30'
                             : isDone
                             ? 'bg-emerald-950/20 border-emerald-800/40 text-emerald-300'
                             : isCurrent
-                            ? 'bg-neutral-900 border-amber-400/60 text-white'
-                            : 'bg-neutral-950/50 border-neutral-800/60 text-neutral-400'
+                            ? 'bg-[#101F3A] border-amber-400/60 text-white'
+                            : 'bg-[#081226]/50 border-[#253B61]/60 text-neutral-400'
                         }`}
                         title="Clique para selecionar este tipo de registro"
                       >
@@ -595,7 +599,7 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
               </div>
 
               {/* Real-time Giant Clock & Current Target Action */}
-              <div className="p-6 rounded-3xl bg-gradient-to-b from-neutral-900 to-neutral-950 border border-neutral-800 text-center space-y-3 relative overflow-hidden">
+              <div className="p-6 rounded-3xl bg-gradient-to-b from-[#142953] to-[#091529] border border-[#253B61] text-center space-y-3 relative overflow-hidden">
                 <div className="text-4xl sm:text-5xl font-black font-mono tracking-tight text-white">
                   {currentTime.toLocaleTimeString('pt-BR')}
                 </div>
@@ -609,13 +613,13 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
                 </div>
 
                 {/* Next Step Banner */}
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-neutral-800/90 border border-neutral-700 text-xs font-bold text-neutral-200">
-                  <span>Próximo registro:</span>
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#1B3052]/90 border border-[#34547F] text-xs font-bold text-neutral-200">
+                  <span>Próximo:</span>
                   <span className="text-white font-extrabold">{seqRule.nextLabel}</span>
                 </div>
 
                 {/* Linked Schedule Info Box */}
-                <div className="mt-2 p-3 rounded-2xl bg-black/40 border border-neutral-800 max-w-md mx-auto text-left text-xs space-y-1">
+                <div className="mt-2 p-3 rounded-2xl bg-black/40 border border-[#253B61] max-w-md mx-auto text-left text-xs space-y-1">
                   <div className="flex items-center justify-between text-neutral-300">
                     <span className="font-bold">Horário Vinculado a {userName}:</span>
                     <span className="font-mono font-bold text-white">
@@ -674,7 +678,7 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
                     value={overrideJustification}
                     onChange={(e) => setOverrideJustification(e.target.value)}
                     placeholder="Ex: Autorizado pelo Gestor Marcos devido a reunião externa com cliente..."
-                    className="w-full bg-neutral-900 border border-amber-700/60 rounded-xl p-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-amber-400"
+                    className="w-full bg-[#101F3A] border border-amber-700/60 rounded-xl p-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-amber-400"
                   />
                   <div className="flex items-center justify-between text-[11px] text-neutral-400">
                     <span>Mínimo 6 caracteres para validar auditoria.</span>
@@ -692,13 +696,13 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
               {/* Security Controls (GPS & Photo) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* Geolocation Audit Box */}
-                <div className="p-3.5 rounded-2xl bg-neutral-900/60 border border-neutral-800 flex items-center justify-between gap-3">
+                <div className="p-3.5 rounded-2xl bg-[#101F3A] border border-[#253B61] flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-neutral-800 flex items-center justify-center text-white shrink-0">
+                    <div className="w-9 h-9 rounded-xl bg-[#1B3052] flex items-center justify-center text-white shrink-0">
                       <MapPin className="w-4 h-4 text-white" />
                     </div>
                     <div className="text-left">
-                      <span className="text-xs font-bold text-white block">GPS Auditado</span>
+                      <span className="text-xs font-bold text-white block">Localização do registro</span>
                       <span className="text-[11px] text-neutral-400 block truncate max-w-[180px]">
                         {location?.city || 'Localizando...'}
                       </span>
@@ -706,7 +710,7 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
                   </div>
                   {geoStatus === 'success' ? (
                     <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                      GPS Ativo
+                      GPS disponível
                     </span>
                   ) : (
                     <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
@@ -716,13 +720,13 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
                 </div>
 
                 {/* Photo / Facial Box */}
-                <div className="p-3.5 rounded-2xl bg-neutral-900/60 border border-neutral-800 flex items-center justify-between gap-3">
+                <div className="p-3.5 rounded-2xl bg-[#101F3A] border border-[#253B61] flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-neutral-800 flex items-center justify-center text-white shrink-0">
+                    <div className="w-9 h-9 rounded-xl bg-[#1B3052] flex items-center justify-center text-white shrink-0">
                       <Camera className="w-4 h-4 text-white" />
                     </div>
                     <div className="text-left">
-                      <span className="text-xs font-bold text-white block">Selfie Facial</span>
+                      <span className="text-xs font-bold text-white block">Foto complementar</span>
                       <span className="text-[11px] text-neutral-400 block">
                         {capturedPhoto ? 'Foto capturada' : 'Opcional p/ auditoria'}
                       </span>
@@ -747,7 +751,7 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
                     <button
                       type="button"
                       onClick={handleStartCamera}
-                      className="px-2.5 py-1 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-bold transition-all cursor-pointer"
+                      className="px-2.5 py-1 rounded-xl bg-[#1B3052] hover:bg-neutral-700 text-neutral-300 text-xs font-bold transition-all cursor-pointer"
                     >
                       Abrir Câmera
                     </button>
@@ -757,7 +761,7 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
 
               {/* Camera Modal Stream View if Active */}
               {showCamera && (
-                <div className="p-4 rounded-2xl bg-black border border-neutral-800 flex flex-col items-center gap-3 animate-in fade-in">
+                <div className="p-4 rounded-2xl bg-black border border-[#253B61] flex flex-col items-center gap-3 animate-in fade-in">
                   <video
                     ref={videoRef}
                     autoPlay
@@ -776,7 +780,7 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setShowCamera(false)}
-                      className="px-3 py-2 rounded-xl bg-neutral-800 text-neutral-300 font-bold text-xs cursor-pointer"
+                      className="px-3 py-2 rounded-xl bg-[#1B3052] text-neutral-300 font-bold text-xs cursor-pointer"
                     >
                       Fechar
                     </button>
@@ -791,7 +795,7 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Observação opcional sobre o expediente (ex: Home office, Visita técnica)..."
-                  className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-white"
+                  className="w-full bg-[#101F3A] border border-[#253B61] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-white"
                 />
               </div>
 
@@ -803,7 +807,7 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
                 className={`w-full py-4 rounded-2xl font-black text-sm tracking-wide transition-all shadow-xl flex items-center justify-center gap-2 cursor-pointer ${
                   canPunchNow && !loading
                     ? 'bg-white hover:bg-neutral-200 text-black hover:scale-[1.01] active:scale-[0.99]'
-                    : 'bg-neutral-800 text-neutral-500 cursor-not-allowed opacity-50'
+                    : 'bg-[#1B3052] text-neutral-500 cursor-not-allowed opacity-50'
                 }`}
               >
                 {loading ? (
@@ -833,7 +837,7 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
               </div>
 
               {todayRecords.length === 0 ? (
-                <div className="p-8 text-center bg-neutral-900/40 rounded-2xl border border-neutral-800">
+                <div className="p-8 text-center bg-[#101F3A]/40 rounded-2xl border border-[#253B61]">
                   <Clock className="w-8 h-8 text-neutral-600 mx-auto mb-2" />
                   <p className="text-xs text-neutral-400 font-medium">
                     Nenhum ponto registrado hoje para {userName}.
@@ -844,7 +848,7 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
                   {todayRecords.map((rec) => (
                     <div
                       key={rec.id}
-                      className="p-3.5 rounded-2xl bg-neutral-900/60 border border-neutral-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                      className="p-3.5 rounded-2xl bg-[#101F3A] border border-[#253B61] flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center font-bold text-xs">
@@ -909,7 +913,7 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
 
           {activeTab === 'escala' && (
             <div className="space-y-4">
-              <div className="p-5 rounded-2xl bg-neutral-900/60 border border-neutral-800 space-y-4">
+              <div className="p-5 rounded-2xl bg-[#101F3A] border border-[#253B61] space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="text-sm font-black text-white">{userName}</h4>
@@ -925,25 +929,25 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-                  <div className="p-3 rounded-xl bg-black/40 border border-neutral-800 text-center">
+                  <div className="p-3 rounded-xl bg-black/40 border border-[#253B61] text-center">
                     <span className="text-[10px] text-neutral-400 block mb-1">Entrada</span>
                     <span className="text-base font-mono font-black text-white">
                       {userSchedule.entryTime}
                     </span>
                   </div>
-                  <div className="p-3 rounded-xl bg-black/40 border border-neutral-800 text-center">
+                  <div className="p-3 rounded-xl bg-black/40 border border-[#253B61] text-center">
                     <span className="text-[10px] text-neutral-400 block mb-1">Saída Almoço</span>
                     <span className="text-base font-mono font-black text-white">
                       {userSchedule.lunchStartTime}
                     </span>
                   </div>
-                  <div className="p-3 rounded-xl bg-black/40 border border-neutral-800 text-center">
+                  <div className="p-3 rounded-xl bg-black/40 border border-[#253B61] text-center">
                     <span className="text-[10px] text-neutral-400 block mb-1">Retorno Almoço</span>
                     <span className="text-base font-mono font-black text-white">
                       {userSchedule.lunchEndTime}
                     </span>
                   </div>
-                  <div className="p-3 rounded-xl bg-black/40 border border-neutral-800 text-center">
+                  <div className="p-3 rounded-xl bg-black/40 border border-[#253B61] text-center">
                     <span className="text-[10px] text-neutral-400 block mb-1">Saída</span>
                     <span className="text-base font-mono font-black text-white">
                       {userSchedule.exitTime}
@@ -951,7 +955,7 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
                   </div>
                 </div>
 
-                <div className="text-xs text-neutral-300 space-y-1.5 pt-2 border-t border-neutral-800">
+                <div className="text-xs text-neutral-300 space-y-1.5 pt-2 border-t border-[#253B61]">
                   <div className="flex items-center justify-between">
                     <span>Tolerância de Janela:</span>
                     <span className="font-bold text-white">

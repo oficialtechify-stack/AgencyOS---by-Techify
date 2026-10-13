@@ -1,10 +1,39 @@
+import { timingSafeEqual } from 'node:crypto';
+
+function safeSignatureMatches(provided: string | null | undefined, secret: string): boolean {
+  if (!provided || !secret) return false;
+  const actual = Buffer.from(provided, 'utf8');
+  const expected = Buffer.from(secret, 'utf8');
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
+}
+
 import express from 'express';
+import { registerSocialMetaRoutes } from '../src/server/socialMeta.js';
+import { registerAdminManageRoutes } from '../src/server/adminManage.js';
 import { GoogleGenAI } from '@google/genai';
-import { scrapeRealLeads } from '../src/server/leadScraperEngine';
-import { handleLeadsPayWebhookEvent } from '../src/server/leadspayHandler';
+import { scrapeRealLeads } from '../src/server/leadScraperEngine.js';
+import { handleLeadsPayWebhookEvent } from '../src/server/leadspayHandler.js';
 
 const app = express();
-app.use(express.json());
+
+// Vercel routes wildcard API requests to one serverless Express function.
+// The rewrite carries the original route as a query parameter; restore it
+// before Express matches endpoints, including /api/admin/members.
+// Without this, /api/admin/members can arrive as /api and return an HTML 404.
+app.use((req, res, next) => {
+  const location = new URL(req.url, 'https://agencyos.internal');
+  const route = location.searchParams.get('__agencyRoute');
+  if (!route) return next();
+  if (!/^[a-zA-Z0-9_/-]{1,300}$/.test(route) || route.includes('//') || route.includes('..')) {
+    return res.status(400).json({ error: 'Rota inválida.' });
+  }
+  location.searchParams.delete('__agencyRoute');
+  req.url = '/api/' + route.replace(/^\/+/, '') + location.search;
+  return next();
+});
+app.use(express.json({ limit: '1mb', verify: (request, _response, body) => { (request as any).rawBody = Buffer.from(body); } }));
+registerSocialMetaRoutes(app);
+registerAdminManageRoutes(app);
 
 // Enable CORS for Vercel deployments and preview iframes
 app.use((req, res, next) => {
@@ -79,17 +108,6 @@ async function callGroqConsultant(
     }
   }
   throw new Error('Todas as conexões Groq falharam.');
-}
-
-function generateOfflineStrategicReply(userPrompt: string): string {
-  const lower = userPrompt.toLowerCase();
-  if (lower.includes('proposta') || lower.includes('contrato') || lower.includes('preço')) {
-    return `### 💼 Estrutura de Proposta Comercial High-Ticket para Agências\n\n1. **Diagnóstico & Dor Principal:** Apresente o gargalo atual do cliente (ex: custo por lead elevado ou falta de processos comerciais).\n2. **Escopo Claro:**\n   - Gestão de Tráfego Pago (Meta Ads & Google Ads)\n   - Implementação de CRM e scripts para o time de vendas\n   - Dashboard de métricas em tempo real (AgencyOS)\n3. **Garantia de Execução:** Ofereça SLA de atendimento e relatórios semanais de performance.\n4. **Honorários Recomendados:** Contrato mínimo trimestral com taxa de setup + fee mensal de R$ 2.500 a R$ 5.000 + bônus por meta de vendas superada.`;
-  }
-  if (lower.includes('tráfego') || lower.includes('roas') || lower.includes('campanha') || lower.includes('ads')) {
-    return `### 📈 Otimização de Performance & ROAS\n\n- **Estrutura de Campanhas:** Separe campanhas de Reconhecimento (Topo), Consideração (Meio) e Conversão/Remarketing (Fundo).\n- **Criativos Dinâmicos:** Teste ao menos 3 a 5 variações de criativos semanais (vídeo depoimento, prints de resultados e oferta direta).\n- **Alocação de Verba:** 70% em conversão direta com público qualificado e 30% em remarketing para quem visitou o site ou perfil nos últimos 14 dias.\n- **Meta de ROAS:** Para e-commerce foque em >4.0x; para negócios locais e captação de leads foque em CPL controlado e taxa de agendamento >30%.`;
-  }
-  return `### 🚀 Análise Estratégica do AgencyOS AI Copilot\n\nCom base nas melhores práticas de gestão de agências:\n- **Foco em MRR:** Priorize planos recorrentes de longo prazo (retenção mínima de 6 meses) para blindar seu fluxo de caixa.\n- **Alavancagem Comercial:** Utilize nosso módulo de Prospecção Ativa no Google Maps para nutrir o pipeline comercial diariamente com empresas da sua região.\n- **Eficiência Operacional:** Mantenha os projetos e tarefas no Kanban com prazos bem definidos para que o time execute sem gargalos.\n\n*💡 Dica: Para conectar diretamente sua chave personalizada da IA na Vercel, defina a variável de ambiente ` + '`GEMINI_API_KEY`' + ` no painel do seu projeto.*`;
 }
 
 app.get('/api/health', (req, res) => {
@@ -168,23 +186,17 @@ Responda sempre em Português do Brasil com formatação rica em markdown, objet
       }
     }
 
-    // 3. Fallback inteligente rico para garantir 100% de disponibilidade
     if (!responseText) {
-      responseText = generateOfflineStrategicReply(userText);
+      return res.status(503).json({
+        success: false,
+        error: 'A IA está indisponível. Verifique Gemini/Groq e tente novamente.',
+      });
     }
 
-    return res.json({
-      reply: responseText,
-      text: responseText,
-      success: true,
-    });
+    return res.json({ reply: responseText, text: responseText, success: true });
   } catch (error: any) {
-    const fallback = generateOfflineStrategicReply(req.body?.prompt || req.body?.message || '');
-    return res.json({
-      reply: fallback,
-      text: fallback,
-      success: true,
-    });
+    console.error('Falha no consultor IA:', error?.message || error);
+    return res.status(500).json({ success: false, error: 'Falha ao consultar a IA.' });
   }
 });
 
@@ -205,12 +217,10 @@ app.post('/api/ai/social-caption', async (req, res) => {
         // fallback
       }
     }
-    if (!result) {
-      result = `🚀 Constância e estratégia geram autoridade e trazem novos clientes todos os dias!\n\n💡 Salve este post para aplicar na sua agência e compartilhe com seu time!`;
-    }
+    if (!result) return res.status(503).json({ error: 'O gerador de legendas está indisponível.' });
     res.json({ result });
   } catch {
-    res.json({ result: 'Constância e valor geram autoridade e trazem novos clientes recorrentes todos os dias!' });
+    res.status(500).json({ error: 'Falha ao gerar legenda com IA.' });
   }
 });
 
@@ -231,8 +241,11 @@ app.post(['/api/webhooks/leadspay', '/api/webhooks/leadspay/route'], async (req,
     const signature = req.headers['x-leadspay-signature'] as string;
     const secret = process.env.LEADSPAY_WEBHOOK_SECRET;
 
-    // Validação de Segurança
-    if (secret && signature !== secret) {
+    // Fail closed. Never accept billing events while no signing secret is set.
+    if (!secret) {
+      return res.status(503).json({ error: 'Webhook não configurado no servidor' });
+    }
+    if (!safeSignatureMatches(signature, secret)) {
       return res.status(401).json({ error: 'Assinatura inválida' });
     }
 
