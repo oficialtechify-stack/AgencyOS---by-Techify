@@ -319,9 +319,8 @@ export async function getOrCreateUserProfile(user: User, customAgencyName?: stri
 
   // 3. Check if this is the Master Admin or pre-registered team member
   if (
-    cleanEmail === 'rickmarketing81@gmail.com' ||
-    cleanEmail === 'agencyosoficial@gmail.com' ||
-    cleanEmail.includes('rickmarketing81')
+    user.emailVerified &&
+    ['rickmarketing81@gmail.com', 'agencyosoficial@gmail.com', 'oficialtechify@gmail.com'].includes(cleanEmail)
   ) {
     const nowIso = new Date().toISOString();
     const masterProfile: FirestoreUserProfile = {
