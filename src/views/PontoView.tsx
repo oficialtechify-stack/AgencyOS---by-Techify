@@ -681,15 +681,15 @@ export const PontoView: React.FC<PontoViewProps> = ({
       )}
 
       {/* Tab: Controle Geral da Equipe & Todos os Pontos */}
-      {activeTab === 'equipe' && (
+      {activeTab === 'equipe' && isMaster && (
         <div className="space-y-6">
           {/* Team Members Today Presence Cards */}
           <div>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                <span>Presença da Equipe Hoje ({todayStr})</span>
+                <span>Presença da equipe hoje</span>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                  {Object.keys(teamTodayGrouped).length} com registro ativo
+                  {Object.keys(teamTodayGrouped).length} pessoas com batidas hoje
                 </span>
               </h3>
               <div className="flex items-center gap-2">
@@ -714,6 +714,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+              {effectiveSchedules.length === 0 && <p className="col-span-full text-sm text-slate-400 p-8 border border-dashed border-[#253B60] rounded-2xl">Nenhuma escala cadastrada. Configure a equipe para acompanhar os registros de jornada.</p>}
               {effectiveSchedules.map((sched) => {
                 const userRecords = timeClockRecords.filter(
                   (r) =>
@@ -902,7 +903,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
               </span>
               <span className="text-xs text-amber-400 font-mono flex items-center gap-1 font-bold">
                 <ShieldCheck className="w-3.5 h-3.5" />
-                Painel Master Exclusivo (Editar & Apagar Liberados)
+                Registros da equipe · acesso administrativo
               </span>
             </div>
 
@@ -1045,7 +1046,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
       )}
 
       {/* Tab: Gestão de Escalas Vinculadas */}
-      {activeTab === 'escalas' && (
+      {activeTab === 'escalas' && isMaster && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -1067,6 +1068,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {effectiveSchedules.length === 0 && <div className="col-span-full rounded-2xl border border-dashed border-[#253B60] bg-[#0C1830] p-10 text-center text-sm text-slate-400">Nenhuma escala vinculada. Use Gerenciar Escalas para cadastrar os horários reais da equipe.</div>}
             {effectiveSchedules.map((s) => {
               const badge = getRoleBadgeStyle(s.userRole, s.leadershipRole);
               return (
@@ -1120,6 +1122,79 @@ export const PontoView: React.FC<PontoViewProps> = ({
             })}
           </div>
         </div>
+      )}
+
+      {/* Personal audit: every item opens the existing inspection modal */}
+      {activeTab === 'auditoria' && (
+        <section className="rounded-[24px] border border-[#1C2E52] bg-[#0E172B] overflow-hidden">
+          <div className="p-5 sm:p-6 border-b border-[#1F3256] flex flex-col sm:flex-row gap-4 justify-between sm:items-center">
+            <div>
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-blue-400" />
+                <h3 className="text-lg font-extrabold text-white">Auditoria dos meus registros</h3>
+              </div>
+              <p className="mt-2 text-xs text-slate-400">Consulte data, horário, localização informada, dispositivo e alterações dos registros.</p>
+            </div>
+            <button type="button" onClick={handleExportCSV}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#17315C] hover:bg-[#1D3D73] border border-[#2A4A78] px-4 py-2.5 text-xs font-bold text-blue-200">
+              <Download className="w-4 h-4" />Exportar registros
+            </button>
+          </div>
+          <div className="p-4 sm:p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+              <div className="rounded-xl border border-[#23385C] bg-[#0A1428] p-4">
+                <p className="text-[11px] text-slate-400">Registros no período</p>
+                <p className="mt-1 text-2xl font-extrabold text-white">{monthlyRecords.length}</p>
+              </div>
+              <div className="rounded-xl border border-[#23385C] bg-[#0A1428] p-4">
+                <p className="text-[11px] text-slate-400">Com localização registrada</p>
+                <p className="mt-1 text-2xl font-extrabold text-white">{monthlyRecords.filter((r) => Boolean(r.location)).length}</p>
+              </div>
+              <div className="rounded-xl border border-[#23385C] bg-[#0A1428] p-4">
+                <p className="text-[11px] text-slate-400">Corrigidos manualmente</p>
+                <p className="mt-1 text-2xl font-extrabold text-white">{monthlyRecords.filter((r) => Boolean(r.isManuallyEdited)).length}</p>
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+              <div className="text-sm font-bold text-slate-200">Detalhes do espelho</div>
+              <input type="month" aria-label="Mês da auditoria" value={selectedMonth}
+                onChange={(event) => setSelectedMonth(event.target.value)}
+                className="rounded-xl border border-[#2A3D60] bg-[#0A1427] px-3 py-2.5 text-xs text-white focus:border-blue-500 focus:outline-none" />
+            </div>
+            {monthlyRecords.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-[#263B60] p-12 text-center">
+                <ShieldCheck className="w-9 h-9 text-blue-400 mx-auto" />
+                <h4 className="mt-3 text-sm font-bold text-white">Nenhuma evidência disponível neste mês</h4>
+                <p className="text-xs text-slate-400 mt-2">Os detalhes aparecem automaticamente após o registro de ponto.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {[...monthlyRecords].sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || '')).map((record) => (
+                  <div key={record.id} className="rounded-xl border border-[#243858] bg-[#0A152B] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-[#355787] transition-colors">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="rounded-xl bg-blue-500/10 text-blue-400 p-2.5 shrink-0"><Clock className="w-4 h-4" /></div>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-bold text-white">{record.typeLabel || record.type}</p>
+                          {record.isManuallyEdited && <span className="rounded bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-300">Editado</span>}
+                        </div>
+                        <p className="mt-1 text-xs text-slate-400">{new Date(record.date + 'T12:00:00').toLocaleDateString('pt-BR')} às {record.time} • {punchStatusLabel(record.status)}</p>
+                        <p className="mt-1 text-[11px] text-slate-500 flex gap-1.5 items-center">
+                          <MapPin className="h-3 w-3 shrink-0" />
+                          {record.location ? (record.location.city || 'Coordenadas disponíveis') : 'Localização não registrada'}
+                        </p>
+                      </div>
+                    </div>
+                    <button type="button" onClick={() => setRecordToInspect(record)}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#2B4777] bg-[#142A50] px-4 py-2.5 text-xs font-bold text-blue-200 hover:bg-[#1A3564] shrink-0">
+                      <Eye className="w-4 h-4" />Inspecionar
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
       )}
 
       {/* Employee Schedule Modal */}
