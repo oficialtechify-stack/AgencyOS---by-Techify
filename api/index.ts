@@ -81,17 +81,6 @@ async function callGroqConsultant(
   throw new Error('Todas as conexões Groq falharam.');
 }
 
-function generateOfflineStrategicReply(userPrompt: string): string {
-  const lower = userPrompt.toLowerCase();
-  if (lower.includes('proposta') || lower.includes('contrato') || lower.includes('preço')) {
-    return `### 💼 Estrutura de Proposta Comercial High-Ticket para Agências\n\n1. **Diagnóstico & Dor Principal:** Apresente o gargalo atual do cliente (ex: custo por lead elevado ou falta de processos comerciais).\n2. **Escopo Claro:**\n   - Gestão de Tráfego Pago (Meta Ads & Google Ads)\n   - Implementação de CRM e scripts para o time de vendas\n   - Dashboard de métricas em tempo real (AgencyOS)\n3. **Garantia de Execução:** Ofereça SLA de atendimento e relatórios semanais de performance.\n4. **Honorários Recomendados:** Contrato mínimo trimestral com taxa de setup + fee mensal de R$ 2.500 a R$ 5.000 + bônus por meta de vendas superada.`;
-  }
-  if (lower.includes('tráfego') || lower.includes('roas') || lower.includes('campanha') || lower.includes('ads')) {
-    return `### 📈 Otimização de Performance & ROAS\n\n- **Estrutura de Campanhas:** Separe campanhas de Reconhecimento (Topo), Consideração (Meio) e Conversão/Remarketing (Fundo).\n- **Criativos Dinâmicos:** Teste ao menos 3 a 5 variações de criativos semanais (vídeo depoimento, prints de resultados e oferta direta).\n- **Alocação de Verba:** 70% em conversão direta com público qualificado e 30% em remarketing para quem visitou o site ou perfil nos últimos 14 dias.\n- **Meta de ROAS:** Para e-commerce foque em >4.0x; para negócios locais e captação de leads foque em CPL controlado e taxa de agendamento >30%.`;
-  }
-  return `### 🚀 Análise Estratégica do AgencyOS AI Copilot\n\nCom base nas melhores práticas de gestão de agências:\n- **Foco em MRR:** Priorize planos recorrentes de longo prazo (retenção mínima de 6 meses) para blindar seu fluxo de caixa.\n- **Alavancagem Comercial:** Utilize nosso módulo de Prospecção Ativa no Google Maps para nutrir o pipeline comercial diariamente com empresas da sua região.\n- **Eficiência Operacional:** Mantenha os projetos e tarefas no Kanban com prazos bem definidos para que o time execute sem gargalos.\n\n*💡 Dica: Para conectar diretamente sua chave personalizada da IA na Vercel, defina a variável de ambiente ` + '`GEMINI_API_KEY`' + ` no painel do seu projeto.*`;
-}
-
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
@@ -168,23 +157,17 @@ Responda sempre em Português do Brasil com formatação rica em markdown, objet
       }
     }
 
-    // 3. Fallback inteligente rico para garantir 100% de disponibilidade
     if (!responseText) {
-      responseText = generateOfflineStrategicReply(userText);
+      return res.status(503).json({
+        success: false,
+        error: 'A IA está indisponível. Verifique Gemini/Groq e tente novamente.',
+      });
     }
 
-    return res.json({
-      reply: responseText,
-      text: responseText,
-      success: true,
-    });
+    return res.json({ reply: responseText, text: responseText, success: true });
   } catch (error: any) {
-    const fallback = generateOfflineStrategicReply(req.body?.prompt || req.body?.message || '');
-    return res.json({
-      reply: fallback,
-      text: fallback,
-      success: true,
-    });
+    console.error('Falha no consultor IA:', error?.message || error);
+    return res.status(500).json({ success: false, error: 'Falha ao consultar a IA.' });
   }
 });
 
@@ -205,12 +188,10 @@ app.post('/api/ai/social-caption', async (req, res) => {
         // fallback
       }
     }
-    if (!result) {
-      result = `🚀 Constância e estratégia geram autoridade e trazem novos clientes todos os dias!\n\n💡 Salve este post para aplicar na sua agência e compartilhe com seu time!`;
-    }
+    if (!result) return res.status(503).json({ error: 'O gerador de legendas está indisponível.' });
     res.json({ result });
   } catch {
-    res.json({ result: 'Constância e valor geram autoridade e trazem novos clientes recorrentes todos os dias!' });
+    res.status(500).json({ error: 'Falha ao gerar legenda com IA.' });
   }
 });
 
