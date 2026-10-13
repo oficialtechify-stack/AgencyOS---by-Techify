@@ -97,15 +97,15 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
   // Quick form states
   const [newProjectTitle, setNewProjectTitle] = useState('');
   const [newProjectClient, setNewProjectClient] = useState('');
-  const [newProjectProgress, setNewProjectProgress] = useState(50);
+  const [newProjectProgress, setNewProjectProgress] = useState(0);
 
   const [newCampaignName, setNewCampaignName] = useState('');
   const [newCampaignPlatform, setNewCampaignPlatform] = useState('Meta Ads');
-  const [newCampaignSpend, setNewCampaignSpend] = useState('5000');
-  const [newCampaignRevenue, setNewCampaignRevenue] = useState('20000');
+  const [newCampaignSpend, setNewCampaignSpend] = useState('');
+  const [newCampaignRevenue, setNewCampaignRevenue] = useState('');
 
   const [newTransDesc, setNewTransDesc] = useState('');
-  const [newTransAmount, setNewTransAmount] = useState('1500');
+  const [newTransAmount, setNewTransAmount] = useState('');
   const [newTransType, setNewTransType] = useState<'income' | 'expense'>('income');
 
   // AI Chat state
@@ -116,232 +116,157 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
   // Active 3-dots project action menu
   const [activeProjectMenuId, setActiveProjectMenuId] = useState<string | null>(null);
 
-  // Notifications list
-  const [notifications] = useState([
-    { id: '1', title: 'Meta Ads: Prospecção B2B', text: 'ROAS atingiu 4,1x hoje.', time: 'há 15 min', read: false },
-    { id: '2', title: 'Clinica Vita', text: 'Etapa de homologação concluída (80%).', time: 'há 2 horas', read: false },
-    { id: '3', title: 'TechFlow', text: 'Fatura de R$ 12.000,00 emitida com sucesso.', time: 'há 1 dia', read: true },
-  ]);
+  // Notification backend is not implemented: never render invented notifications.
+  const notifications: { id: string; title: string; text: string; time: string }[] = [];
 
-  // Baseline reference projects from the screenshot
-  const defaultProjects = [
-    {
-      id: 'proj-vita',
-      title: 'Redesign Site',
-      client: 'Clinica Vita',
-      progress: 80,
-      color: 'bg-emerald-500',
-      initials: 'CV',
-    },
-    {
-      id: 'proj-techflow',
-      title: 'Campanha de Lançamento',
-      client: 'TechFlow',
-      progress: 60,
-      color: 'bg-blue-500',
-      initials: 'TF',
-    },
-    {
-      id: 'proj-bella',
-      title: 'Estratégia de Conteúdo',
-      client: 'Bella Cosméticos',
-      progress: 40,
-      color: 'bg-pink-500',
-      initials: 'BC',
-    },
-    {
-      id: 'proj-rota',
-      title: 'Automação de Marketing',
-      client: 'RotaHub',
-      progress: 70,
-      color: 'bg-amber-500',
-      initials: 'RH',
-    },
-  ];
+  // Only real Firestore-backed tasks are displayed. No template projects.
+  const displayProjects = useMemo(() => tasks
+    .filter((task) => task && task.id && task.title)
+    .slice(0, 5)
+    .map((task, index) => {
+      const colors = ['bg-emerald-500', 'bg-blue-500', 'bg-pink-500', 'bg-amber-500', 'bg-purple-500'];
+      const progress =
+        task.status === 'Concluído' ? 100 :
+        task.status === 'Revisão' ? 85 :
+        task.status === 'Em Andamento' ? 50 : 0;
+      return {
+        id: task.id, title: task.title,
+        client: task.client || 'Sem cliente informado',
+        progress, color: colors[index % colors.length],
+        initials: task.title.substring(0, 2).toUpperCase(),
+      };
+    }), [tasks]);
 
-  // Merge with real tasks from Firestore if available
-  const displayProjects = useMemo(() => {
-    if (tasks.length > 0) {
-      return tasks.slice(0, 5).map((t, idx) => {
-        let progress = 50;
-        if (t.status === 'done') progress = 100;
-        else if (t.status === 'in_progress') progress = 60;
-        else if (t.status === 'review') progress = 85;
-        else progress = 20;
+  const displayCampaigns = useMemo(() => campaigns
+    .filter((campaign) => campaign && campaign.id && campaign.name)
+    .slice(0, 5)
+    .map((campaign) => {
+      const spend = Number(campaign.spend) || 0;
+      const revenue = Number(campaign.revenue) || 0;
+      const platform = campaign.platform || 'Outro';
+      const iconColor = platform.includes('Google')
+        ? 'text-amber-400 bg-amber-500/10 border-amber-500/20'
+        : 'text-blue-400 bg-blue-500/10 border-blue-500/20';
+      return {
+        id: campaign.id, name: campaign.name, platform,
+        spend, revenue, roas: spend > 0 ? +(revenue / spend).toFixed(2) : null,
+        status: campaign.status, iconColor,
+      };
+    }), [campaigns]);
 
-        const colors = ['bg-emerald-500', 'bg-blue-500', 'bg-pink-500', 'bg-amber-500', 'bg-purple-500'];
+  const money = (value: number) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+
+  // Only persisted cash movements drive the finance dashboard.
+  const validTransactions = useMemo(() => transactions
+    .filter((transaction) =>
+      transaction && (transaction.type === 'Entrada' || transaction.type === 'Saída') &&
+      Number.isFinite(Number(transaction.amount)) && Number(transaction.amount) >= 0 &&
+      transaction.date && !Number.isNaN(new Date(transaction.date).getTime())
+    ), [transactions]);
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const currentMonthTransactions = validTransactions.filter((t) => {
+    const date = new Date(t.date);
+    return date.getFullYear() === year && date.getMonth() === month;
+  });
+  const revenueCurrentMonth = currentMonthTransactions
+    .filter((t) => t.type === 'Entrada').reduce((sum, t) => sum + Number(t.amount), 0);
+  const expensesCurrentMonth = currentMonthTransactions
+    .filter((t) => t.type === 'Saída').reduce((sum, t) => sum + Number(t.amount), 0);
+  const operatingProfit = revenueCurrentMonth - expensesCurrentMonth;
+
+  const monthlyFinancialData = useMemo(() => Array.from({ length: 12 }, (_, index) => {
+    const date = new Date(year, month - (11 - index), 1);
+    const matching = validTransactions.filter((t) => {
+      const transactionDate = new Date(t.date);
+      return transactionDate.getFullYear() === date.getFullYear() &&
+        transactionDate.getMonth() === date.getMonth();
+    });
+    return {
+      month: date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
+      receita: matching.filter((t) => t.type === 'Entrada').reduce((sum, t) => sum + Number(t.amount), 0),
+      despesas: matching.filter((t) => t.type === 'Saída').reduce((sum, t) => sum + Number(t.amount), 0),
+      count: matching.length,
+    };
+  }), [validTransactions, year, month]);
+
+  const currentChartData = useMemo(() => {
+    if (chartPeriod === '6meses') return monthlyFinancialData.slice(-6);
+    if (chartPeriod === '30dias') {
+      return Array.from({ length: 30 }, (_, index) => {
+        const day = new Date(year, month, now.getDate() - (29 - index));
+        const matching = validTransactions.filter((t) => {
+          const date = new Date(t.date);
+          return date.getFullYear() === day.getFullYear() &&
+            date.getMonth() === day.getMonth() && date.getDate() === day.getDate();
+        });
         return {
-          id: t.id,
-          title: t.title,
-          client: (t as any).client || (t as any).companyId || (t.assignee ? `Resp: ${t.assignee}` : 'Projeto Ativo'),
-          progress: progress,
-          color: colors[idx % colors.length],
-          initials: t.title.substring(0, 2).toUpperCase(),
+          month: day.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+          receita: matching.filter((t) => t.type === 'Entrada').reduce((sum, t) => sum + Number(t.amount), 0),
+          despesas: matching.filter((t) => t.type === 'Saída').reduce((sum, t) => sum + Number(t.amount), 0),
+          count: matching.length,
         };
       });
     }
-    return defaultProjects;
-  }, [tasks]);
+    return monthlyFinancialData;
+  }, [chartPeriod, monthlyFinancialData, validTransactions, year, month]);
 
-  // Baseline reference campaigns from the screenshot
-  const defaultCampaigns = [
-    {
-      id: 'camp-gf',
-      name: 'Black Friday 2024',
-      platform: 'Google Ads',
-      spend: 12000,
-      revenue: 76800,
-      roas: 6.4,
-      status: 'paused',
-      iconColor: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
-    },
-    {
-      id: 'camp-meta-b2b',
-      name: 'Prospecção B2B',
-      platform: 'Meta Ads',
-      spend: 8500,
-      revenue: 34850,
-      roas: 4.1,
-      status: 'active',
-      iconColor: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
-    },
-    {
-      id: 'camp-insta-rem',
-      name: 'Remarketing',
-      platform: 'Instagram Ads',
-      spend: 4200,
-      revenue: 15960,
-      roas: 3.8,
-      status: 'active',
-      iconColor: 'text-pink-400 bg-pink-500/10 border-pink-500/20',
-    },
-    {
-      id: 'camp-yt-prod',
-      name: 'Lançamento Produto',
-      platform: 'YouTube Ads',
-      spend: 6300,
-      revenue: 32760,
-      roas: 5.2,
-      status: 'active',
-      iconColor: 'text-red-400 bg-red-500/10 border-red-500/20',
-    },
-  ];
-
-  // Merge with real campaigns from Firestore
-  const displayCampaigns = useMemo(() => {
-    if (campaigns.length > 0) {
-      return campaigns.slice(0, 5).map((c) => {
-        const roas = c.spend > 0 ? Number((c.revenue / c.spend).toFixed(1)) : 0;
-        let iconColor = 'text-blue-400 bg-blue-500/10 border-blue-500/20';
-        if (c.platform?.toLowerCase().includes('google')) {
-          iconColor = 'text-amber-400 bg-amber-500/10 border-amber-500/20';
-        } else if (c.platform?.toLowerCase().includes('insta')) {
-          iconColor = 'text-pink-400 bg-pink-500/10 border-pink-500/20';
-        } else if (c.platform?.toLowerCase().includes('you')) {
-          iconColor = 'text-red-400 bg-red-500/10 border-red-500/20';
-        }
-        return {
-          id: c.id,
-          name: c.name,
-          platform: c.platform || 'Meta Ads',
-          spend: c.spend,
-          revenue: c.revenue,
-          roas: roas,
-          status: c.status || 'active',
-          iconColor,
-        };
-      });
-    }
-    return defaultCampaigns;
+  // MRR, active clients and churn are not reliably derivable from the lead
+  // pipeline. They must be recorded as actual KPI periods by the business.
+  const latestKpi = useMemo(() => [...kpiPeriods]
+    .filter((kpi) => kpi && /^\d{2}\/\d{4}$/.test(kpi.monthYear || ''))
+    .sort((a, b) => {
+      const [am, ay] = a.monthYear.split('/').map(Number);
+      const [bm, by] = b.monthYear.split('/').map(Number);
+      return (by * 12 + bm) - (ay * 12 + am);
+    })[0], [kpiPeriods]);
+  const currentMRR = latestKpi && Number.isFinite(Number(latestKpi.mrr))
+    ? money(Number(latestKpi.mrr)) : '—';
+  const activeClientsCount = latestKpi && Number.isFinite(Number(latestKpi.activeClients))
+    ? String(latestKpi.activeClients) : '—';
+  const churnRateStr = latestKpi && Number.isFinite(Number(latestKpi.churnRate))
+    ? new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(latestKpi.churnRate) + '%'
+    : '—';
+  const avgRoasStr = useMemo(() => {
+    const totalSpend = campaigns.reduce((sum, c) => sum + Math.max(0, Number(c.spend) || 0), 0);
+    const totalRevenue = campaigns.reduce((sum, c) => sum + Math.max(0, Number(c.revenue) || 0), 0);
+    return totalSpend > 0 ? (totalRevenue / totalSpend).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + 'x' : '—';
   }, [campaigns]);
 
-  // Baseline activities from screenshot
-  const [activities, setActivities] = useState([
-    {
-      id: 'act-1',
-      title: 'Novo cliente adicionado',
-      desc: 'TechFlow foi adicionado à sua carteira.',
-      time: 'há 2h',
-      icon: Users,
-      color: 'text-blue-400 bg-blue-500/20 border-blue-500/30',
-    },
-    {
-      id: 'act-2',
-      title: 'Projeto atualizado',
-      desc: 'Redesign Site - 80% concluído.',
-      time: 'há 4h',
-      icon: CheckCircle2,
-      color: 'text-emerald-400 bg-emerald-500/20 border-emerald-500/30',
-    },
-    {
-      id: 'act-3',
-      title: 'Campanha pausada',
-      desc: 'Black Friday 2024 foi pausada.',
-      time: 'há 6h',
-      icon: Pause,
-      color: 'text-amber-400 bg-amber-500/20 border-amber-500/30',
-    },
-    {
-      id: 'act-4',
-      title: 'Novo membro na equipe',
-      desc: 'Ana Silva foi adicionada ao time.',
-      time: 'há 1 dia',
-      icon: UserPlus,
-      color: 'text-blue-400 bg-blue-500/20 border-blue-500/30',
-    },
-  ]);
+  // Real activity comes from timestamped transactions. Do not fabricate events.
+  const activities = useMemo(() => [...validTransactions]
+    .sort((a, b) => +new Date(b.date) - +new Date(a.date))
+    .slice(0, 5)
+    .map((t) => ({
+      id: t.id,
+      title: t.type === 'Entrada' ? 'Receita registrada' : 'Despesa registrada',
+      desc: `${t.description || t.category || 'Movimentação'} — ${money(Number(t.amount))}`,
+      time: new Date(t.date).toLocaleDateString('pt-BR'),
+      icon: DollarSign,
+      color: t.type === 'Entrada'
+        ? 'text-emerald-400 bg-emerald-500/20 border-emerald-500/30'
+        : 'text-rose-400 bg-rose-500/20 border-rose-500/30',
+    })), [validTransactions]);
 
-  // Monthly dataset for the 12-month area chart matching the exact curves from screenshot
-  const monthlyFinancialData = useMemo(() => {
-    return [
-      { month: 'Jan', receita: 32000, despesas: 14000 },
-      { month: 'Fev', receita: 36500, despesas: 15200 },
-      { month: 'Mar', receita: 41000, despesas: 16000 },
-      { month: 'Abr', receita: 39000, despesas: 15800 },
-      { month: 'Mai', receita: 47500, despesas: 16500 },
-      { month: 'Jun', receita: 52000, despesas: 17200 },
-      { month: 'Jul', receita: 49000, despesas: 17000 },
-      { month: 'Ago', receita: 54000, despesas: 17500 },
-      { month: 'Set', receita: 58000, despesas: 18000 },
-      { month: 'Out', receita: 62480, despesas: 18230 },
-      { month: 'Nov', receita: 67000, despesas: 19100 },
-      { month: 'Dez', receita: 74000, despesas: 20500 },
-    ];
-  }, []);
-
-  // Filtered dataset
-  const currentChartData = useMemo(() => {
-    if (chartPeriod === '6meses') return monthlyFinancialData.slice(6);
-    if (chartPeriod === '30dias') return monthlyFinancialData.slice(10);
-    return monthlyFinancialData;
-  }, [chartPeriod, monthlyFinancialData]);
-
-  // Calculations for top 4 cards
-  const currentMRR = 'R$ 48.250';
-  const activeClientsCount = leads.length > 0 ? leads.filter((l) => l.status === 'won').length || 32 : 32;
-  const churnRateStr = '2,4%';
-  const avgRoasStr = useMemo(() => {
-    const totalS = displayCampaigns.reduce((acc, c) => acc + c.spend, 0);
-    const totalR = displayCampaigns.reduce((acc, c) => acc + c.revenue, 0);
-    if (totalS > 0) return `${(totalR / totalS).toFixed(1)}x`;
-    return '4,8x';
-  }, [displayCampaigns]);
 
   // SVG Chart Geometry
   const svgWidth = 640;
   const svgHeight = 220;
   const paddingX = 40;
   const paddingY = 25;
-  const maxVal = 80000;
+  const maxVal = Math.max(1, ...currentChartData.flatMap((d) => [d.receita, d.despesas]));
 
   const pointsRevenue = currentChartData.map((d, i) => {
-    const x = paddingX + (i / (currentChartData.length - 1)) * (svgWidth - paddingX * 2);
+    const x = paddingX + (i / Math.max(1, currentChartData.length - 1)) * (svgWidth - paddingX * 2);
     const y = svgHeight - paddingY - (d.receita / maxVal) * (svgHeight - paddingY * 2);
     return { x, y, data: d };
   });
 
   const pointsExpense = currentChartData.map((d, i) => {
-    const x = paddingX + (i / (currentChartData.length - 1)) * (svgWidth - paddingX * 2);
+    const x = paddingX + (i / Math.max(1, currentChartData.length - 1)) * (svgWidth - paddingX * 2);
     const y = svgHeight - paddingY - (d.despesas / maxVal) * (svgHeight - paddingY * 2);
     return { x, y, data: d };
   });
@@ -382,22 +307,13 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
       await onAddTask({
         title: newProjectTitle,
         description: `Cliente: ${newProjectClient || 'Geral'}`,
-        status: newProjectProgress >= 100 ? 'done' : 'in_progress',
-        priority: 'high',
+        status: newProjectProgress >= 100 ? 'Concluído' : 'Em Andamento',
+        priority: 'Alta',
+        client: newProjectClient || 'Geral',
       });
     }
 
-    setActivities((prev) => [
-      {
-        id: `act-${Date.now()}`,
-        title: 'Novo projeto criado',
-        desc: `${newProjectTitle} para ${newProjectClient || 'Geral'}.`,
-        time: 'Agora',
-        icon: CheckCircle2,
-        color: 'text-emerald-400 bg-emerald-500/20 border-emerald-500/30',
-      },
-      ...prev,
-    ]);
+    // The Firestore subscription updates the project list after persistence.
 
     setNewProjectTitle('');
     setNewProjectClient('');
@@ -417,21 +333,13 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
         platform: newCampaignPlatform,
         spend: spendNum,
         revenue: revNum,
-        status: 'active',
+        status: 'Ativa',
+        clicks: 0, conversions: 0,
+        roas: spendNum > 0 ? revNum / spendNum : 0,
       });
     }
 
-    setActivities((prev) => [
-      {
-        id: `act-${Date.now()}`,
-        title: 'Nova campanha iniciada',
-        desc: `${newCampaignName} (${newCampaignPlatform}).`,
-        time: 'Agora',
-        icon: Play,
-        color: 'text-blue-400 bg-blue-500/20 border-blue-500/30',
-      },
-      ...prev,
-    ]);
+    // The Firestore subscription updates the campaign list after persistence.
 
     setNewCampaignName('');
     setIsNewCampaignModalOpen(false);
@@ -446,25 +354,13 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
       await onAddTransaction({
         description: newTransDesc,
         amount: amountNum,
-        type: newTransType,
+        type: newTransType === 'income' ? 'Entrada' : 'Saída',
         date: new Date().toISOString(),
         category: newTransType === 'income' ? 'Venda / Contrato' : 'Operacional',
       });
     }
 
-    setActivities((prev) => [
-      {
-        id: `act-${Date.now()}`,
-        title: newTransType === 'income' ? 'Receita registrada' : 'Despesa registrada',
-        desc: `${newTransDesc} - R$ ${amountNum.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-        time: 'Agora',
-        icon: DollarSign,
-        color: newTransType === 'income'
-          ? 'text-emerald-400 bg-emerald-500/20 border-emerald-500/30'
-          : 'text-rose-400 bg-rose-500/20 border-rose-500/30',
-      },
-      ...prev,
-    ]);
+    // The transaction appears in recent activity after Firestore synchronization.
 
     setNewTransDesc('');
     setIsNewTransactionModalOpen(false);
@@ -481,14 +377,14 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
     try {
       const payload = {
         context: {
-          agencyName: userProfile?.agencyName || 'AgencyOS Demo',
+          agencyName: userProfile?.agencyName || 'Minha Agência',
           mrr: currentMRR,
           activeClients: activeClientsCount,
           churnRate: churnRateStr,
           avgRoas: avgRoasStr,
-          revenueCurrentMonth: 'R$ 62.480,00',
-          expensesCurrentMonth: 'R$ 18.230,00',
-          operatingProfit: 'R$ 44.250,00',
+          revenueCurrentMonth: money(revenueCurrentMonth),
+          expensesCurrentMonth: money(expensesCurrentMonth),
+          operatingProfit: money(operatingProfit),
           campaigns: displayCampaigns.map((c) => ({ name: c.name, roas: `${c.roas}x`, spend: c.spend })),
           projects: displayProjects.map((p) => ({ name: p.title, client: p.client, progress: `${p.progress}%` })),
         },
@@ -507,12 +403,12 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
       } else if (data.analysis) {
         setAiResponse(data.analysis);
       } else {
-        setAiResponse('Insights gerados com sucesso com base nas métricas reais da agência.');
+        setAiResponse('A API não retornou uma análise. Tente novamente em instantes.');
       }
     } catch (err) {
-      setAiResponse(
-        `Estratégia Recomendada para AgencyOS:\n- **Otimização de ROAS**: A campanha Black Friday obteve 6,4x de retorno. Recomenda-se escalar o orçamento em +25% gradualmente.\n- **Controle de Churn**: Com 2,4% de churn, a retenção está saudável. Para atingir < 2,0%, agende um check-in quinzenal com os clientes de menor engajamento.\n- **Margem Operacional**: O lucro operacional de R$ 44.250 representa margem de ~70%, permitindo contratação de 1 analista pleno de tráfego.`
-      );
+      setAiResponse('Não foi possível consultar a IA. Verifique a integração e tente novamente.');
+
+
     } finally {
       setIsAiLoading(false);
     }
