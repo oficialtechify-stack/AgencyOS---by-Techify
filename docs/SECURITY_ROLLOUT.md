@@ -50,3 +50,27 @@ A captura de tela prova que uma operação Firestore falhou offline, mas não id
 - Deploy em produção não foi executado.
 - Build, testes automatizados e login ponta a ponta ainda precisam de validação em ambiente de execução.
 
+
+## Etapa 2 — remoção de dados de demonstração (13/10/2026)
+
+- Dashboard Geral: KPIs vindos de `kpiPeriods`, transações de `transactions`, campanhas e tarefas das respectivas coleções Firebase; gráficos construídos a partir da data de cada transação.
+- Estados vazios substituem números, tendências e listas inventados. Churn/MRR/clientes ativos ficam indefinidos sem KPI informado; não confundir ausência de dados com zero.
+- Corrigidas nomenclaturas dos status para os tipos aceitos pelos módulos: transações `Entrada/Saída`, tarefas `Em Andamento/Concluído`, campanhas `Ativa`.
+- Notificações falsas e o indicador não verificado `Sistema online` foram retirados da interface.
+- Removidos exemplos de leads, empresas, contratos, funcionários, posts e links de pagamento do estado inicial e do arquivo `mockInitialData.ts`.
+- O armazenamento global do navegador só retém a preferência de navegação. Dados comerciais não são mais restaurados entre sessões.
+- LeadsPay Master: sem clientes/receitas/webhooks simulados. Cadastro manual fica pendente até validação, sem gerar credencial de API fictícia.
+- Erros da API de IA não retornam conteúdo fingindo análise bem-sucedida.
+- App não fornece mais regra permissiva `allow read, write: if true` para copiar quando o Firestore recusa acesso.
+
+### Bloqueadores antes da produção
+
+1. **Firestore Rules ativas:** ainda não verificadas nem aplicadas no projeto `agencyos-1c3fc`. Não publicar as regras antigas abertas. As regras novas da branch também precisam de ajustes e testes para os fluxos reais.
+2. **Tenant isolation:** migrar chat e módulos globais para caminhos por organização, auditar permissões de leitura/escrita de cada collection e endpoint.
+3. **Cadastro e permissões:** fluxo de convite administrativo deve ser implementado em backend confiável (Admin SDK), evitando que o navegador conceda papéis, planos ou claims.
+4. **Cobranças reais:** vincular Stripe/LeadsPay e webhooks verificados; validar receita apenas de pagamentos confirmados. Não gerar API keys ou pagamentos no frontend.
+5. **Migração de registros:** os arquivos do projeto foram saneados, mas registros fake que já tenham sido gravados no Firestore precisam ser identificados manualmente com backup antes de remover. Não foi feita exclusão em massa de dados reais.
+6. **Garantia de qualidade:** `vite build` na Vercel não equivale a teste de tipos, regras, autenticação, permissão, E2E, desempenho ou escalabilidade.
+7. **Firebase Auth:** adicionar o domínio oficial e conferir provedores Google e E-mail/Senha no projeto novo.
+
+**Produção ainda não liberada.** Correções continuam na branch e PR de rascunho.
