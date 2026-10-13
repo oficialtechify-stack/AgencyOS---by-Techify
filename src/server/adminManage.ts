@@ -5,6 +5,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { EMPLOYEE_MODULE_SET, DEFAULT_EMPLOYEE_MODULES } from '../shared/agencyModules.js';
 import { canRemoveLegacyEmployee } from './legacyAccountDeletion.js';
+import { createHostedPasswordLink } from './invitationLink.js';
 
 type AdminCtx = {
   uid: string; platformAdmin: boolean; ownerUid: string; email: string;
@@ -47,6 +48,17 @@ function errorOut(res: Response, error: unknown) {
     ? String((error as { code: unknown }).code) : '';
   if (code === 'auth/invalid-credential' || code === 'app/invalid-credential') {
     return res.status(503).json({ error: 'Credencial administrativa do Firebase inválida. Confira o projeto e a chave de serviço.' });
+  }
+  if (code === 'auth/email-already-exists') {
+    return res.status(409).json({ error: 'Esse e-mail já tem uma conta no Firebase. Verifique a equipe antes de convidar novamente.' });
+  }
+  if (code === 'auth/invalid-email' || code === 'auth/user-not-found') {
+    return res.status(400).json({ error: 'O Firebase não reconheceu o e-mail do funcionário. Confira o endereço e tente novamente.' });
+  }
+  if (code === 'auth/unauthorized-continue-uri' || code === 'auth/invalid-continue-uri' ||
+      (error instanceof Error && error.message.includes('Domain not allowlisted by project'))) {
+    console.error('Admin API: Firebase Auth email action domain blocked', code || 'domain-not-allowlisted');
+    return res.status(503).json({ error: 'O Firebase bloqueou o domínio de retorno do convite. É necessário autorizar o domínio nas configurações do Firebase Authentication.' });
   }
   if (error instanceof AdminError) return res.status(error.status).json({ error: error.message });
   console.error('Admin API:', error instanceof Error ? error.message : 'unexpected');
@@ -296,10 +308,7 @@ export function registerAdminManageRoutes(app: Express) {
       const now = new Date().toISOString();
       let persisted = false;
       try {
-        const invitationUrl = await auth.generatePasswordResetLink(email, {
-          url: process.env.AGENCYOS_PUBLIC_ORIGIN || 'https://agency-os-by-techify.vercel.app',
-          handleCodeInApp: false,
-        });
+        const invitationUrl = await createHostedPasswordLink(auth, email);
         const ownerProfile = kind === 'employee'
           ? await db.doc('users/' + actor.ownerUid).get() : null;
         const batch = db.batch();
@@ -369,10 +378,7 @@ export function registerAdminManageRoutes(app: Express) {
       });
       let persisted = false;
       try {
-        const invitationUrl = await auth.generatePasswordResetLink(email, {
-          url: process.env.AGENCYOS_PUBLIC_ORIGIN || 'https://agency-os-by-techify.vercel.app',
-          handleCodeInApp: false,
-        });
+        const invitationUrl = await createHostedPasswordLink(auth, email);
         const batch = db.batch();
         batch.update(target.ref, {
           invitationStatus: 'pending', status: 'active',
