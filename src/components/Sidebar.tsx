@@ -1,41 +1,34 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  LayoutDashboard,
-  Crown,
+  BarChart3,
+  Bot,
+  CalendarDays,
+  Calculator,
+  ChevronDown,
+  ChevronRight,
   Clock,
   DollarSign,
-  TrendingUp,
-  Megaphone,
-  Target,
-  Calendar,
-  MapPin,
-  Palette,
-  Wand2,
-  Share2,
-  Package,
-  Kanban,
   FileText,
-  Calculator,
-  Bot,
-  Shield,
-  ShieldCheck,
-  LogOut,
-  Zap,
-  ChevronRight,
-  User as UserIcon,
-  MessageSquare,
-  UserCircle,
-  Lock,
-  Building2,
-  Users,
   Folder,
-  BarChart3,
+  LayoutDashboard,
+  LogOut,
+  MapPin,
+  Megaphone,
+  Package,
+  Palette,
+  Search,
   Settings,
-  ChevronDown,
+  Share2,
+  ShieldCheck,
+  Target,
+  TrendingUp,
+  Users,
+  X,
+  type LucideIcon,
 } from 'lucide-react';
 import { ViewMode, UserProfile } from '../types';
-import { hasModuleAccess, isUserMasterAdmin, isCompanyOwnerOrCEO } from '../lib/permissions';
-import { FirestoreUserProfile, cleanAvatarUrl, resolveUserAvatar } from '../lib/firebase';
+import { hasModuleAccess, isCompanyOwnerOrCEO, isUserMasterAdmin } from '../lib/permissions';
+import { FirestoreUserProfile, resolveUserAvatar } from '../lib/firebase';
 
 interface SidebarProps {
   currentView?: ViewMode;
@@ -48,6 +41,84 @@ interface SidebarProps {
   onClose?: () => void;
 }
 
+type NavItem = {
+  id: ViewMode;
+  label: string;
+  icon: LucideIcon;
+  description?: string;
+};
+
+type NavigationGroup = {
+  id: string;
+  title: string;
+  icon: LucideIcon;
+  items: NavItem[];
+};
+
+// Navigation categories are about user tasks, not individual internal modules.
+// Changing grouping must never change a route, stored record, or permission.
+const navigationGroups: NavigationGroup[] = [
+  {
+    id: 'clientes',
+    title: 'Clientes e vendas',
+    icon: Users,
+    items: [
+      { id: 'prospection', label: 'Clientes e prospecção', icon: Users, description: 'Contatos, propostas e contratos' },
+      { id: 'maps-scraper', label: 'Encontrar clientes', icon: MapPin, description: 'Buscar novos leads no Maps' },
+      { id: 'agenda', label: 'Agenda e reuniões', icon: CalendarDays },
+    ],
+  },
+  {
+    id: 'operacao',
+    title: 'Projetos e equipe',
+    icon: Folder,
+    items: [
+      { id: 'kanban', label: 'Projetos e tarefas', icon: Folder },
+      { id: 'lideranca', label: 'Equipe e liderança', icon: Users },
+      { id: 'ponto', label: 'Registro de ponto', icon: Clock },
+    ],
+  },
+  {
+    id: 'marketing',
+    title: 'Marketing e conteúdo',
+    icon: Megaphone,
+    items: [
+      { id: 'campanhas', label: 'Campanhas de anúncios', icon: BarChart3 },
+      { id: 'marketing', label: 'Estratégias e funis', icon: Target },
+      { id: 'social-hub', label: 'Redes sociais', icon: Share2 },
+      { id: 'designer', label: 'Designer e aprovações', icon: Palette },
+    ],
+  },
+  {
+    id: 'financeiro',
+    title: 'Financeiro e resultados',
+    icon: DollarSign,
+    items: [
+      { id: 'fluxo-caixa', label: 'Fluxo de caixa', icon: DollarSign },
+      { id: 'kpis', label: 'Indicadores (KPIs)', icon: TrendingUp },
+      { id: 'relatorios', label: 'Relatórios', icon: FileText },
+      { id: 'calculadora-roi', label: 'Calculadora de ROI', icon: Calculator },
+    ],
+  },
+  {
+    id: 'ferramentas',
+    title: 'IA e ferramentas',
+    icon: Bot,
+    items: [
+      { id: 'ia-consultora', label: 'Consultora de IA', icon: Bot },
+      { id: 'estoque', label: 'Estoque e recursos', icon: Package },
+    ],
+  },
+  {
+    id: 'conta',
+    title: 'Conta e configurações',
+    icon: Settings,
+    items: [
+      { id: 'profile', label: 'Meu perfil', icon: Settings },
+    ],
+  },
+];
+
 export const Sidebar: React.FC<SidebarProps> = ({
   currentView,
   activeView,
@@ -55,257 +126,205 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectView,
   userProfile,
   onLogout,
-  isOpen,
+  isOpen = false,
   onClose,
 }) => {
-  const [showMoreModules, setShowMoreModules] = useState(false);
   const active = activeView || currentView || 'dashboard';
+  const [searchQuery, setSearchQuery] = useState('');
+  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
+
+  const email = userProfile?.email || '';
+  const isMaster = isUserMasterAdmin(userProfile as FirestoreUserProfile | null, email);
+  const canOpenAdmin =
+    isMaster ||
+    isCompanyOwnerOrCEO(userProfile as FirestoreUserProfile | null, email) ||
+    hasModuleAccess('admin', userProfile as FirestoreUserProfile | null, email);
+
+  const groups = useMemo(() => navigationGroups.map((group) => ({
+    ...group,
+    items: [
+      ...group.items,
+      ...(group.id === 'conta' && canOpenAdmin
+        ? [{ id: 'admin' as ViewMode, label: 'Administração da empresa', icon: ShieldCheck }]
+        : []),
+    ].filter((item) => hasModuleAccess(item.id, userProfile as FirestoreUserProfile | null, email)),
+  })).filter((group) => group.items.length > 0), [userProfile, email, canOpenAdmin]);
+
+  // Automatically reveal the currently selected page, even when navigation
+  // originates from a dashboard shortcut or a different component.
+  useEffect(() => {
+    const parent = groups.find((group) => group.items.some((item) => item.id === active));
+    setExpandedGroup(parent?.id || null);
+  }, [active, groups]);
+
+  const matchesSearch = searchQuery.trim().toLocaleLowerCase('pt-BR');
+  const searchResults = groups.flatMap((group) =>
+    group.items.filter((item) =>
+      (item.label + ' ' + (item.description || '') + ' ' + group.title)
+        .toLocaleLowerCase('pt-BR').includes(matchesSearch)
+    )
+  );
+
   const handleNav = (view: ViewMode) => {
     if (onNavigate) onNavigate(view);
-    else if (onSelectView) onSelectView(view);
-    if (onClose) onClose();
+    else onSelectView?.(view);
+    setSearchQuery('');
+    onClose?.();
   };
 
-  const effectiveEmail = userProfile?.email || '';
-  const isMaster = isUserMasterAdmin(userProfile, effectiveEmail);
-  const isCompanyCEO = isCompanyOwnerOrCEO(userProfile, effectiveEmail);
-  const canAccessAdmin = isMaster || isCompanyCEO || hasModuleAccess('admin', userProfile, effectiveEmail);
+  const profileName = userProfile?.name?.trim() || userProfile?.email || 'Usuário';
+  const profileRole = userProfile?.role || 'Minha conta';
+  const initials = profileName.split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'U';
+  const avatar = userProfile ? resolveUserAvatar(userProfile) : '';
 
-  const profile = userProfile || {
-    name: 'Usuário',
-    email: '',
-    role: 'Membro',
-    agencyName: 'AgencyOS',
+  const renderItem = (item: NavItem) => {
+    const Icon = item.icon;
+    const selected = active === item.id;
+    return (
+      <button
+        key={item.id}
+        type="button"
+        onClick={() => handleNav(item.id)}
+        aria-current={selected ? 'page' : undefined}
+        title={item.description || item.label}
+        className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${selected
+          ? 'bg-[#142C60] text-white font-semibold shadow-sm ring-1 ring-blue-500/30'
+          : 'text-slate-400 hover:text-white hover:bg-[#13244B]'}`}
+      >
+        <Icon className={`h-4 w-4 shrink-0 ${selected ? 'text-blue-400' : 'text-slate-500'}`} />
+        <span className="flex-1 min-w-0 truncate">{item.label}</span>
+        {selected && <span className="h-1.5 w-1.5 rounded-full bg-blue-400 shrink-0" aria-hidden="true" />}
+      </button>
+    );
   };
-
-  const handleExit = onLogout || (() => handleNav('landing'));
-
-  // Primary menu items matching screenshot exactly
-  const primaryMenuItems = [
-    { id: 'dashboard' as ViewMode, label: 'Visão geral', icon: LayoutDashboard },
-    { id: 'prospection' as ViewMode, label: 'Clientes', icon: Users },
-    { id: 'kanban' as ViewMode, label: 'Projetos', icon: Folder },
-    { id: 'fluxo-caixa' as ViewMode, label: 'Financeiro', icon: DollarSign },
-    { id: 'campanhas' as ViewMode, label: 'Campanhas', icon: BarChart3 },
-    { id: 'lideranca' as ViewMode, label: 'Equipe', icon: Users },
-    { id: 'relatorios' as ViewMode, label: 'Relatórios', icon: FileText },
-    { id: 'profile' as ViewMode, label: 'Configurações', icon: Settings },
-  ];
-
-  // Secondary tools accessible in sub-list
-  const extraModules = [
-    { id: 'ia-consultora' as ViewMode, label: 'IA Consultora Gemini', icon: Bot },
-    { id: 'maps-scraper' as ViewMode, label: 'Maps Scraper Leads', icon: MapPin },
-    { id: 'social-hub' as ViewMode, label: 'Social Hub (Instagram/Zap)', icon: Share2 },
-    { id: 'designer' as ViewMode, label: 'Área do Designer', icon: Palette },
-    { id: 'ponto' as ViewMode, label: 'Ponto Seguro', icon: Clock },
-    { id: 'marketing' as ViewMode, label: 'Funis & Lançamentos', icon: Target },
-    { id: 'kpis' as ViewMode, label: 'KPIs Estratégicos', icon: TrendingUp },
-    { id: 'agenda' as ViewMode, label: 'Agenda & Reuniões', icon: Calendar },
-    { id: 'estoque' as ViewMode, label: 'Estoque de Recursos', icon: Package },
-    { id: 'calculadora-roi' as ViewMode, label: 'Calculadora ROI', icon: Calculator },
-  ];
 
   return (
     <>
-      {/* Mobile Drawer Overlay Backdrop */}
       {isOpen && (
         <div
           onClick={onClose}
-          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 md:hidden animate-fade-in"
+          className="fixed inset-0 bg-black/75 backdrop-blur-sm z-40 md:hidden"
           aria-hidden="true"
         />
       )}
-
       <aside
-        className={`w-60 bg-[#080E21] border-r border-[#15234A] flex flex-col h-full shrink-0 text-slate-300 font-sans select-none transition-all duration-200 ${
-          isOpen ? 'fixed inset-y-0 left-0 z-50 shadow-2xl block' : 'hidden md:flex z-20'
-        }`}
+        aria-label="Menu principal"
+        className={`w-64 bg-[#080E21] border-r border-[#15234A] flex flex-col h-full shrink-0 text-slate-200 font-sans transition-all duration-200 ${isOpen
+          ? 'fixed inset-y-0 left-0 z-50 shadow-2xl'
+          : 'hidden md:flex z-20'}`}
       >
-        {/* Brand Header */}
-        <div className="p-5 flex items-center justify-between border-b border-[#15234A] shrink-0">
+        <div className="h-[68px] px-4 flex items-center justify-between border-b border-[#15234A] shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white shadow-lg shadow-blue-500/25" aria-hidden="true">
               <span className="text-base font-black leading-none">▲</span>
             </div>
             <div>
-              <div className="font-extrabold text-white text-lg tracking-tight leading-none">
-                AgencyOS
-              </div>
+              <div className="font-extrabold text-white text-lg tracking-tight leading-none">AgencyOS</div>
+              <span className="text-[10px] text-slate-500">Painel de gestão</span>
             </div>
           </div>
-
-          {/* Close button on mobile drawer */}
-          {isOpen && onClose && (
+          {isOpen && (
             <button
+              type="button"
               onClick={onClose}
-              className="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
+              aria-label="Fechar menu"
+              className="md:hidden p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#13244B]"
             >
-              <LogOut className="w-4 h-4 rotate-180" />
+              <X className="h-4 w-4" />
             </button>
           )}
         </div>
 
-        {/* Navigation List */}
-        <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1.5 custom-scrollbar">
-          {primaryMenuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive =
-              active === item.id ||
-              (item.id === 'prospection' && (active === 'maps-scraper' || active === 'prospection')) ||
-              (item.id === 'fluxo-caixa' && active === 'kpis') ||
-              (item.id === 'lideranca' && active === 'ponto') ||
-              (item.id === 'profile' && active === 'admin');
+        <div className="px-3 pt-4 pb-3 shrink-0">
+          <label className="sr-only" htmlFor="agencyos-sidebar-search">Buscar funcionalidade</label>
+          <div className="flex items-center gap-2 rounded-xl border border-[#243560] bg-[#0D1834] px-3 focus-within:border-blue-500 transition-colors">
+            <Search className="h-4 w-4 text-slate-500 shrink-0" />
+            <input
+              id="agencyos-sidebar-search"
+              type="search"
+              placeholder="Buscar ferramenta..."
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              onKeyDown={(event) => { if (event.key === 'Escape') setSearchQuery(''); }}
+              className="w-full min-w-0 bg-transparent py-2.5 text-xs text-white placeholder-slate-500 outline-none"
+            />
+          </div>
+        </div>
 
-            const isAllowed = hasModuleAccess(item.id, userProfile as any);
-
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleNav(item.id)}
-                title={!isAllowed ? 'Módulo bloqueado pelo administrador' : undefined}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm transition-all duration-150 cursor-pointer group ${
-                  isActive
-                    ? 'bg-[#13244F] text-white font-semibold border border-blue-500/30 shadow-md shadow-blue-950/40'
-                    : 'text-slate-400 hover:text-white hover:bg-[#0E1B3D]/70 font-medium'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Icon
-                    className={`w-4 h-4 transition-colors ${
-                      isActive ? 'text-blue-400' : 'text-slate-400 group-hover:text-slate-200'
-                    }`}
-                  />
-                  <span>{item.label}</span>
-                </div>
-
-                {isActive && <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />}
-              </button>
-            );
-          })}
-
-          {/* Collapsible Advanced Modules */}
-          <div className="pt-2 border-t border-[#15234A]/80">
-            <button
-              onClick={() => setShowMoreModules(!showMoreModules)}
-              className="w-full flex items-center justify-between px-3.5 py-2 text-xs text-slate-400 hover:text-slate-200 cursor-pointer rounded-lg hover:bg-[#0E1B3D]/50 transition-colors"
-            >
-              <span className="font-semibold uppercase tracking-wider text-[10px] text-slate-500">
-                Mais Ferramentas
-              </span>
-              <ChevronDown
-                className={`w-3.5 h-3.5 text-slate-500 transition-transform ${
-                  showMoreModules ? 'rotate-180' : ''
-                }`}
-              />
-            </button>
-
-            {showMoreModules && (
-              <div className="mt-1 space-y-1 pl-1">
-                {extraModules.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = active === item.id;
-                  return (
+        <nav className="flex-1 min-h-0 overflow-y-auto px-3 pb-4 space-y-1.5 custom-scrollbar" aria-label="Navegação do AgencyOS">
+          {matchesSearch ? (
+            <>
+              <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+                Resultados ({searchResults.length})
+              </p>
+              {('visão geral dashboard início'.includes(matchesSearch) || 'visão geral'.includes(matchesSearch)) &&
+                hasModuleAccess('dashboard', userProfile as FirestoreUserProfile | null, email) &&
+                renderItem({ id: 'dashboard', label: 'Visão geral', icon: LayoutDashboard })}
+              {searchResults.map(renderItem)}
+              {searchResults.length === 0 && !('visão geral dashboard início'.includes(matchesSearch)) && (
+                <p className="px-3 py-4 text-xs text-slate-400">Nenhuma ferramenta encontrada.</p>
+              )}
+            </>
+          ) : (
+            <>
+              {hasModuleAccess('dashboard', userProfile as FirestoreUserProfile | null, email) &&
+                <div className="pb-2">{renderItem({ id: 'dashboard', label: 'Visão geral', icon: LayoutDashboard })}</div>}
+              <p className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-[0.14em] text-slate-500 font-semibold">Áreas de trabalho</p>
+              {groups.map((group) => {
+                const Icon = group.icon;
+                const isExpanded = expandedGroup === group.id;
+                const containsActive = group.items.some((item) => item.id === active);
+                return (
+                  <div key={group.id}>
                     <button
-                      key={item.id}
-                      onClick={() => handleNav(item.id)}
-                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-colors cursor-pointer ${
-                        isActive
-                          ? 'bg-[#13244F] text-blue-300 font-semibold'
-                          : 'text-slate-400 hover:text-white hover:bg-[#0E1B3D]/50'
-                      }`}
+                      type="button"
+                      aria-expanded={isExpanded}
+                      aria-controls={`agencyos-group-${group.id}`}
+                      onClick={() => setExpandedGroup(isExpanded ? null : group.id)}
+                      className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${containsActive
+                        ? 'bg-[#101D3B] text-slate-100'
+                        : 'text-slate-400 hover:text-white hover:bg-[#101D3B]'}`}
                     >
-                      <Icon className="w-3.5 h-3.5 text-slate-400" />
-                      <span className="truncate">{item.label}</span>
+                      <Icon className={`w-4 h-4 shrink-0 ${containsActive ? 'text-blue-400' : 'text-slate-500'}`} />
+                      <span className="flex-1 text-left truncate">{group.title}</span>
+                      <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                     </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Admin Panel Link */}
-          {canAccessAdmin && (
-            <div className="pt-1">
-              <button
-                onClick={() => handleNav('admin')}
-                className={`w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs transition-all cursor-pointer ${
-                  active === 'admin'
-                    ? 'bg-[#13244F] text-white font-semibold'
-                    : 'text-slate-400 hover:text-white hover:bg-[#0E1B3D]/50'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <ShieldCheck className="w-4 h-4 text-slate-400" />
-                  <span>Painel Admin</span>
-                </div>
-                {isMaster && (
-                  <span className="text-[9px] bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded font-bold">
-                    MASTER
-                  </span>
-                )}
-              </button>
-            </div>
+                    {isExpanded && (
+                      <div id={`agencyos-group-${group.id}`} className="ml-4 pl-2 py-1 border-l border-[#22345D] space-y-0.5">
+                        {group.items.map(renderItem)}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </>
           )}
-        </div>
+        </nav>
 
-        {/* Promo Growth Card (Direct from Screenshot) */}
-        <div className="p-3.5 mx-3 mb-3 bg-[#0B142B] border border-[#182955] rounded-2xl space-y-1.5 shrink-0 shadow-lg">
-          <div className="w-7 h-7 rounded-lg bg-blue-900/40 border border-blue-700/40 flex items-center justify-center text-blue-400">
-            <Crown className="w-4 h-4 text-blue-400" />
-          </div>
-          <div className="text-xs font-bold text-white leading-tight">
-            Seu crescimento em primeiro lugar.
-          </div>
-          <div className="text-[11px] text-slate-400 leading-snug">
-            AgencyOS. Mais resultado para sua agência.
-          </div>
-        </div>
-
-        {/* User Profile Footer */}
-        <div className="p-3 px-4 border-t border-[#15234A] bg-[#070D1E] flex items-center justify-between">
+        <div className="border-t border-[#15234A] bg-[#070D1E] p-3 flex items-center gap-2 shrink-0">
           <button
             type="button"
             onClick={() => handleNav('profile')}
-            className="flex items-center gap-2.5 overflow-hidden text-left hover:opacity-80 transition-opacity cursor-pointer group flex-1 mr-2"
-            title="Ver Meu Perfil"
+            title="Abrir meu perfil"
+            className="flex-1 flex items-center gap-2.5 min-w-0 text-left rounded-lg hover:bg-[#13244B] p-1.5 transition-colors"
           >
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-700 to-indigo-600 border border-blue-400/30 flex items-center justify-center text-xs font-black text-white shrink-0 overflow-hidden shadow-sm">
-              {resolveUserAvatar(profile) ? (
-                <img
-                  src={resolveUserAvatar(profile)}
-                  alt={profile.name || 'Foto de Perfil'}
-                  className="w-full h-full object-cover"
-                  referrerPolicy="no-referrer"
-                />
-              ) : (
-                <span>
-                  {profile.name
-                    ? profile.name
-                        .trim()
-                        .split(' ')
-                        .filter(Boolean)
-                        .map((n) => n[0])
-                        .slice(0, 2)
-                        .join('')
-                        .toUpperCase()
-                    : 'MH'}
-                </span>
-              )}
+            <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-blue-700 to-indigo-600 border border-blue-400/30 flex items-center justify-center text-xs font-bold text-white shrink-0 overflow-hidden">
+              {avatar
+                ? <img src={avatar} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                : <span>{initials}</span>}
             </div>
-            <div className="truncate">
-              <div className="text-xs font-bold text-white truncate flex items-center gap-1 group-hover:text-blue-300 transition-colors">
-                <span>{profile.name || profile.agencyName || 'Marcos Henrique'}</span>
-              </div>
-              <div className="text-[10px] text-slate-400 truncate">
-                {profile.role || 'CEO & Administrador Master'}
-              </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-bold text-white truncate">{profileName}</div>
+              <div className="text-[10px] text-slate-400 truncate">{profileRole}</div>
             </div>
+            <ChevronRight className="w-3 h-3 text-slate-500 shrink-0" />
           </button>
           <button
-            onClick={handleExit}
-            title="Sair / Encerrar Sessão"
-            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-md transition-colors shrink-0 cursor-pointer"
+            type="button"
+            onClick={onLogout || (() => handleNav('landing'))}
+            title="Sair da conta"
+            aria-label="Sair da conta"
+            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#13244B] transition-colors"
           >
             <LogOut className="w-4 h-4" />
           </button>
