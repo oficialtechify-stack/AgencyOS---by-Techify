@@ -7,7 +7,7 @@ function safeSignatureMatches(provided: string | null | undefined, secret: strin
   return actual.length === expected.length && timingSafeEqual(actual, expected);
 }
 
-import { handleLeadsPayWebhookEvent } from '../../../src/server/leadspayHandler';
+import { handleLeadsPayWebhookEvent } from '../../../src/server/leadspayHandler.js';
 
 // Support Next.js Route Handler signature: export async function POST(req: Request)
 export async function POST(req: Request) {
