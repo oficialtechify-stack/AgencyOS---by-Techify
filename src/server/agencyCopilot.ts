@@ -4,6 +4,7 @@ import { GoogleGenAI } from '@google/genai';
 import { copilotServices, authenticateCopilot, canReadModule, CopilotError, formatCopilotError, type AgencyIdentity } from './copilotAuth.js';
 import { AREA_COLLECTIONS, COLLECTION_MODULE, OPERATIONS_GUIDE, safeAgencyRow, chooseArea, type CopilotArea } from './copilotKnowledge.js';
 import { registerCopilotMailRoutes } from './copilotMail.js';
+import { hermesReply, hermesAvailability } from './hermesConnector.js';
 
 type ChatItem={role:'user'|'assistant';content:string;createdAt:string};
 const isText=(value:unknown,max:number)=>typeof value==='string'?value.trim().slice(0,max):'';
@@ -98,6 +99,11 @@ function systemInstructions(id:AgencyIdentity,snapshot:unknown){
 }
 export function registerAgencyCopilotRoutes(app:Express){
  registerCopilotMailRoutes(app);
+ app.get('/api/copilot/engines',async(req,res)=>{
+  try{const user=await authenticateCopilot(req.headers.authorization);res.set('Cache-Control','private, no-store');
+   res.json({defaultEngine:'standard',hermes:hermesAvailability(user)});
+  }catch(e){formatCopilotError(res,e);}
+ });
 
  app.get('/api/copilot/threads',async(req,res)=>{
   try{
@@ -105,7 +111,7 @@ export function registerAgencyCopilotRoutes(app:Express){
    const snap=await copilotServices().db.collection('copilotThreads/'+user.uid+'/threads')
     .orderBy('updatedAt','desc').limit(30).get();
    res.json({threads:snap.docs.map(d=>({id:d.id,title:String(d.data().title||'Conversa').slice(0,80),
-    updatedAt:d.data().updatedAt||null}))});
+    engine:d.data().engine||'standard',updatedAt:d.data().updatedAt||null}))});
   }catch(e){formatCopilotError(res,e);}
  });
  app.get('/api/copilot/threads/:id',async(req,res)=>{
@@ -115,7 +121,7 @@ export function registerAgencyCopilotRoutes(app:Express){
    const doc=await copilotServices().db.doc('copilotThreads/'+user.uid+'/threads/'+req.params.id).get();
    if(!doc.exists)throw new CopilotError(404,'Conversa não encontrada.');
    if(doc.data()?.workspaceUid!==user.ownerUid)throw new CopilotError(403,'Esta conversa pertence a outro workspace.');
-   res.json({messages:(doc.data()?.messages||[]).slice(-40),id:doc.id});
+   res.json({messages:(doc.data()?.messages||[]).slice(-40),id:doc.id,engine:doc.data()?.engine||'standard'});
   }catch(e){formatCopilotError(res,e);}
  });
  app.delete('/api/copilot/threads/:id',async(req,res)=>{
@@ -144,6 +150,13 @@ export function registerAgencyCopilotRoutes(app:Express){
    const user=await authenticateCopilot(req.headers.authorization);
    const prompt=isText(req.body?.message,2200);
    if(!prompt)throw new CopilotError(400,'Escreva sua pergunta.');
+   const engine=req.body?.engine===undefined?'standard':req.body.engine;
+   if(!['standard','hermes'].includes(engine))throw new CopilotError(400,'Motor de IA não reconhecido.');
+   // Fail closed before using tokens or reading agency data.
+   if(engine==='hermes'){
+    const state=hermesAvailability(user);
+    if(!state.available)throw new CopilotError(503,state.reason);
+   }
    const focus=areas.has(req.body?.focus)?req.body.focus as CopilotArea:chooseArea(prompt);
    const threadId=req.body?.threadId;
    if(threadId!==undefined && (typeof threadId!=='string'||!/^[a-f0-9-]{36}$/.test(threadId)))
@@ -165,18 +178,26 @@ export function registerAgencyCopilotRoutes(app:Express){
    const old=await ref.get();
    if(old.exists && old.data()?.workspaceUid!==user.ownerUid)
     throw new CopilotError(403,'Conversa não autorizada.');
+   const storedEngine=old.data()?.engine||'standard';
+   if(old.exists&&storedEngine!==engine)
+    throw new CopilotError(409,'Esta conversa pertence a outro motor de IA. Crie uma nova conversa para alternar.');
    const history:ChatItem[]=Array.isArray(old.data()?.messages)?
     old.data()!.messages.filter((m:any)=>['user','assistant'].includes(m.role)&&typeof m.content==='string').slice(-18):[];
    const snapshot=await agencySnapshot(user,focus);
-   const response=await modelAnswer(systemInstructions(user,snapshot),roleMessages(history,prompt));
+   const context=systemInstructions(user,snapshot);
+   const conversation=roleMessages(history,prompt);
+   // Never silently fall back to Gemini/Groq if Hermes was explicitly selected.
+   const response=engine==='hermes'
+    ?await hermesReply(user,context,conversation)
+    :await modelAnswer(context,conversation);
    const now=new Date().toISOString();
    const messages=[...history,{role:'user',content:prompt,createdAt:now},
     {role:'assistant',content:response.text,createdAt:now}].slice(-40);
    await ref.set({workspaceUid:user.ownerUid,authorUid:user.uid,
     title:old.data()?.title||prompt.slice(0,64),
-    messages,createdAt:old.data()?.createdAt||now,updatedAt:now}, {merge:true});
+    messages,engine,createdAt:old.data()?.createdAt||now,updatedAt:now}, {merge:true});
    res.set('Cache-Control','private, no-store');
-   res.json({threadId:id,reply:response.text,provider:response.provider,
+   res.json({threadId:id,reply:response.text,engine,provider:response.provider,
     focus,observedCollections:Object.keys(snapshot.sections),observedAt:snapshot.observedAt});
   }catch(e){formatCopilotError(res,e);}
  });
@@ -185,12 +206,17 @@ export function registerAgencyCopilotRoutes(app:Express){
    const user=await authenticateCopilot(req.headers.authorization);
    const purpose=isText(req.body?.purpose,1000),recipient=isText(req.body?.recipient,120);
    if(!purpose)throw new CopilotError(400,'Descreva o objetivo do e-mail.');
-   const out=await modelAnswer([
+   const draftEngine=req.body?.engine==='hermes'?'hermes':'standard';
+   const instruction=[
     'Redija um e-mail em português brasileiro, profissional, amigável e claro.',
     'Retorne exatamente no formato: Assunto: <uma linha>\\n\\n<corpo do e-mail>.',
     'Não invente fatos, resultados, números ou nomes de clientes. Não envie o e-mail.',
     'Agência: '+user.agencyName,
-   ].join('\n'),[{role:'user',content:'Objetivo: '+purpose+'\nDestinatário (se fornecido): '+recipient}]);
+   ].join('\n');
+   const conversation=[{role:'user',content:'Objetivo: '+purpose+'\nDestinatário (se fornecido): '+recipient}];
+   const out=draftEngine==='hermes'
+    ?await hermesReply(user,instruction,conversation)
+    :await modelAnswer(instruction,conversation);
    res.json({draft:out.text,provider:out.provider});
   }catch(e){formatCopilotError(res,e);}
  });

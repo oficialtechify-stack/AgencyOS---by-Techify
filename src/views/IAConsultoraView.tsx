@@ -7,9 +7,11 @@ import {
 } from 'lucide-react';
 import { auth } from '../lib/firebase';
 import type { ViewType } from '../types';
+type Engine='standard'|'hermes';
+type EngineSettings={hermes:{configured:boolean;available:boolean;reason:string}};
 type Role='user'|'assistant';
 type Message={role:Role;content:string;createdAt?:string};
-type Thread={id:string;title:string;updatedAt:string};
+type Thread={id:string;title:string;updatedAt:string;engine?:Engine};
 type Area='overview'|'sales'|'finance'|'operations'|'marketing'|'team';
 type Context={agencyName:string;focus:Area;observedAt:string;recordsAreSamples:boolean;
  sections:Record<string,{visible:number;limited:boolean;records:unknown[]}>};
@@ -65,6 +67,8 @@ export const IAConsultoraView:React.FC<{onNavigate?:(view:ViewType)=>void}>=({on
  const [error,setError]=useState('');
  const [notice,setNotice]=useState('');
  const [provider,setProvider]=useState('');
+ const [engine,setEngine]=useState<Engine>('standard');
+ const [engineSettings,setEngineSettings]=useState<EngineSettings|null>(null);
  const [taskOpen,setTaskOpen]=useState(false);
  const [taskTitle,setTaskTitle]=useState('');
  const [taskDescription,setTaskDescription]=useState('');
@@ -102,6 +106,12 @@ export const IAConsultoraView:React.FC<{onNavigate?:(view:ViewType)=>void}>=({on
  useEffect(()=>{void refreshThreads();void refreshGmail();},[refreshThreads,refreshGmail]);
  useEffect(()=>{
   let cancelled=false;
+  void api('engines').then(d=>{if(!cancelled)setEngineSettings(d);})
+   .catch(()=>{if(!cancelled)setEngineSettings(null);});
+  return()=>{cancelled=true;};
+ },[api]);
+ useEffect(()=>{
+  let cancelled=false;
   void api('context?focus='+focus).then(d=>{if(!cancelled)setContext(d.snapshot);}).catch(e=>{
    if(!cancelled){setContext(null);setError(e.message);}
   });
@@ -124,7 +134,7 @@ export const IAConsultoraView:React.FC<{onNavigate?:(view:ViewType)=>void}>=({on
   if(newFocus)setFocus(newFocus);
   setMessages(old=>[...old,{role:'user',content:prompt}]);
   try{
-   const data=await api('chat',{method:'POST',body:JSON.stringify({message:prompt,threadId:threadId||undefined,focus:newFocus||focus})});
+   const data=await api('chat',{method:'POST',body:JSON.stringify({message:prompt,threadId:threadId||undefined,focus:newFocus||focus,engine})});
    if(!threadId)setThreadId(data.threadId);
    setProvider(data.provider||'');
    setMessages(old=>[...old,{role:'assistant',content:String(data.reply||'Sem resposta da IA.')}]);
@@ -139,11 +149,20 @@ export const IAConsultoraView:React.FC<{onNavigate?:(view:ViewType)=>void}>=({on
   try{
    const d=await api('threads/'+id);
    setThreadId(id);
+   setEngine(d.engine==='hermes'?'hermes':'standard');
+   setProvider(d.engine==='hermes'?'Hermes Agent':'');
    setMessages(Array.isArray(d.messages)?d.messages:[]);
   }catch(e:any){setError(e.message);}
   finally{setLoadingHistory(false);}
  };
  const newThread=()=>{setThreadId(null);setMessages([]);setInput('');setError('');setProvider('');};
+ const switchEngine=(next:Engine)=>{
+  if(next===engine)return;
+  if(next==='hermes'&&!engineSettings?.hermes.available)return;
+  if(messages.length>0&&!window.confirm('Trocar o motor inicia uma nova conversa. Deseja continuar?'))return;
+  newThread();
+  setEngine(next);
+ };
  const deleteThread=async(id:string)=>{
   if(!window.confirm('Excluir esta conversa do seu histórico?'))return;
   await run(async()=>{await api('threads/'+id,{method:'DELETE'});if(threadId===id)newThread();await refreshThreads();});
@@ -176,7 +195,7 @@ export const IAConsultoraView:React.FC<{onNavigate?:(view:ViewType)=>void}>=({on
   if(!mailGoal.trim())return;
   setLoading(true);
   try{
-   const d=await api('draft-email',{method:'POST',body:JSON.stringify({purpose:mailGoal,recipient:mailTo})});
+   const d=await api('draft-email',{method:'POST',body:JSON.stringify({purpose:mailGoal,recipient:mailTo,engine})});
    const body=String(d.draft||'');
    const match=body.match(/^Assunto:\s*(.+)(?:\r?\n){1,2}/i);
    if(match){setMailSubject(match[1].trim());setMailBody(body.slice(match[0].length).trim());}
@@ -229,10 +248,19 @@ export const IAConsultoraView:React.FC<{onNavigate?:(view:ViewType)=>void}>=({on
      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center"><Sparkles className="w-5 h-5"/></div>
      <div className="min-w-0">
       <h2 className="font-bold text-white text-sm">Consultora AgencyOS</h2>
-      <p className="text-[10px] text-slate-400 truncate">Dados da sua agência • {provider||'Gemini / Groq'}</p>
+      <p className="text-[10px] text-slate-400 truncate">Dados da sua agência • {engine==='hermes'?'Hermes Agent':provider||'Gemini / Groq'}</p>
      </div>
     </div>
     <div className="flex items-center flex-wrap gap-1.5">
+     <label className="text-[11px] relative flex gap-2 items-center border border-[#2F4A74] bg-[#132545] rounded-lg px-2.5 py-2" title={engineSettings?.hermes.reason||'Selecione o motor de IA'}>
+      <Bot className="w-3.5 h-3.5 text-blue-300" />
+      <span className="sr-only">Motor de IA</span>
+      <select aria-label="Motor de IA" value={engine} onChange={e=>switchEngine(e.target.value as Engine)}
+       className="bg-transparent outline-none text-blue-100 text-[11px] font-semibold cursor-pointer max-w-[122px]">
+       <option value="standard" className="bg-[#101D33]">Gemini / Groq</option>
+       <option value="hermes" disabled={!engineSettings?.hermes.available} className="bg-[#101D33]">Hermes Agent{!engineSettings?.hermes.available?' (pendente)':''}</option>
+      </select>
+     </label>
      <button onClick={()=>setContextOpen(v=>!v)} className="px-3 py-2 rounded-lg bg-[#142849] text-blue-200 text-[11px] border border-[#2A4770] flex items-center gap-1.5">
       <Layers3 className="w-3.5 h-3.5"/>Contexto {contextOpen?'−':'+'}</button>
      {onNavigate&&<button title="Abrir a aba correspondente no AgencyOS" onClick={()=>onNavigate(destination[focus])}
@@ -245,6 +273,11 @@ export const IAConsultoraView:React.FC<{onNavigate?:(view:ViewType)=>void}>=({on
      <button onClick={newThread} title="Nova conversa" className="p-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 md:hidden"><Plus className="w-4 h-4"/></button>
     </div>
    </header>
+   {engineSettings&&!engineSettings.hermes.available&&
+    <div className="mx-3 sm:mx-5 mt-2 text-[11px] text-slate-400 flex gap-2 items-center">
+     <ShieldCheck className="w-3.5 h-3.5 text-amber-400 shrink-0"/>
+     <span>Hermes Agent: {engineSettings.hermes.reason}</span>
+    </div>}
    {(error||notice)&&<div className={'mx-3 sm:mx-6 mt-3 p-3 rounded-xl text-xs border shrink-0 '+(error?'border-rose-500/40 bg-rose-950/30 text-rose-200':'border-emerald-500/30 bg-emerald-950/20 text-emerald-200')}>
     <div className="flex justify-between gap-2"><span>{error||notice}</span><button onClick={()=>{setError('');setNotice('');}} aria-label="Fechar"><X className="w-4 h-4"/></button></div>
    </div>}
@@ -280,7 +313,7 @@ export const IAConsultoraView:React.FC<{onNavigate?:(view:ViewType)=>void}>=({on
      {messages.map((m,i)=><div key={i} className={'flex '+(m.role==='user'?'justify-end':'justify-start')}>
       {m.role==='assistant'?<div className="w-full max-w-[780px]">
        <div className="flex items-center gap-2 mb-3"><div className="w-7 h-7 rounded-lg bg-[#193B75] flex items-center justify-center"><Sparkles className="w-4 h-4 text-blue-200"/></div>
-        <span className="text-[11px] font-semibold text-slate-400">Consultora AgencyOS</span>
+        <span className="text-[11px] font-semibold text-slate-400">{engine==='hermes'?'Hermes Agent · AgencyOS':'Consultora AgencyOS'}</span>
        </div>
        <div className="ml-0 sm:ml-9"><RichText text={m.content}/></div>
        <div className="ml-0 sm:ml-9 flex items-center gap-1 mt-3">
