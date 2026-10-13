@@ -26,6 +26,11 @@ import {
   X,
   Smartphone,
   Flame,
+  Download,
+  Activity,
+  ClipboardCheck,
+  CalendarDays,
+  ChevronRight,
 } from 'lucide-react';
 import { EmployeeWorkSchedule, TimeClockRecord, TimeClockType } from '../types';
 import { FirestoreUserProfile } from '../lib/firebase';
@@ -64,8 +69,10 @@ export const PontoView: React.FC<PontoViewProps> = ({
   onSaveSchedule = async () => {},
   onDeleteSchedule,
 }) => {
-  const [activeTab, setActiveTab] = useState<'meu-ponto' | 'equipe' | 'escalas'>('meu-ponto');
-  const currentYearMonth = new Date().toISOString().slice(0, 7);
+  const [activeTab, setActiveTab] = useState<'meu-ponto' | 'equipe' | 'escalas' | 'auditoria'>('meu-ponto');
+  const dateNow = new Date();
+  const todayStr = `${dateNow.getFullYear()}-${String(dateNow.getMonth() + 1).padStart(2, '0')}-${String(dateNow.getDate()).padStart(2, '0')}`;
+  const currentYearMonth = todayStr.slice(0, 7);
   const [selectedMonth, setSelectedMonth] = useState<string>(currentYearMonth);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('todos');
@@ -81,16 +88,20 @@ export const PontoView: React.FC<PontoViewProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Exclusive Master Admin Permission check
-  const userEmail = userProfile?.email || 'rickmarketing81@gmail.com';
-  const userName = userProfile?.name || 'Marcos Henrique';
-  const userRole = userProfile?.role || 'Diretor Executivo / Master';
+  const userEmail = userProfile?.email || '';
+  const userName = userProfile?.name || 'Usuário';
+  const userRole = userProfile?.role || 'Colaborador';
 
   const isMaster = isUserMasterAdmin(userProfile, userEmail);
   const canEditOrAlter = isMaster;
   const canManageSchedules = isMaster;
 
-  const effectiveSchedules =
-    employeeWorkSchedules.length > 0 ? employeeWorkSchedules : DEFAULT_WORK_SCHEDULES;
+  // Only persisted staff schedules are listed as linked schedules. The
+  // legacy fallback is a suggestion for the clock validation flow, not a record.
+  const effectiveSchedules = employeeWorkSchedules;
+  const persistedSchedule = employeeWorkSchedules.find(
+    (schedule) => schedule.userEmail.toLowerCase().trim() === userEmail.toLowerCase().trim()
+  );
 
   const mySchedule = getEmployeeSchedule(effectiveSchedules, userEmail, userRole, userName);
 
@@ -98,7 +109,6 @@ export const PontoView: React.FC<PontoViewProps> = ({
     (r) => (r.userEmail || '').toLowerCase().trim() === userEmail.toLowerCase().trim()
   );
 
-  const todayStr = new Date().toISOString().split('T')[0];
   const myTodayRecords = myRecords.filter((r) => r.date === todayStr);
 
   const seqRule = getStrictSequentialStatus(
@@ -180,7 +190,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
   const overtimePunches = timeClockRecords.filter((r) => r.status === 'overtime').length;
   const editedPunches = timeClockRecords.filter((r) => r.isManuallyEdited).length;
   const regularPunches = timeClockRecords.filter((r) => r.status === 'regular').length;
-  const punctualityRate = totalPunches > 0 ? Math.round(((totalPunches - latePunches) / totalPunches) * 100) : 100;
+  const punctualityRate = totalPunches > 0 ? Math.round(((totalPunches - latePunches) / totalPunches) * 100) : null;
 
   // Filtered Records for Team Tab
   const filteredTeamRecords = timeClockRecords.filter((r) => {
@@ -221,7 +231,8 @@ export const PontoView: React.FC<PontoViewProps> = ({
 
   // Export CSV
   const handleExportCSV = () => {
-    const recordsToExport = activeTab === 'meu-ponto' ? myRecords : timeClockRecords;
+    const recordsToExport = (isMaster && activeTab === 'equipe' ? filteredTeamRecords : myRecords)
+      .filter((r) => (r.date || '').startsWith(selectedMonth));
     if (recordsToExport.length === 0) {
       alert('Nenhum registro para exportar.');
       return;
@@ -300,6 +311,45 @@ export const PontoView: React.FC<PontoViewProps> = ({
       record: myTodayRecords.find((r) => r.type === 'exit'),
     },
   ];
+
+  const completedSteps = stepsList.filter((step) => Boolean(step.record)).length;
+  const lastRecord = [...myRecords].sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''))[0];
+  const currentMonthName = new Date(Number(selectedMonth.slice(0, 4)), Number(selectedMonth.slice(5, 7)) - 1, 1)
+    .toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  const punchStatusLabel = (status?: string) => ({
+    late: 'Atraso', overtime: 'Hora extra', early_departure: 'Saída antecipada', regular: 'Regular',
+  }[status || ''] || 'Não avaliado');
+  const groupedHistory = Object.entries(
+    monthlyRecords.reduce<Record<string, TimeClockRecord[]>>((acc, record) => {
+      if (!record.date) return acc;
+      (acc[record.date] ||= []).push(record);
+      return acc;
+    }, {})
+  ).sort(([left], [right]) => right.localeCompare(left));
+  const showRecordedTime = (items: TimeClockRecord[], type: TimeClockType) =>
+    items.find((item) => item.type === type)?.time?.slice(0, 5) || '—';
+  const getWorkedMinutes = (items: TimeClockRecord[]): number | null => {
+    const parseTime = (value?: string) => {
+      if (!value || !/^\\d{2}:\\d{2}/.test(value)) return null;
+      const [hour, minute] = value.split(':').map(Number);
+      return hour * 60 + minute;
+    };
+    const start = parseTime(items.find((item) => item.type === 'entry')?.time);
+    const end = parseTime(items.find((item) => item.type === 'exit')?.time);
+    if (start === null || end === null) return null;
+    const total = end >= start ? end - start : end + 1440 - start;
+    const lunchStart = parseTime(items.find((item) => item.type === 'lunch_start')?.time);
+    const lunchEnd = parseTime(items.find((item) => item.type === 'lunch_end')?.time);
+    // A partial lunch pair is not enough to calculate a trustworthy total.
+    if ((lunchStart === null) !== (lunchEnd === null)) return null;
+    const lunch = lunchStart !== null && lunchEnd !== null
+      ? (lunchEnd >= lunchStart ? lunchEnd - lunchStart : lunchEnd + 1440 - lunchStart) : 0;
+    return Math.max(0, total - lunch);
+  };
+  const formatWorkedTime = (value: number | null) =>
+    value === null ? '—' : `${Math.floor(value / 60)}h ${String(value % 60).padStart(2, '0')}min`;
+  const totalMonthlyDays = groupedHistory.length;
+  const monthlyLateCount = monthlyRecords.filter((record) => record.status === 'late').length;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
