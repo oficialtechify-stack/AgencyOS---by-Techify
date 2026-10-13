@@ -1,4 +1,5 @@
 import express from 'express';
+import { registerSocialMetaRoutes } from './src/server/socialMeta';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
@@ -16,7 +17,8 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
+  app.use(express.json({ limit: '1mb', verify: (request, _response, body) => { (request as any).rawBody = Buffer.from(body); } }));
+  registerSocialMetaRoutes(app);
 
   // Initialize Gemini AI Client
   const ai = new GoogleGenAI({

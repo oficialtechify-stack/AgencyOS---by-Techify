@@ -1704,11 +1704,7 @@ export default function App() {
               )}
 
               {state.activeView === 'social-hub' && (
-                <SocialHubView
-                  posts={state.socialPosts}
-                  onAddPost={handleAddSocialPost}
-                  onDeletePost={handleDeleteSocialPost}
-                />
+                <SocialHubView />
               )}
 
               {state.activeView === 'estoque' && (
