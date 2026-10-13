@@ -253,20 +253,25 @@ export const PontoView: React.FC<PontoViewProps> = ({
       'Dispositivo',
       'Observacoes',
     ];
+    const csvSafe = (value: unknown) => {
+      const raw = String(value ?? '');
+      const neutralized = /^[=+@\\-\\t\\r]/.test(raw.trimStart()) ? "'" + raw : raw;
+      return '"' + neutralized.replace(/"/g, '""') + '"';
+    };
     const rows = recordsToExport.map((r) => [
       r.date,
       r.time,
-      `"${r.userName || ''}"`,
-      `"${r.userEmail || ''}"`,
-      `"${r.userRole || ''}"`,
-      `"${r.typeLabel || r.type}"`,
-      `"${r.scheduledTime || ''}"`,
-      `"${r.status || 'regular'}"`,
-      `"${r.isManuallyEdited ? 'SIM' : 'NAO'}"`,
-      `"${r.editedBy || ''}"`,
-      `"${r.securityHash || ''}"`,
-      `"${r.deviceInfo || ''}"`,
-      `"${(r.notes || r.editReason || '').replace(/"/g, '""')}"`,
+      csvSafe(r.userName || ''),
+      csvSafe(r.userEmail || ''),
+      csvSafe(r.userRole || ''),
+      csvSafe(r.typeLabel || r.type),
+      csvSafe(r.scheduledTime || ''),
+      csvSafe(r.status || 'regular'),
+      csvSafe(r.isManuallyEdited ? 'SIM' : 'NAO'),
+      csvSafe(r.editedBy || ''),
+      csvSafe(r.securityHash || ''),
+      csvSafe(r.deviceInfo || ''),
+      csvSafe((r.notes || r.editReason || '').replace(/"/g, '""')),
     ]);
 
     const csvContent =
@@ -330,7 +335,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
     items.find((item) => item.type === type)?.time?.slice(0, 5) || '—';
   const getWorkedMinutes = (items: TimeClockRecord[]): number | null => {
     const parseTime = (value?: string) => {
-      if (!value || !/^\\d{2}:\\d{2}/.test(value)) return null;
+      if (!value || !/^\d{2}:\d{2}/.test(value)) return null;
       const [hour, minute] = value.split(':').map(Number);
       return hour * 60 + minute;
     };
