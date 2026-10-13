@@ -1,3 +1,12 @@
+import { timingSafeEqual } from 'node:crypto';
+
+function safeSignatureMatches(provided: string | null | undefined, secret: string): boolean {
+  if (!provided || !secret) return false;
+  const actual = Buffer.from(provided, 'utf8');
+  const expected = Buffer.from(secret, 'utf8');
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
+}
+
 import express from 'express';
 import { GoogleGenAI } from '@google/genai';
 import { scrapeRealLeads } from '../src/server/leadScraperEngine';
@@ -212,8 +221,11 @@ app.post(['/api/webhooks/leadspay', '/api/webhooks/leadspay/route'], async (req,
     const signature = req.headers['x-leadspay-signature'] as string;
     const secret = process.env.LEADSPAY_WEBHOOK_SECRET;
 
-    // Validação de Segurança
-    if (secret && signature !== secret) {
+    // Fail closed. Never accept billing events while no signing secret is set.
+    if (!secret) {
+      return res.status(503).json({ error: 'Webhook não configurado no servidor' });
+    }
+    if (!safeSignatureMatches(signature, secret)) {
       return res.status(401).json({ error: 'Assinatura inválida' });
     }
 
