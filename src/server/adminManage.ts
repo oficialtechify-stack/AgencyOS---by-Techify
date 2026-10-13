@@ -3,6 +3,7 @@ import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
+import { EMPLOYEE_MODULE_SET, DEFAULT_EMPLOYEE_MODULES } from '../shared/agencyModules.js';
 
 type AdminCtx = {
   uid: string; platformAdmin: boolean; ownerUid: string; email: string;
@@ -11,12 +12,6 @@ type AdminCtx = {
   conflictingOwnerLink: boolean;
 };
 class AdminError extends Error { constructor(public status: number, message: string) { super(message); } }
-const MODULES = new Set([
-  'dashboard','prospection','maps-scraper','agenda','kanban','lideranca','ponto',
-  'campanhas','marketing','social-hub','designer','fluxo-caixa','kpis',
-  'relatorios','calculadora-roi','ia-consultora','estoque','profile',
-]);
-const DEFAULT_EMPLOYEE_MODULES = ['dashboard', 'kanban', 'agenda', 'ponto'];
 function adminServices() {
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
   if (!raw) throw new AdminError(503, 'Firebase Admin não configurado na Vercel.');
@@ -96,19 +91,25 @@ async function authorize(req: Request): Promise<AdminCtx> {
 }
 function modulesFrom(input: unknown): string[] {
   if (!Array.isArray(input)) throw new AdminError(400, 'Selecione os módulos autorizados.');
-  const values = [...new Set(input.map(x => String(x)))];
-  if (!values.length || values.length > MODULES.size || values.some(x => !MODULES.has(x)))
-    throw new AdminError(400, 'A lista de permissões contém módulos inválidos.');
-  // Manager privileges never come from module selections.
+  if (input.some(x => typeof x !== 'string')) throw new AdminError(400, 'O formato de um módulo é inválido.');
+  const values = [...new Set(input)];
+  if (!values.length || values.length > EMPLOYEE_MODULE_SET.size)
+    throw new AdminError(400, 'Selecione de 1 a ' + EMPLOYEE_MODULE_SET.size + ' módulos operacionais.');
+  const forbidden = values.filter(x => !EMPLOYEE_MODULE_SET.has(x));
+  if (forbidden.length)
+    throw new AdminError(400,
+      'Permissões antigas ou restritas detectadas: ' + forbidden.join(', ') +
+      '. Edite os módulos operacionais; permissões de administração não podem ser concedidas aqui.');
   return values;
 }
 function safeProfile(doc: any, authUser?: any) {
   const d = doc.data() || {};
+  const raw = Array.isArray(d.allowedModules) ? d.allowedModules.filter((x: unknown) => typeof x === 'string') : [];
   return {
     uid: doc.id, name: d.name || '', email: d.email || '',
     agencyName: d.agencyName || '', userType: d.userType || null,
     agencyOwnerUid: d.agencyOwnerUid || null, role: d.role || '',
-    leadershipRole: d.leadershipRole || 'membro', allowedModules: d.allowedModules || [],
+    leadershipRole: d.leadershipRole || 'membro', allowedModules: raw,
     status: authUser?.disabled ? 'blocked' : d.status || 'active',
     invitationStatus: d.invitationStatus || '',
     hasSignedIn: Boolean(authUser?.metadata?.lastSignInTime),
@@ -292,10 +293,19 @@ export function registerAdminManageRoutes(app: Express) {
       const temporaryPassword = randomBytes(36).toString('base64url') + '!Aa2';
       const user = await auth.createUser({ email, displayName: name, password: temporaryPassword, emailVerified: false });
       const now = new Date().toISOString();
+      let persisted = false;
       try {
-        await db.doc('users/' + user.uid).set({
-          uid: user.uid, email, name, agencyName: kind === 'employee' ?
-            (await db.doc('users/' + actor.ownerUid).get()).data()?.agencyName || 'Minha agência' : agencyName,
+        const invitationUrl = await auth.generatePasswordResetLink(email, {
+          url: process.env.AGENCYOS_PUBLIC_ORIGIN || 'https://agency-os-by-techify.vercel.app',
+          handleCodeInApp: false,
+        });
+        const ownerProfile = kind === 'employee'
+          ? await db.doc('users/' + actor.ownerUid).get() : null;
+        const batch = db.batch();
+        batch.set(db.doc('users/' + user.uid), {
+          uid: user.uid, email, name,
+          agencyName: kind === 'employee'
+            ? ownerProfile?.data()?.agencyName || 'Minha agência' : agencyName,
           role, leadershipRole: 'membro', userType: kind, status: 'active',
           agencyOwnerUid: kind === 'employee' ? actor.ownerUid : user.uid,
           allowedModules: modules, plan: kind === 'employee' ? 'Gratuito / Equipe' : 'Trial Gratuito',
@@ -303,17 +313,79 @@ export function registerAdminManageRoutes(app: Express) {
           createdAt: now, designRole: kind === 'employee' ? 'funcionario' : 'cliente',
           canApproveDesigns: false, canPublishPosts: false, canDeleteDesigns: false,
         });
+        batch.set(db.collection('adminAuditLog').doc(), {
+          actorUid: actor.uid, action: 'user.invited', targetUid: user.uid,
+          ownerUid: actor.ownerUid, details: { kind },
+          createdAt: FieldValue.serverTimestamp(),
+        });
+        await batch.commit();
+        persisted = true;
+        res.status(201).json({ success: true, uid: user.uid, invitationUrl,
+          message: 'Conta criada. Compartilhe o link de definição de senha por um canal seguro.' });
+      } catch (e) {
+        // Never destroy an existing registration when just a later step fails.
+        if (!persisted) await auth.deleteUser(user.uid).catch(() => {});
+        throw e;
+      }
+    } catch (e) { errorOut(res, e); }
+  });
+
+  // Promote a legacy Firestore-only employee to an actual Firebase Auth user.
+  // The same UID is retained; never take over an existing email/identity.
+  app.post('/api/admin/members/:uid/activate', async (req, res) => {
+    try {
+      const actor = await authorize(req);
+      const { db, auth } = adminServices();
+      const target = await getTarget(actor, req.params.uid);
+      if (target.data.userType !== 'employee' || target.data.agencyOwnerUid !== actor.ownerUid)
+        throw new AdminError(403, 'Somente funcionários deste workspace podem ser ativados.');
+      if (req.body?.confirm !== true)
+        throw new AdminError(400, 'Confirme a ativação desta conta legada.');
+      const email = textField(target.data.email, 254).toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+        throw new AdminError(400, 'O cadastro antigo não possui e-mail válido.');
+      try {
+        await auth.getUser(target.ref.id);
+        throw new AdminError(409, 'A conta já existe no Firebase Auth. Atualize a lista.');
+      } catch (e: any) {
+        if (e instanceof AdminError) throw e;
+        if (e?.code !== 'auth/user-not-found') throw e;
+      }
+      try {
+        const existingEmail = await auth.getUserByEmail(email);
+        if (existingEmail.uid !== target.ref.id)
+          throw new AdminError(409, 'Já existe uma conta com este e-mail e outro UID. É necessária revisão manual.');
+        throw new AdminError(409, 'A conta já existe. Atualize a lista.');
+      } catch (e: any) {
+        if (e instanceof AdminError) throw e;
+        if (e?.code !== 'auth/user-not-found') throw e;
+      }
+      const created = await auth.createUser({
+        uid: target.ref.id, email,
+        displayName: textField(target.data.name, 90) || 'Colaborador',
+        password: randomBytes(36).toString('base64url') + '!Aa2',
+        emailVerified: false,
+      });
+      let persisted = false;
+      try {
         const invitationUrl = await auth.generatePasswordResetLink(email, {
           url: process.env.AGENCYOS_PUBLIC_ORIGIN || 'https://agency-os-by-techify.vercel.app',
           handleCodeInApp: false,
         });
-        await audit(actor, 'user.invited', user.uid, { kind });
-        res.status(201).json({ success: true, uid: user.uid, invitationUrl,
-          message: 'Conta criada. Envie o link de definição de senha ao destinatário por um canal seguro.' });
+        const batch = db.batch();
+        batch.update(target.ref, {
+          invitationStatus: 'pending', updatedAt: FieldValue.serverTimestamp(),
+        });
+        batch.set(db.collection('adminAuditLog').doc(), {
+          actorUid: actor.uid, action: 'user.legacy_activated', targetUid: created.uid,
+          ownerUid: actor.ownerUid, details: { source: 'existing-firestore-uid' },
+          createdAt: FieldValue.serverTimestamp(),
+        });
+        await batch.commit();
+        persisted = true;
+        res.json({ success: true, invitationUrl, uid: created.uid });
       } catch (e) {
-        // Do not strand an unlinked Firebase Auth account on failure.
-        await auth.deleteUser(user.uid).catch(() => {});
-        await db.doc('users/' + user.uid).delete().catch(() => {});
+        if (!persisted) await auth.deleteUser(created.uid).catch(() => {});
         throw e;
       }
     } catch (e) { errorOut(res, e); }
@@ -342,10 +414,31 @@ export function registerAdminManageRoutes(app: Express) {
         patch.status = body.status;
       }
       if (!Object.keys(patch).length) throw new AdminError(400, 'Nenhuma alteração válida.');
-      const { auth } = adminServices();
-      if (patch.status) await auth.updateUser(req.params.uid, { disabled: patch.status === 'blocked' });
-      await target.ref.update({ ...patch, updatedAt: FieldValue.serverTimestamp() });
-      await audit(actor, 'user.updated', req.params.uid, { fields: Object.keys(patch) });
+      const { auth, db } = adminServices();
+      let existingAuth;
+      try { existingAuth = await auth.getUser(req.params.uid); }
+      catch (e: any) {
+        if (e?.code === 'auth/user-not-found')
+          throw new AdminError(409, 'Cadastro legado sem autenticação. Ative primeiro a conta do funcionário.');
+        throw e;
+      }
+      if (patch.status) {
+        await auth.updateUser(req.params.uid, { disabled: patch.status === 'blocked' });
+        if (patch.status === 'blocked') await auth.revokeRefreshTokens(req.params.uid);
+      }
+      const batch = db.batch();
+      batch.update(target.ref, { ...patch, updatedAt: FieldValue.serverTimestamp() });
+      batch.set(db.collection('adminAuditLog').doc(), {
+        actorUid: actor.uid, action: 'user.updated', targetUid: req.params.uid,
+        ownerUid: actor.ownerUid, details: { fields: Object.keys(patch) },
+        createdAt: FieldValue.serverTimestamp(),
+      });
+      await batch.commit();
+      // Changing profile display name must not leave Firebase Auth stale.
+      if (patch.name && patch.name !== existingAuth.displayName) {
+        await auth.updateUser(req.params.uid, { displayName: patch.name }).catch(e =>
+          console.warn('Admin API: Auth display name sync deferred', e?.code || 'error'));
+      }
       res.json({ success: true });
     } catch (e) { errorOut(res, e); }
   });

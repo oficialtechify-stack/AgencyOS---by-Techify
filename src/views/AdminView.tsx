@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { auth } from '../lib/firebase';
 import { ALL_SYSTEM_MODULES } from '../lib/permissions';
+import { EMPLOYEE_MODULE_SET, splitEmployeeModules } from '../shared/agencyModules';
 import type { FirestoreUserProfile } from '../lib/firebase';
 
 type AdminTab = 'team' | 'clients' | 'access' | 'plans' | 'activity';
@@ -34,7 +35,7 @@ const panel = 'rounded-[22px] border border-[#23375A] bg-[#0D182C] shadow-lg sha
 const actionBtn = 'inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 text-white px-4 py-2.5 text-xs font-bold hover:bg-blue-500 disabled:opacity-50 transition-colors';
 const outlineBtn = 'inline-flex items-center justify-center gap-2 rounded-xl border border-[#32496B] bg-[#142746] px-3.5 py-2.5 text-xs font-semibold text-slate-200 hover:bg-[#1E375B] disabled:opacity-45 transition-colors';
 const inputStyle = 'w-full rounded-xl border border-[#344968] bg-[#091428] px-3.5 py-3 text-sm text-white outline-none placeholder-slate-500 focus:border-blue-500';
-const fullModules = ALL_SYSTEM_MODULES.filter(m => m.id !== 'admin' && m.id !== 'leadspay-master' && m.id !== 'leadspay-companies')
+const fullModules = ALL_SYSTEM_MODULES.filter(m => EMPLOYEE_MODULE_SET.has(m.id))
   .map(m => ({ id: m.id, name: m.name }));
 const presetModules = ['dashboard', 'kanban', 'agenda', 'ponto'];
 
@@ -49,6 +50,9 @@ export const AdminView: React.FC<{ currentUser?: FirestoreUserProfile | null }> 
   const [editName, setEditName] = useState('');
   const [editRole, setEditRole] = useState('');
   const [editModules, setEditModules] = useState<string[]>([]);
+  const [editModulesDirty, setEditModulesDirty] = useState(false);
+  const [ignoredLegacyModules, setIgnoredLegacyModules] = useState<string[]>([]);
+  const [activationLink, setActivationLink] = useState('');
   const [showInvite, setShowInvite] = useState(false);
   const [inviteKind, setInviteKind] = useState<InviteKind>('employee');
   const [inviteName, setInviteName] = useState('');
@@ -118,7 +122,10 @@ export const AdminView: React.FC<{ currentUser?: FirestoreUserProfile | null }> 
 
   function openMember(member: Member) {
     setSelected(member);
-    setEditName(member.name); setEditRole(member.role); setEditModules(member.allowedModules || []);
+    const normalized = splitEmployeeModules(member.allowedModules);
+    setEditName(member.name); setEditRole(member.role);
+    setEditModules(normalized.valid); setIgnoredLegacyModules(normalized.ignored);
+    setEditModulesDirty(false);
     setMenuUser(null);
   }
   async function run(action: string, body: () => Promise<void>) {
@@ -146,7 +153,10 @@ export const AdminView: React.FC<{ currentUser?: FirestoreUserProfile | null }> 
     if (!selected) return;
     if (selected.uid === currentUser?.uid) { setError('Sua própria conta não pode ser editada aqui.'); return; }
     const patch = selected.userType === 'employee'
-      ? { name: editName, role: editRole, allowedModules: editModules }
+      ? {
+          name: editName, role: editRole,
+          ...(editModulesDirty ? { allowedModules: editModules } : {}),
+        }
       : { name: editName };
     void run('update', async () => {
       await api('members/' + encodeURIComponent(selected.uid), { method: 'PATCH', body: JSON.stringify(patch) });
@@ -154,6 +164,21 @@ export const AdminView: React.FC<{ currentUser?: FirestoreUserProfile | null }> 
       await reload();
     });
   }
+  function activateLegacy(member: Member) {
+    if (member.isAuthAccount || busy || !window.confirm(
+      'Ativar este cadastro antigo? O funcionário precisará definir uma senha em um link oficial do Firebase. Nenhuma senha anterior será reutilizada.'
+    )) return;
+    void run('activate-' + member.uid, async () => {
+      const result = await api('members/' + encodeURIComponent(member.uid) + '/activate', {
+        method: 'POST', body: JSON.stringify({ confirm: true }),
+      });
+      if (!result.invitationUrl) throw new Error('O servidor não retornou o link de ativação.');
+      setActivationLink(result.invitationUrl);
+      setNotice('Conta preparada no Firebase. Envie o link de ativação por um canal seguro.');
+      await reload();
+    });
+  }
+
   function createInvite() {
     void run('invite', async () => {
       const result = await api('invite', { method: 'POST', body: JSON.stringify({
@@ -181,7 +206,7 @@ export const AdminView: React.FC<{ currentUser?: FirestoreUserProfile | null }> 
   }, [tab, search, filter, summary]);
   const employees = (summary?.users || []).filter(p => p.userType === 'employee');
   const clients = (summary?.users || []).filter(p => p.userType !== 'employee');
-  const activeEmployees = employees.filter(p => p.status === 'active').length;
+  const activeEmployees = employees.filter(p => p.isAuthAccount && p.status === 'active' && p.hasSignedIn).length;
   const pendingInvites = (summary?.users || []).filter(p => p.invitationStatus === 'pending' && !p.hasSignedIn).length;
   const duplicates = useMemo(() => {
     const count = new Map<string, number>();
@@ -211,6 +236,12 @@ export const AdminView: React.FC<{ currentUser?: FirestoreUserProfile | null }> 
     <div className="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center bg-[#1A3767] text-blue-200 font-extrabold text-sm border border-blue-500/20">
       {(member.name || member.email || '?').slice(0, 1).toUpperCase()}</div>;
   const memberActions = (member: Member) => <div className="flex flex-wrap gap-2 justify-end">
+    {!member.isAuthAccount && member.userType === 'employee' && (
+      <button className={actionBtn} disabled={Boolean(busy)} onClick={() => activateLegacy(member)}>
+        {busy === 'activate-' + member.uid ? <Loader2 className="w-4 h-4 animate-spin"/> : <KeyRound className="w-4 h-4"/>}
+        Ativar conta
+      </button>
+    )}
     <button className={outlineBtn} onClick={() => openMember(member)} disabled={!member.isAuthAccount}>
       <Settings2 className="w-4 h-4" />Gerenciar</button>
     {member.uid !== currentUser?.uid && <button className={outlineBtn + (member.status !== 'blocked' ? ' text-rose-200' : '')}
@@ -466,22 +497,46 @@ export const AdminView: React.FC<{ currentUser?: FirestoreUserProfile | null }> 
             <input value={editRole} onChange={e => setEditRole(e.target.value)} className={inputStyle}/></div>
           <div><div className="flex justify-between items-center gap-2 mb-3"><label className="text-xs font-bold text-white">Módulos permitidos</label>
             <span className="text-[11px] text-blue-300 font-bold">{editModules.length} selecionados</span></div>
+            {ignoredLegacyModules.length > 0 && <p className="text-[11px] text-amber-200 mb-3 p-3 bg-amber-500/10 border border-amber-500/25 rounded-xl">
+              Este cadastro contém {ignoredLegacyModules.length} permissão(ões) antiga(s) ou restrita(s):
+              {' '}{ignoredLegacyModules.join(', ')}. Editar o nome ou cargo não altera essas permissões.
+              Se você modificar a seleção abaixo, somente os módulos operacionais escolhidos serão salvos.
+            </p>}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[48vh] overflow-y-auto pr-1">
               {fullModules.map(mod => <label key={mod.id} className={'flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer text-xs ' +
                 (editModules.includes(mod.id) ? 'border-blue-500/40 bg-[#19345B] text-white' : 'border-[#293D5B] bg-[#091527] text-slate-400')}>
                 <input type="checkbox" className="accent-blue-500" checked={editModules.includes(mod.id)}
-                  onChange={e => setEditModules(prev => e.target.checked ? [...prev, mod.id] : prev.filter(id => id !== mod.id))}/>
+                  onChange={e => { setEditModulesDirty(true); setEditModules(prev => e.target.checked ? [...prev, mod.id] : prev.filter(id => id !== mod.id)); }}/>
                 {mod.name}</label>)}
             </div>
           </div>
         </> : <div className="rounded-xl bg-[#121F37] border border-[#294368] p-4 text-xs text-slate-400">
           Permissões de clientes SaaS seguem o plano contratado; elas não são liberadas manualmente.</div>}
         <div className="flex gap-2 pt-4 border-t border-[#2A3E60]">
-          <button className={actionBtn} disabled={Boolean(busy) || !editName.trim() || (selected.userType === 'employee' && editModules.length === 0) || selected.uid === currentUser?.uid}
+          <button className={actionBtn} disabled={Boolean(busy) || !editName.trim() ||
+            (selected.userType === 'employee' && editModulesDirty && editModules.length === 0) ||
+            selected.uid === currentUser?.uid}
             onClick={saveMember}>{busy ? <Loader2 className="w-4 h-4 animate-spin"/> : <Check className="w-4 h-4"/>}Salvar alterações</button>
           <button className={outlineBtn} onClick={() => setSelected(null)}>Cancelar</button>
         </div>
       </aside>
+    </div>}
+
+    {activationLink && <div role="presentation" className="fixed inset-0 z-[80] bg-[#020816]/85 backdrop-blur-sm flex items-center justify-center p-4"
+      onMouseDown={e => { if (e.target === e.currentTarget) setActivationLink(''); }}>
+      <section role="dialog" aria-modal="true" aria-label="Link de ativação do funcionário"
+        className={panel + ' p-6 max-w-xl w-full space-y-4'}>
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="font-bold text-lg text-white">Ativação do funcionário</h3>
+          <button className={outlineBtn} onClick={() => setActivationLink('')} aria-label="Fechar"><X className="h-4 w-4"/></button>
+        </div>
+        <p className="text-sm text-slate-300">A conta foi preparada no Firebase Authentication. Envie o link para o funcionário definir sua própria senha. O link não é enviado automaticamente por e-mail.</p>
+        <textarea className={inputStyle + ' break-all'} rows={4} readOnly value={activationLink}/>
+        <button className={actionBtn} onClick={() => void navigator.clipboard.writeText(activationLink).then(() => setNotice('Link de ativação copiado.'))}>
+          <Copy className="w-4 h-4"/>Copiar link de ativação
+        </button>
+        <p className="text-[11px] text-amber-200">Compartilhe somente com a pessoa correta, por canal seguro. Não publique o link.</p>
+      </section>
     </div>}
 
     {showInvite && <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-6 bg-[#020816]/85 backdrop-blur-sm"
