@@ -124,24 +124,6 @@ export default function App() {
       unsubs = [];
     };
 
-    // Global all users subscription for chat and team recognition
-    const unsubAllUsers = subscribeAllUsers((users) => {
-      setAllUsers(users);
-    });
-    unsubs.push(unsubAllUsers);
-
-    // Global Agency Chat Messages Subscription (Realtime, shared across entire team)
-    const unsubGlobalChatMessages = subscribeAgencyChatMessages((chatMessages) => {
-      setState((prev) => ({ ...prev, chatMessages }));
-    });
-    unsubs.push(unsubGlobalChatMessages);
-
-    // Global Agency Chat Channels Subscription
-    const unsubGlobalChatChannels = subscribeAgencyChatChannels((chatChannels) => {
-      setState((prev) => ({ ...prev, chatChannels }));
-    });
-    unsubs.push(unsubGlobalChatChannels);
-
     let activeDataUnsubs: (() => void)[] = [];
 
     const initDataSubscriptions = (dataOwnerUid: string) => {
@@ -259,27 +241,35 @@ export default function App() {
       activeDataUnsubs = [];
 
       const currentAuthUser = auth.currentUser;
-      const stored = getStoredSession();
 
-      let activeUid: string | null = null;
-      let activeUserObj: any = null;
-
-      if (currentAuthUser) {
-        activeUid = currentAuthUser.uid;
-        activeUserObj = currentAuthUser;
-      } else if (stored && stored.uid) {
-        activeUid = stored.uid;
-        activeUserObj = {
-          uid: stored.uid,
-          email: stored.email,
-          displayName: stored.name || stored.email?.split('@')[0] || 'Usuário',
-          emailVerified: true,
-        };
-      }
+      const activeUid = currentAuthUser?.uid || null;
+      const activeUserObj: User | null = currentAuthUser || null;
 
       setUser(activeUserObj);
 
       if (activeUid) {
+        // Start cross-workspace realtime listeners only after Firebase Auth
+        // has established a real user. They must be narrowed by tenant rules
+        // before a secure multi-tenant production rollout.
+      // Global all users subscription for chat and team recognition
+      const unsubAllUsers = subscribeAllUsers((users) => {
+        setAllUsers(users);
+      });
+      unsubs.push(unsubAllUsers);
+  
+      // Global Agency Chat Messages Subscription (Realtime, shared across entire team)
+      const unsubGlobalChatMessages = subscribeAgencyChatMessages((chatMessages) => {
+        setState((prev) => ({ ...prev, chatMessages }));
+      });
+      unsubs.push(unsubGlobalChatMessages);
+  
+      // Global Agency Chat Channels Subscription
+      const unsubGlobalChatChannels = subscribeAgencyChatChannels((chatChannels) => {
+        setState((prev) => ({ ...prev, chatChannels }));
+      });
+      unsubs.push(unsubGlobalChatChannels);
+  
+  
         let lastSubscribedDataUid = '';
 
         // Realtime subscription to User Profile with loop guard
@@ -375,8 +365,7 @@ export default function App() {
     };
 
     window.addEventListener('agencyos_session_changed', handleCustomSessionChange);
-    // Initial evaluation
-    resolveActiveUser();
+    // The Firebase Auth listener resolves the initial session when ready.
 
     return () => {
       unsubscribeAuth();
