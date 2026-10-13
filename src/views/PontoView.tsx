@@ -441,231 +441,242 @@ export const PontoView: React.FC<PontoViewProps> = ({
         })}
       </div>
 
-      {/* Tab: Meu Espelho de Ponto */}
+      {/* Personal workspace: jornada -> schedule/audit -> historical mirror */}
       {activeTab === 'meu-ponto' && (
         <div className="space-y-5">
-          {/* Stepper Card (Sequência Obrigatória 1 a 1) */}
-          <div className="p-5 rounded-3xl bg-neutral-900 border border-neutral-800 space-y-3 shadow-lg">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <span className="text-xs font-black text-white uppercase tracking-wider block">
-                  Sequência do Dia: 1 por vez na ordem legal
-                </span>
-                <span className="text-xs text-neutral-400">
-                  Próximo registro disponível:{' '}
-                  <strong className="text-white font-bold">{nextPunchLabel}</strong>
-                </span>
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
+            <section className="xl:col-span-8 rounded-[24px] border border-[#1C2E52] bg-[#0E172B] p-5 sm:p-6">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2 text-blue-400 text-[10px] font-extrabold tracking-widest uppercase mb-2">
+                    <Activity className="h-3.5 w-3.5" />Acompanhe seu dia
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-extrabold text-white">Jornada de hoje</h3>
+                  <p className="mt-1 text-xs text-slate-400">
+                    {hasExit ? 'Você concluiu as quatro etapas da jornada.' : `Próximo registro: ${nextPunchLabel.replace(/^\d+\.\s*/, '')}`}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-[#2C4876] bg-[#14284D] px-3 py-2 text-xs text-blue-200 font-bold">
+                  {completedSteps}/4 concluídos
+                </div>
               </div>
 
-              <button
-                type="button"
-                onClick={onOpenPunchModal}
-                className="px-5 py-2.5 rounded-xl bg-white hover:bg-neutral-200 text-black font-black text-xs transition-all shadow-md flex items-center gap-2 cursor-pointer shrink-0"
-              >
-                <Clock className="w-3.5 h-3.5" />
-                <span>Bater: {nextPunchLabel}</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
+              <div className="mt-6 h-2 rounded-full bg-[#1A2846] overflow-hidden" role="progressbar"
+                aria-valuenow={completedSteps} aria-valuemin={0} aria-valuemax={4} aria-label="Etapas concluídas">
+                <div className="h-full bg-gradient-to-r from-blue-600 via-blue-400 to-cyan-400 rounded-full transition-all duration-500"
+                  style={{ width: `${completedSteps * 25}%` }} />
+              </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-              {stepsList.map((step, idx) => {
-                const isDone = !!step.record;
-                const isCurrent = !isDone && seqRule.nextType === step.type;
-                const StepIcon = step.icon;
-
-                return (
-                  <div
-                    key={step.type}
-                    className={`p-3.5 rounded-2xl border transition-all ${
-                      isDone
-                        ? 'bg-emerald-950/20 border-emerald-800/40 text-emerald-300'
-                        : isCurrent
-                        ? 'bg-neutral-800 border-white text-white shadow-md ring-1 ring-white/20'
-                        : 'bg-neutral-950/50 border-neutral-800/50 text-neutral-500 opacity-60'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-black/40">
-                        Passo #{idx + 1}
-                      </span>
-                      {isDone ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                      ) : isCurrent ? (
-                        <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-                      ) : (
-                        <Lock className="w-3.5 h-3.5 text-neutral-500" />
-                      )}
-                    </div>
-                    <div className="text-xs font-black truncate">{step.label}</div>
-                    <div className="text-[11px] font-mono text-neutral-400 mt-1 flex justify-between">
-                      <span>Previsto: {step.timeExpected}</span>
-                      {isDone && (
-                        <span className="text-emerald-400 font-bold">
-                          {step.record?.time.substring(0, 5)}
+              <div className="relative grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5">
+                {stepsList.map((step, index) => {
+                  const Icon = step.icon;
+                  const finished = Boolean(step.record);
+                  const current = !finished && !hasExit && seqRule.nextType === step.type;
+                  return (
+                    <div key={step.type} className={`relative rounded-2xl border p-4 min-w-0 transition-colors ${finished
+                      ? 'border-emerald-500/30 bg-emerald-500/[0.06]'
+                      : current
+                        ? 'border-blue-500/70 bg-blue-500/[0.09] shadow-lg shadow-blue-950/20'
+                        : 'border-[#253554] bg-[#0B1324]'}`}>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${finished ? 'bg-emerald-500/15 text-emerald-400' : current ? 'bg-blue-500/20 text-blue-300' : 'bg-[#182743] text-slate-500'}`}>
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        {finished ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : current
+                          ? <span className="rounded-full bg-blue-500/15 px-2.5 py-1 text-[10px] text-blue-300 font-bold">Próximo</span>
+                          : <Lock className="w-3.5 h-3.5 text-slate-600" />}
+                      </div>
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Etapa {index + 1}</p>
+                      <h4 className="text-sm font-bold text-white mt-1">{step.label.replace(/^\d+\.\s*/, '')}</h4>
+                      <div className="flex items-center justify-between gap-2 mt-3 text-[11px]">
+                        <span className="text-slate-400">Previsto: {persistedSchedule ? step.timeExpected : 'Sem escala'}</span>
+                        <span className={finished ? 'text-emerald-400 font-bold tabular-nums' : 'text-slate-500'}>
+                          {finished ? step.record?.time.slice(0, 5) : '—'}
                         </span>
-                      )}
+                      </div>
                     </div>
+                  );
+                })}
+              </div>
+
+              <div className="mt-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl border border-[#263D68] bg-[#112346] p-4">
+                <div>
+                  <p className="font-bold text-white text-sm">{hasExit ? 'Jornada principal finalizada' : 'Pronto para registrar?'}</p>
+                  <p className="text-[11px] text-slate-400 mt-1">{hasExit ? 'Consulte o histórico abaixo. Horas extras seguem as regras da sua escala.' : seqRule.isAllowed ? 'O registro será confirmado no fluxo de ponto seguro.' : seqRule.reason || 'Respeite o intervalo mínimo entre registros.'}</p>
+                </div>
+                <button type="button" onClick={onOpenPunchModal}
+                  className="w-full sm:w-auto inline-flex shrink-0 justify-center items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-xs font-bold text-white hover:bg-blue-500 transition-colors">
+                  <Clock className="w-4 h-4" />{hasExit ? 'Consultar ponto' : 'Registrar agora'}<ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </section>
+
+            <aside className="xl:col-span-4 space-y-4">
+              <section className="rounded-[24px] border border-[#1C2E52] bg-[#0E172B] p-5">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-white text-sm">Minha escala</h3>
+                  <Calendar className="h-4 w-4 text-blue-400" />
+                </div>
+                {persistedSchedule ? (
+                  <>
+                    <p className="text-xs text-slate-400 mt-2">Horários oficialmente cadastrados</p>
+                    <div className="mt-4 grid grid-cols-2 gap-2.5">
+                      {[
+                        ['Entrada', persistedSchedule.entryTime],
+                        ['Saída almoço', persistedSchedule.lunchStartTime],
+                        ['Retorno', persistedSchedule.lunchEndTime],
+                        ['Saída', persistedSchedule.exitTime],
+                      ].map(([label, time]) => (
+                        <div key={label} className="rounded-xl border border-[#243756] bg-[#0A1428] p-3">
+                          <p className="text-[10px] text-slate-500">{label}</p>
+                          <p className="text-sm font-extrabold text-white mt-1 tabular-nums">{time}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-[11px] text-slate-400">Tolerância: {persistedSchedule.toleranceMinutes} min • {persistedSchedule.strictEnforcement ? 'Controle restrito' : 'Controle flexível'}</p>
+                  </>
+                ) : (
+                  <div className="mt-4 rounded-2xl border border-dashed border-amber-500/25 bg-amber-500/[0.05] p-4">
+                    <p className="text-sm text-amber-200 font-bold">Nenhuma escala vinculada</p>
+                    <p className="text-xs text-slate-400 mt-2">Os horários padrão do registro não representam uma escala aprovada pela empresa.</p>
+                    {canManageSchedules && (
+                      <button type="button" onClick={() => setShowScheduleModal(true)}
+                        className="mt-3 text-xs font-bold text-blue-300 hover:text-blue-200">Configurar escala →</button>
+                    )}
                   </div>
-                );
-              })}
-            </div>
+                )}
+              </section>
+
+              <section className="rounded-[24px] border border-[#1C2E52] bg-[#0E172B] p-5">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-white text-sm">Último registro</h3>
+                  <ShieldCheck className="h-4 w-4 text-blue-400" />
+                </div>
+                {lastRecord ? (
+                  <div className="space-y-3 mt-4">
+                    <div>
+                      <div className="text-lg font-extrabold text-white">{lastRecord.time.slice(0, 5)}</div>
+                      <div className="text-xs text-slate-400">{lastRecord.typeLabel || lastRecord.type} • {lastRecord.date}</div>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-slate-300">
+                      <MapPin className="h-3.5 w-3.5 text-blue-400" />
+                      {lastRecord.location ? (lastRecord.location.city || 'Coordenadas registradas') : 'Localização não registrada'}
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-slate-300">
+                      <ShieldCheck className="h-3.5 w-3.5 text-blue-400" />
+                      {lastRecord.securityHash ? 'Identificador de auditoria presente' : 'Sem identificador de auditoria'}
+                    </div>
+                    <button type="button" onClick={() => setRecordToInspect(lastRecord)}
+                      className="w-full mt-1 inline-flex items-center justify-center gap-2 rounded-xl border border-[#2A4270] bg-[#13274A] hover:bg-[#1A3360] py-2.5 text-xs font-bold text-blue-200">
+                      <Eye className="h-4 w-4" />Ver detalhes da auditoria
+                    </button>
+                  </div>
+                ) : (
+                  <p className="mt-4 text-xs text-slate-400 leading-relaxed">Os dados de localização, dispositivo e auditoria serão mostrados aqui após o primeiro registro.</p>
+                )}
+              </section>
+            </aside>
           </div>
 
-          {/* Table Header Controls */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-neutral-950 p-4 rounded-2xl border border-neutral-800">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-neutral-300">Mês de Referência:</span>
-              <input
-                type="month"
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-white font-mono"
-              />
+          <section className="rounded-[24px] border border-[#1C2E52] bg-[#0E172B] overflow-hidden">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6 border-b border-[#1E2D4C]">
+              <div>
+                <h3 className="text-lg font-extrabold text-white">Espelho de ponto</h3>
+                <p className="mt-1 text-xs text-slate-400">Histórico das jornadas e horários registrados por dia.</p>
+              </div>
+              <div className="flex items-center flex-wrap gap-2">
+                <label className="sr-only" htmlFor="ponto-mes">Mês de referência</label>
+                <input id="ponto-mes" aria-label="Mês de referência" type="month" value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="rounded-xl border border-[#2A3D60] bg-[#0A1427] px-3 py-2.5 text-xs text-white focus:border-blue-500 focus:outline-none" />
+                <label className="sr-only" htmlFor="ponto-filtro">Filtrar histórico</label>
+                <select id="ponto-filtro" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
+                  className="rounded-xl border border-[#2A3D60] bg-[#0A1427] px-3 py-2.5 text-xs text-white focus:border-blue-500 focus:outline-none">
+                  <option value="todos">Todos os status</option>
+                  <option value="regular">Regulares</option>
+                  <option value="late">Atrasos</option>
+                  <option value="overtime">Horas extras</option>
+                  <option value="early_departure">Saídas antecipadas</option>
+                  <option value="edited">Editados</option>
+                </select>
+              </div>
             </div>
 
-            <div className="text-xs text-neutral-400">
-              Total de registros no mês:{' '}
-              <strong className="text-white font-mono">{monthlyRecords.length}</strong>
-            </div>
-          </div>
-
-          {/* Records Table */}
-          <div className="bg-neutral-900 border border-neutral-800 rounded-3xl overflow-hidden shadow-xl">
-            {monthlyRecords.length === 0 ? (
-              <div className="p-12 text-center text-neutral-500 text-xs">
-                Nenhum ponto registrado em {selectedMonth}.
+            {groupedHistory.filter(([, items]) => filterStatus === 'todos' || items.some((record) => filterStatus === 'edited' ? record.isManuallyEdited : record.status === filterStatus)).length === 0 ? (
+              <div className="px-6 py-16 text-center max-w-lg mx-auto">
+                <div className="h-14 w-14 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mx-auto"><CalendarDays className="w-7 h-7 text-blue-400" /></div>
+                <h4 className="text-base font-bold text-white mt-4">Nenhum registro encontrado</h4>
+                <p className="text-xs text-slate-400 mt-2 leading-relaxed">{monthlyRecords.length === 0 ? `Ainda não existem registros em ${currentMonthName}. Assim que você registrar seu ponto, eles aparecerão aqui.` : 'Nenhum dia corresponde ao filtro selecionado.'}</p>
+                <button type="button" onClick={monthlyRecords.length === 0 ? onOpenPunchModal : () => setFilterStatus('todos')}
+                  className="mt-5 px-4 py-2.5 rounded-xl border border-blue-500/30 bg-[#163264] text-blue-200 text-xs font-bold hover:bg-[#1D3B72]">
+                  {monthlyRecords.length === 0 ? 'Registrar ponto' : 'Limpar filtro'}
+                </button>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-neutral-300">
-                  <thead className="bg-neutral-950 text-[10px] uppercase font-black text-neutral-400 tracking-wider border-b border-neutral-800">
-                    <tr>
-                      <th className="p-3.5 pl-5">Data</th>
-                      <th className="p-3.5">Horário Batido</th>
-                      <th className="p-3.5">Horário Vinculado</th>
-                      <th className="p-3.5">Tipo do Ponto</th>
-                      <th className="p-3.5">Status</th>
-                      <th className="p-3.5">Localização</th>
-                      <th className="p-3.5">Hash de Segurança</th>
-                      <th className="p-3.5 pr-5 text-right">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-800/60 font-sans">
-                    {monthlyRecords.map((r) => {
-                      const isToday = r.date === todayStr;
-                      return (
-                        <tr
-                          key={r.id}
-                          className={`hover:bg-neutral-800/40 transition-colors ${
-                            isToday ? 'bg-neutral-800/20' : ''
-                          }`}
-                        >
-                          <td className="p-3.5 pl-5 font-bold text-white font-mono">
-                            <div className="flex items-center gap-2">
-                              <span>{r.date}</span>
-                              {isToday && (
-                                <span className="text-[9px] bg-white text-black px-1.5 py-0.5 rounded font-black">
-                                  HOJE
-                                </span>
-                              )}
-                              {r.isManuallyEdited && (
-                                <span
-                                  className="text-[9px] bg-amber-500/10 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded font-bold"
-                                  title={`Editado por ${r.editedBy || 'Master'}`}
-                                >
-                                  EDITADO
-                                </span>
-                              )}
-                            </div>
+              <>
+                <div className="lg:hidden divide-y divide-[#1C2E4D]">
+                  {groupedHistory.filter(([, records]) => filterStatus === 'todos' || records.some((r) => filterStatus === 'edited' ? r.isManuallyEdited : r.status === filterStatus)).map(([date, records]) => (
+                    <div key={date} className="p-4">
+                      <div className="flex items-center justify-between"><p className="font-bold text-white text-sm">{new Date(date + 'T12:00:00').toLocaleDateString('pt-BR')}</p>
+                        <span className="text-blue-300 font-bold text-xs">{formatWorkedTime(getWorkedMinutes(records))}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 mt-3 text-xs">
+                        {(['entry', 'lunch_start', 'lunch_end', 'exit'] as TimeClockType[]).map((type, index) => (
+                          <div key={type} className="rounded-xl bg-[#0A1427] border border-[#203457] p-2.5">
+                            <p className="text-[10px] text-slate-500">{['Entrada', 'Saída almoço', 'Retorno', 'Saída'][index]}</p>
+                            <p className="text-white font-bold mt-1 tabular-nums">{showRecordedTime(records, type)}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <button type="button" onClick={() => setRecordToInspect(records[0])}
+                        className="mt-3 text-xs font-semibold text-blue-300 hover:text-blue-200">Ver detalhes →</button>
+                    </div>
+                  ))}
+                </div>
+                <div className="hidden lg:block overflow-x-auto">
+                  <table className="w-full text-left text-xs text-slate-300">
+                    <thead className="bg-[#0A1324] text-[10px] uppercase tracking-wider text-slate-500">
+                      <tr>
+                        <th className="px-5 py-4">Data</th>
+                        <th className="px-3 py-4">Entrada</th>
+                        <th className="px-3 py-4">Saída almoço</th>
+                        <th className="px-3 py-4">Retorno</th>
+                        <th className="px-3 py-4">Saída</th>
+                        <th className="px-3 py-4">Horas</th>
+                        <th className="px-3 py-4">Ocorrências</th>
+                        <th className="px-5 py-4 text-right">Detalhes</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#1B2D4E]">
+                      {groupedHistory.filter(([, records]) => filterStatus === 'todos' || records.some((r) => filterStatus === 'edited' ? r.isManuallyEdited : r.status === filterStatus)).map(([date, records]) => (
+                        <tr key={date} className="hover:bg-[#122342]/60 transition-colors">
+                          <td className="px-5 py-4 font-semibold text-white">{new Date(date + 'T12:00:00').toLocaleDateString('pt-BR')}</td>
+                          {(['entry', 'lunch_start', 'lunch_end', 'exit'] as TimeClockType[]).map((type) => (
+                            <td key={type} className="px-3 py-4 font-mono tabular-nums">{showRecordedTime(records, type)}</td>
+                          ))}
+                          <td className="px-3 py-4 font-bold text-blue-300 whitespace-nowrap">{formatWorkedTime(getWorkedMinutes(records))}</td>
+                          <td className="px-3 py-4">
+                            {records.some((r) => r.status === 'late') ? <span className="text-amber-300">Atraso</span>
+                              : records.some((r) => r.isManuallyEdited) ? <span className="text-purple-300">Editado</span>
+                              : records.some((r) => r.status === 'early_departure') ? <span className="text-amber-300">Saída antecipada</span>
+                              : <span className="text-slate-400">Sem ocorrências</span>}
                           </td>
-                          <td className="p-3.5 font-mono font-black text-white text-sm">
-                            {r.time}
-                          </td>
-                          <td className="p-3.5 font-mono text-neutral-400">
-                            {r.scheduledTime || '--:--'}
-                          </td>
-                          <td className="p-3.5">
-                            <span className="inline-flex items-center gap-1.5 font-bold text-white">
-                              {r.typeLabel || r.type}
-                            </span>
-                          </td>
-                          <td className="p-3.5">
-                            {r.status === 'late' ? (
-                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-950 border border-amber-800 text-amber-300">
-                                Atraso
-                              </span>
-                            ) : r.status === 'overtime' ? (
-                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-950 border border-blue-800 text-blue-300">
-                                Hora Extra
-                              </span>
-                            ) : r.status === 'early_departure' ? (
-                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-950 border border-purple-800 text-purple-300">
-                                Saída Antecipada
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-neutral-800 border border-neutral-700 text-neutral-300">
-                                Regular
-                              </span>
-                            )}
-                          </td>
-                          <td className="p-3.5 text-neutral-400">
-                            {r.location ? (
-                              <span className="flex items-center gap-1 text-[11px] text-neutral-300">
-                                <MapPin className="w-3 h-3 text-neutral-400 shrink-0" />
-                                {r.location.city || 'GPS'}
-                              </span>
-                            ) : (
-                              <span className="text-[11px] text-neutral-500">Auditado (Rede)</span>
-                            )}
-                          </td>
-                          <td className="p-3.5 font-mono text-[10px] text-neutral-400 font-bold">
-                            {r.securityHash}
-                          </td>
-                          <td className="p-3.5 pr-5 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => setRecordToInspect(r)}
-                                className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-all cursor-pointer"
-                                title="Inspecionar detalhes de auditoria"
-                              >
-                                <Eye className="w-3.5 h-3.5" />
-                              </button>
-
-                              {canEditOrAlter && (
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={() => setRecordToEdit(r)}
-                                    className="p-1.5 rounded-lg text-amber-400 hover:text-amber-200 hover:bg-amber-950/40 border border-amber-900/40 transition-all cursor-pointer flex items-center gap-1"
-                                    title="Editar horário e dados deste ponto (Master Admin)"
-                                  >
-                                    <Edit3 className="w-3.5 h-3.5" />
-                                    <span className="hidden sm:inline text-[11px] font-bold">Editar</span>
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    onClick={() => setRecordToDelete(r)}
-                                    className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-red-950/40 border border-transparent hover:border-red-800/60 transition-all cursor-pointer flex items-center gap-1"
-                                    title="Apagar este ponto errado (Master Admin)"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                    <span className="hidden sm:inline text-[11px]">Apagar</span>
-                                  </button>
-                                </>
-                              )}
-                            </div>
+                          <td className="px-5 py-4 text-right">
+                            <button type="button" onClick={() => setRecordToInspect(records[0])}
+                              className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-300 hover:text-blue-100"><Eye className="h-3.5 w-3.5" />Ver</button>
                           </td>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
-          </div>
+            <div className="px-5 py-3 border-t border-[#1E2D4C] bg-[#0B1427] text-[11px] text-slate-400 flex flex-wrap justify-between gap-2">
+              <span>{totalMonthlyDays} dias com registros em {currentMonthName}</span>
+              <button type="button" onClick={() => setActiveTab('auditoria')} className="text-blue-300 font-bold hover:text-blue-200">Abrir auditoria detalhada →</button>
+            </div>
+          </section>
         </div>
       )}
 
