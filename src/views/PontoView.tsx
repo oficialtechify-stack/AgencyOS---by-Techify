@@ -255,7 +255,9 @@ export const PontoView: React.FC<PontoViewProps> = ({
     ];
     const csvSafe = (value: unknown) => {
       const raw = String(value ?? '');
-      const neutralized = /^[=+@\\-\\t\\r]/.test(raw.trimStart()) ? "'" + raw : raw;
+      // Spreadsheet programs interpret these leading characters as formulas.
+      const first = raw.trimStart().charAt(0);
+      const neutralized = ['=', '+', '-', '@'].includes(first) ? "'" + raw : raw;
       return '"' + neutralized.replace(/"/g, '""') + '"';
     };
     const rows = recordsToExport.map((r) => [
@@ -271,7 +273,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
       csvSafe(r.editedBy || ''),
       csvSafe(r.securityHash || ''),
       csvSafe(r.deviceInfo || ''),
-      csvSafe((r.notes || r.editReason || '').replace(/"/g, '""')),
+      csvSafe(r.notes || r.editReason || ''),
     ]);
 
     const csvContent =
@@ -883,8 +885,8 @@ export const PontoView: React.FC<PontoViewProps> = ({
                 <option value="lunch_start">2. Saída Almoço</option>
                 <option value="lunch_end">3. Retorno Almoço</option>
                 <option value="exit">4. Saída Expediente</option>
-                <option value="overtime_in">5. Início Horas Extras</option>
-                <option value="overtime_out">6. Término Horas Extras</option>
+                <option value="extra_start">5. Início Horas Extras</option>
+                <option value="extra_end">6. Término Horas Extras</option>
               </select>
 
               {/* Month */}
