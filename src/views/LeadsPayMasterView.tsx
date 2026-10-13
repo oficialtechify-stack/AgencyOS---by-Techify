@@ -241,66 +241,13 @@ export const LeadsPayMasterView: React.FC<LeadsPayMasterViewProps> = ({
     setTimeout(() => setCopiedSecret(false), 2500);
   };
 
-  // Simular Webhook
+  // Production must never synthesize payment-success webhook events.
+  // Test webhooks belong to an isolated staging environment with a test secret.
   const handleSimulateWebhook = async (
-    type: 'company.activated' | 'payment.success' | 'subscription.renewed',
-    companyTarget?: LeadsPayCompany
+    _type: 'company.activated' | 'payment.success' | 'subscription.renewed',
+    _companyTarget?: LeadsPayCompany
   ) => {
-    setSimulating(true);
-    setTestResult(null);
-    try {
-      const targetName = companyTarget?.name || 'Agência Exemplo LeadsPay';
-      const targetId = companyTarget?.id || 'agency-master-owner';
-      const targetFee = companyTarget?.monthlyFee || (type === 'company.activated' ? 0 : 497);
-
-      const res = await fetch('/api/webhooks/leadspay', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-leadspay-signature': 'demo_test_signature',
-        },
-        body: JSON.stringify({
-          event: type,
-          agency_id: targetId,
-          data: {
-            customer_name: targetName,
-            amount: targetFee,
-            status: 'completed',
-            product: `Plano ${companyTarget?.plan || 'Pro'} LeadsPay`,
-            payment_method: 'pix_or_card',
-            created_at: new Date().toISOString(),
-          },
-          timestamp: new Date().toISOString(),
-        }),
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        setTestResult(`Evento '${type}' disparado com sucesso para ${targetName}! O feed atualizou em tempo real.`);
-        // Also update local company lastWebhook if matched
-        if (companyTarget) {
-          try {
-            await setDoc(
-              doc(db, 'leadspay_companies', companyTarget.id),
-              {
-                lastWebhookAt: new Date().toISOString(),
-                totalRevenue: (companyTarget.totalRevenue || 0) + targetFee,
-              },
-              { merge: true }
-            );
-          } catch (e) {
-            console.warn('Update comp:', e);
-          }
-        }
-      } else {
-        setTestResult(`Aviso do Servidor: ${data.error || 'Erro na requisição'}`);
-      }
-    } catch (e: any) {
-      setTestResult(`Erro ao disparar simulação: ${e.message}`);
-    } finally {
-      setSimulating(false);
-      setTimeout(() => setTestResult(null), 6000);
-    }
+    setTestResult('Simulações desativadas: utilize um ambiente de testes isolado.');
   };
 
   // Toggle Company Status
@@ -362,19 +309,15 @@ export const LeadsPayMasterView: React.FC<LeadsPayMasterViewProps> = ({
       cnpjOrDoc: newCompanyDoc.trim() || 'Não informado',
       plan: newCompanyPlan,
       monthlyFee: fees[newCompanyPlan] || 497,
-      status: 'active',
+      status: 'pending',
       totalRevenue: 0,
       apiKey: '', // Issued only by a trusted backend, never generated in the browser.
       createdAt: new Date().toISOString(),
-      lastWebhookAt: new Date().toISOString(),
     };
 
     try {
       await setDoc(doc(db, 'leadspay_companies', newComp.id), newComp);
       setCompanies((prev) => [newComp, ...prev]);
-
-      // Trigger automatic activation event
-      await handleSimulateWebhook('company.activated', newComp);
 
       setShowNewCompanyModal(false);
       setNewCompanyName('');
@@ -423,7 +366,7 @@ export const LeadsPayMasterView: React.FC<LeadsPayMasterViewProps> = ({
     if (ev.received_at) {
       return new Date(ev.received_at).toLocaleString('pt-BR');
     }
-    return 'Agora mesmo';
+    return 'Sem horário registrado';
   };
 
   const filteredEvents = useMemo(() => {
