@@ -74,7 +74,7 @@ export const EmployeeScheduleModal: React.FC<EmployeeScheduleModalProps> = ({
     setSelectedSchedule(null);
     setUserEmail('');
     setUserName('');
-    setUserRole('Gestor de Tráfego');
+    setUserRole('Colaborador');
     setEntryTime('08:00');
     setLunchStartTime('12:00');
     setLunchEndTime('13:00');
@@ -131,22 +131,22 @@ export const EmployeeScheduleModal: React.FC<EmployeeScheduleModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 overflow-y-auto animate-in fade-in duration-200">
-      <div className="bg-[#0b0c10] border border-neutral-800 rounded-3xl w-full max-w-4xl overflow-hidden shadow-2xl flex flex-col text-neutral-200 font-sans my-auto max-h-[90vh]">
+      <div role="dialog" aria-modal="true" aria-label="Gerenciar escalas" className="bg-[#0A1326] border border-[#24395E] rounded-[24px] w-full max-w-4xl overflow-hidden shadow-2xl flex flex-col text-neutral-200 font-sans my-auto max-h-[92dvh]">
         {/* Modal Header */}
-        <div className="p-5 sm:p-6 border-b border-neutral-800 flex items-center justify-between bg-neutral-950/70">
+        <div className="p-5 sm:p-6 border-b border-[#24395E] flex items-center justify-between bg-[#0D1C39]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-white text-black flex items-center justify-center font-black shadow-md">
-              <Clock className="w-5 h-5 text-black" />
+            <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black shadow-md">
+              <Clock className="w-5 h-5 text-white" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-lg font-black text-white">Gestão de Horários e Escalas por Colaborador</h3>
+                <h3 className="text-lg font-black text-white">Gerenciar escalas</h3>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                  Bloqueio Estrito
+                  Controle de jornada
                 </span>
               </div>
               <p className="text-xs text-neutral-400">
-                Defina a hora certa exata de entrada, almoço e saída para cada colaborador com trava anti-fraude.
+                Configure os horários de entrada, almoço e saída para cada colaborador.
               </p>
             </div>
           </div>
@@ -154,7 +154,7 @@ export const EmployeeScheduleModal: React.FC<EmployeeScheduleModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+            className="w-8 h-8 rounded-full bg-[#193055] hover:bg-[#294875] text-neutral-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -163,7 +163,7 @@ export const EmployeeScheduleModal: React.FC<EmployeeScheduleModalProps> = ({
         {/* Modal Body */}
         <div className="flex flex-col lg:flex-row flex-1 overflow-hidden min-h-0">
           {/* Left Column: List of Schedules */}
-          <div className="w-full lg:w-80 border-r border-neutral-800 bg-neutral-950/40 p-4 overflow-y-auto space-y-3">
+          <div className="w-full lg:w-80 border-r border-[#24395E] bg-[#0A142B] p-4 overflow-y-auto space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
                 Colaboradores ({schedules.length})
@@ -171,7 +171,7 @@ export const EmployeeScheduleModal: React.FC<EmployeeScheduleModalProps> = ({
               <button
                 type="button"
                 onClick={handleStartCreate}
-                className="px-2.5 py-1 rounded-xl bg-white hover:bg-neutral-200 text-black text-xs font-black flex items-center gap-1 cursor-pointer shadow-sm transition-all"
+                className="px-2.5 py-1 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-black flex items-center gap-1 cursor-pointer shadow-sm transition-all"
               >
                 <Plus className="w-3.5 h-3.5" />
                 Vincular Novo
@@ -189,8 +189,8 @@ export const EmployeeScheduleModal: React.FC<EmployeeScheduleModalProps> = ({
                     onClick={() => handleSelect(s)}
                     className={`w-full text-left p-3 rounded-2xl border transition-all cursor-pointer ${
                       isSelected
-                        ? 'bg-neutral-800/90 border-white text-white shadow-md'
-                        : 'bg-neutral-900/60 border-neutral-800/80 text-neutral-300 hover:bg-neutral-800/40 hover:border-neutral-700'
+                        ? 'bg-[#193055]/90 border-white text-white shadow-md'
+                        : 'bg-[#12213E] border-[#24395E]/80 text-neutral-300 hover:bg-[#193055]/40 hover:border-[#324C74]'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-1">
@@ -203,7 +203,7 @@ export const EmployeeScheduleModal: React.FC<EmployeeScheduleModalProps> = ({
                     </div>
                     <p className="text-[11px] text-neutral-400 truncate mb-2">{s.userEmail}</p>
 
-                    <div className="flex items-center justify-between text-[11px] font-mono bg-black/40 px-2 py-1 rounded-lg border border-neutral-800">
+                    <div className="flex items-center justify-between text-[11px] font-mono bg-black/40 px-2 py-1 rounded-lg border border-[#24395E]">
                       <span>{s.entryTime || '08:00'}</span>
                       <span className="text-neutral-500">→</span>
                       <span>{s.lunchStartTime || '12:00'}</span>
@@ -266,7 +266,7 @@ export const EmployeeScheduleModal: React.FC<EmployeeScheduleModalProps> = ({
                     value={userName}
                     onChange={(e) => setUserName(e.target.value)}
                     placeholder="Ex: Carlos Oliveira"
-                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white"
+                    className="w-full bg-[#0E1C35] border border-[#24395E] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400"
                   />
                 </div>
 
@@ -280,7 +280,7 @@ export const EmployeeScheduleModal: React.FC<EmployeeScheduleModalProps> = ({
                     value={userEmail}
                     onChange={(e) => setUserEmail(e.target.value)}
                     placeholder="colaborador@agencyos.com"
-                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white"
+                    className="w-full bg-[#0E1C35] border border-[#24395E] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400"
                   />
                 </div>
 
@@ -291,7 +291,7 @@ export const EmployeeScheduleModal: React.FC<EmployeeScheduleModalProps> = ({
                   <select
                     value={userRole}
                     onChange={(e) => setUserRole(e.target.value)}
-                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white cursor-pointer"
+                    className="w-full bg-[#0E1C35] border border-[#24395E] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400 cursor-pointer"
                   >
                     <option value="Diretor Executivo / Master">Diretor Executivo / Master</option>
                     <option value="Líder de Marketing & Tráfego">Líder de Marketing & Tráfego</option>
@@ -308,7 +308,7 @@ export const EmployeeScheduleModal: React.FC<EmployeeScheduleModalProps> = ({
               </div>
 
               {/* Shift Schedule Grid */}
-              <div className="p-4 rounded-2xl bg-neutral-900/60 border border-neutral-800 space-y-4">
+              <div className="p-4 rounded-2xl bg-[#12213E] border border-[#24395E] space-y-4">
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-white" />
                   <span className="text-xs font-bold text-white uppercase tracking-wider">
@@ -325,7 +325,7 @@ export const EmployeeScheduleModal: React.FC<EmployeeScheduleModalProps> = ({
                       type="time"
                       value={entryTime}
                       onChange={(e) => setEntryTime(e.target.value)}
-                      className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3 py-2 text-sm font-mono text-white text-center focus:outline-none focus:border-white"
+                      className="w-full bg-[#091428] border border-[#324C74] rounded-xl px-3 py-2 text-sm font-mono text-white text-center focus:outline-none focus:border-blue-400"
                     />
                   </div>
 
@@ -337,7 +337,7 @@ export const EmployeeScheduleModal: React.FC<EmployeeScheduleModalProps> = ({
                       type="time"
                       value={lunchStartTime}
                       onChange={(e) => setLunchStartTime(e.target.value)}
-                      className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3 py-2 text-sm font-mono text-white text-center focus:outline-none focus:border-white"
+                      className="w-full bg-[#091428] border border-[#324C74] rounded-xl px-3 py-2 text-sm font-mono text-white text-center focus:outline-none focus:border-blue-400"
                     />
                   </div>
 
@@ -349,7 +349,7 @@ export const EmployeeScheduleModal: React.FC<EmployeeScheduleModalProps> = ({
                       type="time"
                       value={lunchEndTime}
                       onChange={(e) => setLunchEndTime(e.target.value)}
-                      className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3 py-2 text-sm font-mono text-white text-center focus:outline-none focus:border-white"
+                      className="w-full bg-[#091428] border border-[#324C74] rounded-xl px-3 py-2 text-sm font-mono text-white text-center focus:outline-none focus:border-blue-400"
                     />
                   </div>
 
@@ -361,14 +361,14 @@ export const EmployeeScheduleModal: React.FC<EmployeeScheduleModalProps> = ({
                       type="time"
                       value={exitTime}
                       onChange={(e) => setExitTime(e.target.value)}
-                      className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3 py-2 text-sm font-mono text-white text-center focus:outline-none focus:border-white"
+                      className="w-full bg-[#091428] border border-[#324C74] rounded-xl px-3 py-2 text-sm font-mono text-white text-center focus:outline-none focus:border-blue-400"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Security & Strict Punch Rules */}
-              <div className="p-4 rounded-2xl bg-neutral-900/60 border border-neutral-800 space-y-3">
+              <div className="p-4 rounded-2xl bg-[#12213E] border border-[#24395E] space-y-3">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-emerald-400" />
                   <span className="text-xs font-bold text-white uppercase tracking-wider">
@@ -384,7 +384,7 @@ export const EmployeeScheduleModal: React.FC<EmployeeScheduleModalProps> = ({
                     <select
                       value={toleranceMinutes}
                       onChange={(e) => setToleranceMinutes(Number(e.target.value))}
-                      className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white cursor-pointer"
+                      className="w-full bg-[#091428] border border-[#324C74] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400 cursor-pointer"
                     >
                       <option value={5}>± 5 minutos (Super Rígido)</option>
                       <option value={10}>± 10 minutos (Recomendado)</option>
@@ -400,7 +400,7 @@ export const EmployeeScheduleModal: React.FC<EmployeeScheduleModalProps> = ({
                     <select
                       value={minIntervalMinutes}
                       onChange={(e) => setMinIntervalMinutes(Number(e.target.value))}
-                      className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white cursor-pointer"
+                      className="w-full bg-[#091428] border border-[#324C74] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400 cursor-pointer"
                     >
                       <option value={3}>3 minutos</option>
                       <option value={5}>5 minutos (Recomendado)</option>
@@ -411,12 +411,12 @@ export const EmployeeScheduleModal: React.FC<EmployeeScheduleModalProps> = ({
                 </div>
 
                 {/* Checkbox Strict Enforcement */}
-                <label className="flex items-start gap-3 p-3 rounded-xl bg-black/40 border border-neutral-800 cursor-pointer hover:border-neutral-700">
+                <label className="flex items-start gap-3 p-3 rounded-xl bg-black/40 border border-[#24395E] cursor-pointer hover:border-[#324C74]">
                   <input
                     type="checkbox"
                     checked={strictEnforcement}
                     onChange={(e) => setStrictEnforcement(e.target.checked)}
-                    className="mt-0.5 w-4 h-4 rounded text-white bg-neutral-900 border-neutral-700 focus:ring-0 cursor-pointer"
+                    className="mt-0.5 w-4 h-4 rounded text-white bg-[#0E1C35] border-[#324C74] focus:ring-0 cursor-pointer"
                   />
                   <div>
                     <span className="text-xs font-bold text-white block">
@@ -430,12 +430,12 @@ export const EmployeeScheduleModal: React.FC<EmployeeScheduleModalProps> = ({
                 </label>
 
                 {/* Checkbox Allow Overtime */}
-                <label className="flex items-start gap-3 p-3 rounded-xl bg-black/40 border border-neutral-800 cursor-pointer hover:border-neutral-700">
+                <label className="flex items-start gap-3 p-3 rounded-xl bg-black/40 border border-[#24395E] cursor-pointer hover:border-[#324C74]">
                   <input
                     type="checkbox"
                     checked={allowOvertime}
                     onChange={(e) => setAllowOvertime(e.target.checked)}
-                    className="mt-0.5 w-4 h-4 rounded text-white bg-neutral-900 border-neutral-700 focus:ring-0 cursor-pointer"
+                    className="mt-0.5 w-4 h-4 rounded text-white bg-[#0E1C35] border-[#324C74] focus:ring-0 cursor-pointer"
                   />
                   <div>
                     <span className="text-xs font-bold text-white block">
@@ -453,14 +453,14 @@ export const EmployeeScheduleModal: React.FC<EmployeeScheduleModalProps> = ({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-bold cursor-pointer transition-all"
+                  className="px-4 py-2.5 rounded-xl bg-[#193055] hover:bg-[#294875] text-neutral-300 text-xs font-bold cursor-pointer transition-all"
                 >
                   Fechar
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-5 py-2.5 rounded-xl bg-white hover:bg-neutral-200 text-black text-xs font-black flex items-center gap-2 cursor-pointer shadow-lg transition-all disabled:opacity-50"
+                  className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-black flex items-center gap-2 cursor-pointer shadow-lg transition-all disabled:opacity-50"
                 >
                   <Save className="w-4 h-4" />
                   {saving ? 'Salvando...' : 'Salvar Escala Vinculada'}
