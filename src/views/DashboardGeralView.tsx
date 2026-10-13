@@ -489,7 +489,7 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
               title="Notificações"
             >
               <Bell className="w-4 h-4" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-blue-500 ring-2 ring-[#070D1F]" />
+              {notifications.length > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-blue-500 ring-2 ring-[#070D1F]" />}
             </button>
 
             {/* Notification popover */}
@@ -497,11 +497,10 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
               <div className="absolute right-0 mt-2 w-80 bg-[#0B152F] border border-[#182855] rounded-2xl shadow-2xl p-3 z-50 space-y-2">
                 <div className="flex items-center justify-between pb-2 border-b border-[#182855] px-1">
                   <span className="text-xs font-bold text-white">Notificações</span>
-                  <span className="text-[10px] text-blue-400 font-semibold cursor-pointer hover:underline">
-                    Marcar todas lidas
-                  </span>
+                  <span className="text-[10px] text-slate-500">Atualização em tempo real</span>
                 </div>
                 <div className="space-y-1.5 max-h-64 overflow-y-auto custom-scrollbar">
+                  {notifications.length === 0 && <p className="text-xs text-slate-400 px-2 py-3">Nenhuma notificação disponível.</p>}
                   {notifications.map((n) => (
                     <div
                       key={n.id}
@@ -541,16 +540,16 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
                           .slice(0, 2)
                           .join('')
                           .toUpperCase()
-                      : 'MH'}
+                      : 'U'}
                   </span>
                 )}
               </div>
               <div className="text-left hidden sm:block">
                 <div className="text-xs font-bold text-white leading-tight">
-                  {userProfile?.name || userProfile?.agencyName || 'Marcos Henrique'}
+                  {userProfile?.name || userProfile?.agencyName || 'Usuário'}
                 </div>
                 <div className="text-[10px] text-slate-400 leading-none mt-0.5">
-                  {userProfile?.role || 'CEO & Administrador Master'}
+                  {userProfile?.role || 'Conta da agência'}
                 </div>
               </div>
             </button>
@@ -601,13 +600,7 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
               <DollarSign className="w-5 h-5" />
             </div>
             {/* Sparkline curve matching screenshot */}
-            <svg className="w-20 h-7 stroke-blue-400 fill-none" viewBox="0 0 80 28">
-              <path
-                d="M 2,22 Q 22,24 38,13 T 60,15 T 78,4"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-              />
-            </svg>
+            <span className="text-[10px] text-slate-500">Registros reais</span>
           </div>
           <div className="text-[11px] font-semibold text-slate-400 tracking-wider uppercase mt-4">
             MRR
@@ -615,12 +608,7 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
           <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mt-1">
             {currentMRR}
           </div>
-          <div className="flex items-center gap-1.5 mt-2 text-xs">
-            <span className="text-emerald-400 font-bold flex items-center">
-              <ArrowUpRight className="w-3.5 h-3.5 mr-0.5" /> +12,5%
-            </span>
-            <span className="text-slate-500">vs. mês anterior</span>
-          </div>
+          <div className="text-xs text-slate-500 mt-2">{latestKpi ? 'Indicador registrado' : 'Aguardando KPIs'}</div>
         </div>
 
         {/* Card 2: Clientes Ativos */}
@@ -629,13 +617,7 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
             <div className="w-10 h-10 rounded-xl bg-[#0F2047] border border-blue-500/30 text-blue-400 flex items-center justify-center shadow-inner">
               <Users className="w-5 h-5" />
             </div>
-            <svg className="w-20 h-7 stroke-blue-400 fill-none" viewBox="0 0 80 28">
-              <path
-                d="M 2,24 Q 25,20 42,12 T 62,14 T 78,6"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-              />
-            </svg>
+            <span className="text-[10px] text-slate-500">Registros reais</span>
           </div>
           <div className="text-[11px] font-semibold text-slate-400 tracking-wider uppercase mt-4">
             Clientes Ativos
@@ -643,12 +625,7 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
           <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mt-1">
             {activeClientsCount}
           </div>
-          <div className="flex items-center gap-1.5 mt-2 text-xs">
-            <span className="text-emerald-400 font-bold flex items-center">
-              <ArrowUpRight className="w-3.5 h-3.5 mr-0.5" /> +6,7%
-            </span>
-            <span className="text-slate-500">vs. mês anterior</span>
-          </div>
+          <div className="text-xs text-slate-500 mt-2">{latestKpi ? 'Indicador registrado' : 'Aguardando KPIs'}</div>
         </div>
 
         {/* Card 3: Churn Rate */}
@@ -657,13 +634,7 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
             <div className="w-10 h-10 rounded-xl bg-[#0F2047] border border-blue-500/30 text-blue-400 flex items-center justify-center shadow-inner">
               <TrendingDown className="w-5 h-5" />
             </div>
-            <svg className="w-20 h-7 stroke-blue-400 fill-none" viewBox="0 0 80 28">
-              <path
-                d="M 2,8 Q 24,10 40,16 T 60,14 T 78,22"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-              />
-            </svg>
+            <span className="text-[10px] text-slate-500">Registros reais</span>
           </div>
           <div className="text-[11px] font-semibold text-slate-400 tracking-wider uppercase mt-4">
             Churn Rate
@@ -671,12 +642,7 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
           <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mt-1">
             {churnRateStr}
           </div>
-          <div className="flex items-center gap-1.5 mt-2 text-xs">
-            <span className="text-emerald-400 font-bold flex items-center">
-              <ArrowDownRight className="w-3.5 h-3.5 mr-0.5" /> -0,8 p.p.
-            </span>
-            <span className="text-slate-500">vs. mês anterior</span>
-          </div>
+          <div className="text-xs text-slate-500 mt-2">{latestKpi ? 'Indicador registrado' : 'Aguardando KPIs'}</div>
         </div>
 
         {/* Card 4: ROAS Médio */}
@@ -685,13 +651,7 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
             <div className="w-10 h-10 rounded-xl bg-[#0F2047] border border-blue-500/30 text-blue-400 flex items-center justify-center shadow-inner">
               <TrendingUp className="w-5 h-5" />
             </div>
-            <svg className="w-20 h-7 stroke-blue-400 fill-none" viewBox="0 0 80 28">
-              <path
-                d="M 2,24 Q 20,22 36,15 T 58,16 T 78,3"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-              />
-            </svg>
+            <span className="text-[10px] text-slate-500">Registros reais</span>
           </div>
           <div className="text-[11px] font-semibold text-slate-400 tracking-wider uppercase mt-4">
             ROAS Médio
@@ -699,12 +659,7 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
           <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mt-1">
             {avgRoasStr}
           </div>
-          <div className="flex items-center gap-1.5 mt-2 text-xs">
-            <span className="text-emerald-400 font-bold flex items-center">
-              <ArrowUpRight className="w-3.5 h-3.5 mr-0.5" /> +20,0%
-            </span>
-            <span className="text-slate-500">vs. mês anterior</span>
-          </div>
+          <div className="text-xs text-slate-500 mt-2">{campaigns.length ? 'Calculado pelas campanhas' : 'Aguardando campanhas'}</div>
         </div>
       </div>
 
@@ -749,6 +704,7 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
           </div>
 
           {/* Responsive SVG Chart */}
+          {currentChartData.some((d) => d.count > 0) ? (
           <div className="w-full relative mt-2">
             <svg
               viewBox={`0 0 ${svgWidth} ${svgHeight}`}
@@ -762,7 +718,7 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
               </defs>
 
               {/* Horizontal Grid lines with exact currency labels */}
-              {[80000, 60000, 40000, 20000, 0].map((val, idx) => {
+              {Array.from({ length: 5 }, (_, idx) => maxVal * (4 - idx) / 4).map((val, idx) => {
                 const y = paddingY + (idx / 4) * (svgHeight - paddingY * 2);
                 return (
                   <g key={val}>
@@ -782,7 +738,7 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
                       fontSize="9"
                       textAnchor="end"
                     >
-                      {`R$ ${(val / 1000).toFixed(0)}.000`}
+                      {money(val)}
                     </text>
                   </g>
                 );
@@ -891,6 +847,11 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
               })}
             </svg>
           </div>
+          ) : (
+            <div className="h-56 flex items-center justify-center text-sm text-slate-400 border border-dashed border-[#1A2E63] rounded-xl">
+              Nenhuma movimentação financeira neste período.
+            </div>
+          )}
         </div>
 
         {/* Right Card: Resumo financeiro (4 cols matching screenshot) */}
@@ -913,11 +874,11 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
                 </div>
                 <div>
                   <div className="text-xs text-slate-400 font-medium">Receita total</div>
-                  <div className="text-base font-bold text-white mt-0.5">R$ 62.480</div>
+                  <div className="text-base font-bold text-white mt-0.5">{money(revenueCurrentMonth)}</div>
                 </div>
               </div>
               <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
-                +14,2%
+                Dados atuais
               </span>
             </div>
 
@@ -929,11 +890,11 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
                 </div>
                 <div>
                   <div className="text-xs text-slate-400 font-medium">Despesas totais</div>
-                  <div className="text-base font-bold text-white mt-0.5">R$ 18.230</div>
+                  <div className="text-base font-bold text-white mt-0.5">{money(expensesCurrentMonth)}</div>
                 </div>
               </div>
               <span className="text-xs font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded-md">
-                +6,1%
+                Dados atuais
               </span>
             </div>
 
@@ -945,11 +906,11 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
                 </div>
                 <div>
                   <div className="text-xs text-slate-400 font-medium">Lucro operacional</div>
-                  <div className="text-base font-bold text-white mt-0.5">R$ 44.250</div>
+                  <div className="text-base font-bold text-white mt-0.5">{money(operatingProfit)}</div>
                 </div>
               </div>
               <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
-                +18,9%
+                Dados atuais
               </span>
             </div>
           </div>
@@ -984,6 +945,7 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
             </div>
 
             <div className="divide-y divide-[#14244D] mt-1">
+              {filteredProjects.length === 0 && <p className="py-6 text-xs text-slate-400">Nenhum projeto cadastrado.</p>}
               {filteredProjects.map((proj) => (
                 <div key={proj.id} className="py-3 flex items-center justify-between gap-3 group">
                   <div className="flex items-center gap-3 min-w-0">
@@ -1028,7 +990,7 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
                         <div className="absolute right-0 mt-1 w-36 bg-[#0E1A3D] border border-[#1D326C] rounded-xl shadow-xl p-1 z-30 space-y-0.5">
                           <button
                             onClick={() => {
-                              if (onUpdateTaskStatus) onUpdateTaskStatus(proj.id, 'done');
+                              if (onUpdateTaskStatus) onUpdateTaskStatus(proj.id, 'Concluído');
                               setActiveProjectMenuId(null);
                             }}
                             className="w-full text-left px-2.5 py-1.5 text-[11px] text-emerald-400 hover:bg-[#15275B] rounded-lg transition-colors cursor-pointer"
@@ -1086,6 +1048,7 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
             </div>
 
             <div className="divide-y divide-[#14244D]">
+              {filteredCampaigns.length === 0 && <p className="py-6 text-xs text-slate-400">Nenhuma campanha cadastrada.</p>}
               {filteredCampaigns.map((camp) => (
                 <div
                   key={camp.id}
@@ -1111,7 +1074,7 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
                   </div>
 
                   <div className="col-span-3 text-right font-bold text-emerald-400">
-                    {camp.roas}x
+                    {camp.roas === null ? '—' : `${camp.roas}x`}
                   </div>
                 </div>
               ))}
@@ -1138,6 +1101,7 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
             </div>
 
             <div className="divide-y divide-[#14244D] mt-1">
+              {activities.length === 0 && <p className="py-6 text-xs text-slate-400">Nenhuma atividade financeira registrada.</p>}
               {activities.map((act) => {
                 const Icon = act.icon;
                 return (
@@ -1161,23 +1125,11 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
           </div>
 
           <button
-            onClick={() => {
-              setActivities((prev) => [
-                {
-                  id: `act-${Date.now()}`,
-                  title: 'Relatório sincronizado',
-                  desc: 'Métricas de tráfego atualizadas via API.',
-                  time: 'Agora',
-                  icon: RefreshCw,
-                  color: 'text-blue-400 bg-blue-500/20 border-blue-500/30',
-                },
-                ...prev,
-              ]);
-            }}
+            onClick={() => onNavigate('fluxo-caixa')}
             className="mt-3 w-full py-2 bg-[#0E1B3D] hover:bg-[#13244F] border border-[#1A2E63] rounded-xl text-xs font-semibold text-slate-300 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
           >
             <RefreshCw className="w-3.5 h-3.5" />
-            <span>Atualizar Feed de Atividades</span>
+            <span>Ver movimentações financeiras</span>
           </button>
         </div>
       </div>
@@ -1462,14 +1414,14 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
             {/* Quick Prompts */}
             <div className="flex flex-wrap gap-2 text-xs">
               <button
-                onClick={() => handleAskGemini('Como posso aumentar o MRR de R$ 48.250 para R$ 70.000?')}
+                onClick={() => handleAskGemini('Analise meu MRR registrado e sugira ações realistas para melhorá-lo. Se não houver dados, informe isso.')}
                 className="px-3 py-1.5 bg-[#0E1B3D] hover:bg-[#152B61] border border-[#182B61] rounded-xl text-blue-300 cursor-pointer transition-colors"
               >
                 📈 Como escalar o MRR?
               </button>
               <button
                 onClick={() =>
-                  handleAskGemini('Analise o ROAS das minhas 4 campanhas e me diga onde investir mais.')
+                  handleAskGemini('Analise o ROAS apenas das campanhas cadastradas. Se não houver campanhas, explique quais dados registrar.')
                 }
                 className="px-3 py-1.5 bg-[#0E1B3D] hover:bg-[#152B61] border border-[#182B61] rounded-xl text-blue-300 cursor-pointer transition-colors"
               >
@@ -1477,7 +1429,7 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
               </button>
               <button
                 onClick={() =>
-                  handleAskGemini('Como reduzir o Churn Rate de 2,4% para menos de 1,5% neste trimestre?')
+                  handleAskGemini('Analise o churn registrado e sugira ações de retenção. Se não houver dados suficientes, explique o que falta.')
                 }
                 className="px-3 py-1.5 bg-[#0E1B3D] hover:bg-[#152B61] border border-[#182B61] rounded-xl text-blue-300 cursor-pointer transition-colors"
               >
