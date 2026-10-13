@@ -111,9 +111,9 @@ export const EditTimeClockModal: React.FC<EditTimeClockModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-      <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 max-w-xl w-full shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+      <div role="dialog" aria-modal="true" aria-label="Editar registro de ponto" className="bg-[#0E1C35] border border-[#24395E] rounded-[24px] p-6 max-w-xl w-full shadow-2xl space-y-5 max-h-[92dvh] overflow-y-auto">
         {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-neutral-800 pb-4">
+        <div className="flex items-center justify-between border-b border-[#24395E] pb-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
               <Edit3 className="w-5 h-5" />
@@ -133,14 +133,14 @@ export const EditTimeClockModal: React.FC<EditTimeClockModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+            className="w-8 h-8 rounded-full bg-[#193055] hover:bg-[#294875] text-neutral-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Audit Warning */}
-        <div className="p-3.5 rounded-2xl bg-neutral-950 border border-neutral-800 text-xs flex items-start gap-2.5 text-neutral-300">
+        <div className="p-3.5 rounded-2xl bg-[#091428] border border-[#24395E] text-xs flex items-start gap-2.5 text-neutral-300">
           <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
           <div>
             <span className="font-bold text-white block">Auditoria de Segurança Ativa</span>
@@ -158,7 +158,7 @@ export const EditTimeClockModal: React.FC<EditTimeClockModalProps> = ({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Colaborador Info */}
-          <div className="p-3.5 rounded-2xl bg-neutral-950 border border-neutral-800/80 space-y-3">
+          <div className="p-3.5 rounded-2xl bg-[#091428] border border-[#24395E]/80 space-y-3">
             <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider block">
               Colaborador Vinculado
             </span>
@@ -169,7 +169,7 @@ export const EditTimeClockModal: React.FC<EditTimeClockModalProps> = ({
                   type="text"
                   value={userName}
                   onChange={(e) => setUserName(e.target.value)}
-                  className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white"
+                  className="w-full bg-[#0E1C35] border border-[#324C74] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400"
                   placeholder="Nome do colaborador"
                 />
               </div>
@@ -180,7 +180,7 @@ export const EditTimeClockModal: React.FC<EditTimeClockModalProps> = ({
                   type="email"
                   value={userEmail}
                   onChange={(e) => setUserEmail(e.target.value)}
-                  className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white"
+                  className="w-full bg-[#0E1C35] border border-[#324C74] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400"
                   placeholder="email@empresa.com"
                 />
               </div>
@@ -192,7 +192,7 @@ export const EditTimeClockModal: React.FC<EditTimeClockModalProps> = ({
                 type="text"
                 value={userRole}
                 onChange={(e) => setUserRole(e.target.value)}
-                className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white"
+                className="w-full bg-[#0E1C35] border border-[#324C74] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-400"
                 placeholder="Ex: Gestor de Tráfego, Designer, SDR..."
               />
             </div>
@@ -210,7 +210,7 @@ export const EditTimeClockModal: React.FC<EditTimeClockModalProps> = ({
                 required
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-white font-mono"
+                className="w-full bg-[#091428] border border-[#324C74] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-blue-400 font-mono"
               />
             </div>
 
@@ -225,7 +225,7 @@ export const EditTimeClockModal: React.FC<EditTimeClockModalProps> = ({
                 placeholder="08:00:00"
                 value={time}
                 onChange={(e) => setTime(e.target.value)}
-                className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-white font-mono font-bold"
+                className="w-full bg-[#091428] border border-[#324C74] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-blue-400 font-mono font-bold"
               />
             </div>
           </div>
@@ -237,7 +237,7 @@ export const EditTimeClockModal: React.FC<EditTimeClockModalProps> = ({
               <select
                 value={type}
                 onChange={(e) => setType(e.target.value as TimeClockType)}
-                className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-white"
+                className="w-full bg-[#091428] border border-[#324C74] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-blue-400"
               >
                 <option value="entry">1. Entrada da Manhã</option>
                 <option value="lunch_start">2. Saída Almoço</option>
@@ -255,7 +255,7 @@ export const EditTimeClockModal: React.FC<EditTimeClockModalProps> = ({
                 onChange={(e) =>
                   setStatus(e.target.value as 'regular' | 'late' | 'overtime' | 'early_departure')
                 }
-                className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-white"
+                className="w-full bg-[#091428] border border-[#324C74] rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-blue-400"
               >
                 <option value="regular">Regular (No Horário)</option>
                 <option value="late">Atraso</option>
@@ -275,7 +275,7 @@ export const EditTimeClockModal: React.FC<EditTimeClockModalProps> = ({
               placeholder="08:00"
               value={scheduledTime}
               onChange={(e) => setScheduledTime(e.target.value)}
-              className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-white font-mono"
+              className="w-full bg-[#091428] border border-[#324C74] rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-blue-400 font-mono"
             />
           </div>
 
@@ -291,7 +291,7 @@ export const EditTimeClockModal: React.FC<EditTimeClockModalProps> = ({
               value={editReason}
               onChange={(e) => setEditReason(e.target.value)}
               placeholder="Ex: Correção de batida esquecida pelo colaborador; autorização concedida pela diretoria..."
-              className="w-full bg-neutral-950 border border-amber-800/60 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-amber-400"
+              className="w-full bg-[#091428] border border-amber-800/60 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-amber-400"
             />
           </div>
 
@@ -305,12 +305,12 @@ export const EditTimeClockModal: React.FC<EditTimeClockModalProps> = ({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Notas gerais sobre o ponto..."
-              className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-white"
+              className="w-full bg-[#091428] border border-[#324C74] rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-blue-400"
             />
           </div>
 
           {/* Hash & Security info readonly */}
-          <div className="p-3 rounded-xl bg-neutral-950/50 border border-neutral-800/60 text-[11px] font-mono text-neutral-500 space-y-1">
+          <div className="p-3 rounded-xl bg-[#0A142B] border border-[#24395E]/60 text-[11px] font-mono text-neutral-500 space-y-1">
             <div className="flex justify-between">
               <span>Hash Original:</span>
               <span className="text-neutral-400 font-bold">{record.securityHash}</span>
@@ -326,19 +326,19 @@ export const EditTimeClockModal: React.FC<EditTimeClockModalProps> = ({
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-neutral-800">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#24395E]">
             <button
               type="button"
               onClick={onClose}
               disabled={saving}
-              className="px-4 py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-bold transition-all cursor-pointer"
+              className="px-4 py-2.5 rounded-xl bg-[#193055] hover:bg-[#294875] text-neutral-300 text-xs font-bold transition-all cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="px-6 py-2.5 rounded-xl bg-white hover:bg-neutral-200 text-black text-xs font-black transition-all shadow-lg flex items-center gap-2 cursor-pointer"
+              className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-black transition-all shadow-lg flex items-center gap-2 cursor-pointer"
             >
               <CheckCircle2 className="w-4 h-4 text-black" />
               <span>{saving ? 'Salvando...' : 'Salvar Alterações'}</span>
