@@ -9,6 +9,7 @@ function safeSignatureMatches(provided: string | null | undefined, secret: strin
 
 import express from 'express';
 import { registerSocialMetaRoutes } from '../src/server/socialMeta';
+import { registerAdminManageRoutes } from '../src/server/adminManage';
 import { GoogleGenAI } from '@google/genai';
 import { scrapeRealLeads } from '../src/server/leadScraperEngine';
 import { handleLeadsPayWebhookEvent } from '../src/server/leadspayHandler';
@@ -16,6 +17,7 @@ import { handleLeadsPayWebhookEvent } from '../src/server/leadspayHandler';
 const app = express();
 app.use(express.json({ limit: '1mb', verify: (request, _response, body) => { (request as any).rawBody = Buffer.from(body); } }));
 registerSocialMetaRoutes(app);
+registerAdminManageRoutes(app);
 
 // Enable CORS for Vercel deployments and preview iframes
 app.use((req, res, next) => {
