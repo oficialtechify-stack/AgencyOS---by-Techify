@@ -690,8 +690,8 @@ export const PontoView: React.FC<PontoViewProps> = ({
         <div className="space-y-6">
           {/* Team Members Today Presence Cards */}
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+              <h3 className="text-sm sm:text-base font-extrabold text-white flex flex-wrap items-center gap-2">
                 <span>Presença da equipe hoje</span>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
                   {Object.keys(teamTodayGrouped).length} pessoas com batidas hoje
@@ -710,7 +710,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowScheduleModal(true)}
-                  className="text-xs text-neutral-300 hover:text-white bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 px-3 py-1 rounded-xl font-bold flex items-center gap-1 cursor-pointer transition-all"
+                  className="text-xs text-neutral-300 hover:text-white bg-[#0E172B] hover:bg-[#20385F] border border-[#365079] px-3 py-1 rounded-xl font-bold flex items-center gap-1 cursor-pointer transition-all"
                 >
                   <Sliders className="w-3.5 h-3.5 text-amber-400" />
                   Gerenciar Escalas
@@ -733,7 +733,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
                 const badge = getRoleBadgeStyle(sched.userRole, sched.leadershipRole);
 
                 let statusText = 'Pendente';
-                let statusColor = 'bg-neutral-800 text-neutral-400 border-neutral-700';
+                let statusColor = 'bg-[#172945] text-neutral-400 border-[#365079]';
                 if (exit) {
                   statusText = 'Expediente Encerrado';
                   statusColor = 'bg-blue-950 text-blue-300 border-blue-800';
@@ -748,7 +748,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
                 return (
                   <div
                     key={sched.id}
-                    className="p-4 rounded-3xl bg-neutral-900 border border-neutral-800 flex flex-col justify-between space-y-3 shadow-md"
+                    className="p-4 rounded-[24px] bg-[#0E172B] border border-[#21375B] flex flex-col justify-between space-y-3 shadow-md"
                   >
                     <div>
                       <div className="flex items-start justify-between gap-2">
@@ -784,7 +784,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
                     </div>
 
                     {/* Today's Punch Timeline */}
-                    <div className="grid grid-cols-4 gap-1.5 text-center text-[10px] font-mono bg-black/40 p-2 rounded-xl border border-neutral-800/80">
+                    <div className="grid grid-cols-4 gap-1.5 text-center text-[10px] font-mono bg-black/40 p-2 rounded-xl border border-[#21375B]/80">
                       <div>
                         <span className="text-neutral-500 block text-[9px]">Entrada</span>
                         <span
@@ -831,7 +831,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
           </div>
 
           {/* Full Audit Filter and Table Controls */}
-          <div className="p-4 bg-neutral-950 rounded-2xl border border-neutral-800 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+          <div className="p-4 bg-[#0A1428] rounded-2xl border border-[#21375B] flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
             <div className="flex items-center gap-2 flex-1">
               <Search className="w-4 h-4 text-neutral-400 shrink-0" />
               <input
@@ -839,7 +839,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
                 placeholder="Buscar por colaborador (Nome), cargo, e-mail, hash ou cidade..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white w-full focus:outline-none focus:border-white"
+                className="bg-[#0E172B] border border-[#365079] rounded-xl px-3 py-2 text-xs text-white w-full focus:outline-none focus:border-blue-500"
               />
             </div>
 
@@ -848,7 +848,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
               <select
                 value={filterEmployee}
                 onChange={(e) => setFilterEmployee(e.target.value)}
-                className="bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white"
+                className="bg-[#0E172B] border border-[#365079] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
               >
                 <option value="todos">Todos os Colaboradores</option>
                 {uniqueEmployees.map((emp) => (
@@ -862,7 +862,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white"
+                className="bg-[#0E172B] border border-[#365079] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
               >
                 <option value="todos">Todos os Status</option>
                 <option value="regular">No Horário / Regular</option>
@@ -876,7 +876,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
               <select
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value)}
-                className="bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white"
+                className="bg-[#0E172B] border border-[#365079] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
               >
                 <option value="todos">Todos os Tipos</option>
                 <option value="entry">1. Entrada</option>
@@ -892,21 +892,21 @@ export const PontoView: React.FC<PontoViewProps> = ({
                 type="month"
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
-                className="bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white font-mono"
+                className="bg-[#0E172B] border border-[#365079] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500 font-mono"
               />
             </div>
           </div>
 
           {/* All Team Records Table */}
-          <div className="bg-neutral-900 border border-neutral-800 rounded-3xl overflow-hidden shadow-xl">
-            <div className="p-4 border-b border-neutral-800 flex items-center justify-between">
+          <div className="bg-[#0E172B] border border-[#21375B] rounded-[24px] overflow-hidden shadow-xl">
+            <div className="p-4 border-b border-[#21375B] flex items-center justify-between">
               <span className="font-extrabold text-white text-sm flex items-center gap-2">
                 <span>Auditoria Consolidada de Pontos</span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-300 font-mono">
+                <span className="text-xs px-2 py-0.5 rounded-full bg-[#172945] text-neutral-300 font-mono">
                   {filteredTeamRecords.length} de {timeClockRecords.length} registros
                 </span>
               </span>
-              <span className="text-xs text-amber-400 font-mono flex items-center gap-1 font-bold">
+              <span className="text-[11px] text-blue-300 font-semibold flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5" />
                 Registros da equipe · acesso administrativo
               </span>
@@ -919,7 +919,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs text-neutral-300">
-                  <thead className="bg-neutral-950 text-[10px] uppercase font-black text-neutral-400 tracking-wider border-b border-neutral-800">
+                  <thead className="bg-[#0A1428] text-[10px] uppercase font-black text-neutral-400 tracking-wider border-b border-[#21375B]">
                     <tr>
                       <th className="p-3.5 pl-5">Colaborador</th>
                       <th className="p-3.5">Cargo Oficial</th>
@@ -936,7 +936,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
                     {filteredTeamRecords.map((r) => {
                       const badge = getRoleBadgeStyle(r.userRole, r.leadershipRole);
                       return (
-                        <tr key={r.id} className="hover:bg-neutral-800/40 transition-colors">
+                        <tr key={r.id} className="hover:bg-[#20385F]/40 transition-colors">
                           <td className="p-3.5 pl-5 font-bold text-white">
                             <div className="flex items-center gap-2.5">
                               <div className="w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center font-bold text-xs shrink-0">
@@ -991,7 +991,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
                                 Saída Antecipada
                               </span>
                             ) : (
-                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-neutral-800 border border-neutral-700 text-neutral-300">
+                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#172945] border border-[#365079] text-neutral-300">
                                 Regular
                               </span>
                             )}
@@ -1010,7 +1010,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
                               <button
                                 type="button"
                                 onClick={() => setRecordToInspect(r)}
-                                className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-all cursor-pointer"
+                                className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-[#20385F] transition-all cursor-pointer"
                                 title="Inspecionar metadados de auditoria"
                               >
                                 <Eye className="w-3.5 h-3.5" />
@@ -1055,7 +1055,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-black text-white uppercase tracking-wider">
+              <h3 className="text-base sm:text-lg font-extrabold text-white">
                 Jornadas e Horários Vinculados por Colaborador
               </h3>
               <p className="text-xs text-neutral-400">
@@ -1079,7 +1079,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
               return (
                 <div
                   key={s.id}
-                  className="p-5 rounded-3xl bg-neutral-900 border border-neutral-800 space-y-3 shadow-md hover:border-neutral-700 transition-all"
+                  className="p-5 rounded-[24px] bg-[#0E172B] border border-[#21375B] space-y-3 shadow-md hover:border-[#3A5786] transition-all"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>
@@ -1093,7 +1093,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
                     </span>
                   </div>
 
-                  <div className="p-3 rounded-2xl bg-black/40 border border-neutral-800 text-xs font-mono space-y-1">
+                  <div className="p-3 rounded-2xl bg-black/40 border border-[#21375B] text-xs font-mono space-y-1">
                     <div className="flex justify-between">
                       <span className="text-neutral-400 font-sans">1. Entrada:</span>
                       <span className="font-bold text-white">{s.entryTime}</span>
