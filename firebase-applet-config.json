@@ -1,11 +1,9 @@
 {
-  "projectId": "liquid-dub-x8gvj",
-  "appId": "1:835915132493:web:4a7ee25c2180d37f79f604",
-  "apiKey": "AIzaSyDAKqJapgr6Nxt758eO0L6_xfphfkIuK2Y",
-  "authDomain": "liquid-dub-x8gvj.firebaseapp.com",
-  "storageBucket": "liquid-dub-x8gvj.firebasestorage.app",
-  "messagingSenderId": "835915132493",
-  "measurementId": "",
-  "oAuthClientId": "835915132493-ijqj88pc3jbdbpqged1lkur35almu5tk.apps.googleusercontent.com",
-  "recaptchaSiteKey": ""
+  "apiKey": "AIzaSyBAvDtv1QIN9g7_-pObf66o7noTcsYPX0I",
+  "authDomain": "agencyos-1c3fc.firebaseapp.com",
+  "projectId": "agencyos-1c3fc",
+  "storageBucket": "agencyos-1c3fc.firebasestorage.app",
+  "messagingSenderId": "713636244133",
+  "appId": "1:713636244133:web:fa682e519b756269f1bb4c",
+  "measurementId": "G-EHRBZYGE7T"
 }
