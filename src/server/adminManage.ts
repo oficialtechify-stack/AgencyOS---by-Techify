@@ -4,6 +4,7 @@ import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { EMPLOYEE_MODULE_SET, DEFAULT_EMPLOYEE_MODULES } from '../shared/agencyModules.js';
+import { canRemoveLegacyEmployee } from './legacyAccountDeletion.js';
 
 type AdminCtx = {
   uid: string; platformAdmin: boolean; ownerUid: string; email: string;
@@ -390,6 +391,58 @@ export function registerAdminManageRoutes(app: Express) {
         throw e;
       }
     } catch (e) { errorOut(res, e); }
+  });
+
+
+  // Delete ONLY a legacy employee profile without Firebase Authentication.
+  // It is impossible to delete a live Firebase Auth account through this route.
+  // Exact email confirmation, ownership verification and audit are mandatory.
+  app.delete('/api/admin/members/:uid/legacy', async (req, res) => {
+    try {
+      const actor = await authorize(req);
+      if (req.body?.confirm !== true) {
+        throw new AdminError(400, 'Confirme a exclusão do cadastro legado.');
+      }
+      const confirmationEmail = textField(req.body?.email, 254).toLowerCase();
+      if (!confirmationEmail) throw new AdminError(400, 'Digite o e-mail do funcionário para confirmar.');
+      const { db, auth } = adminServices();
+      const target = await getTarget(actor, req.params.uid);
+      if (target.data.userType !== 'employee' || target.data.agencyOwnerUid !== actor.ownerUid)
+        throw new AdminError(403, 'Somente cadastros da própria equipe podem ser excluídos.');
+      try {
+        await auth.getUser(target.ref.id);
+        throw new AdminError(409, 'Esta pessoa já possui uma conta de login ativa. Esta opção exclui apenas cadastros legados.');
+      } catch (error: any) {
+        if (error instanceof AdminError) throw error;
+        if (error?.code !== 'auth/user-not-found') throw error;
+      }
+      // Profile documents may be updated while an admin keeps the dialog open;
+      // recheck the data inside a Firestore transaction before deleting.
+      await db.runTransaction(async transaction => {
+        const refreshed = await transaction.get(target.ref);
+        if (!refreshed.exists) throw new AdminError(404, 'O cadastro já foi excluído.');
+        const member = refreshed.data() || {};
+        if (!canRemoveLegacyEmployee({
+          requesterUid: actor.uid, workspaceUid: actor.ownerUid,
+          targetUid: refreshed.id, agencyOwnerUid: member.agencyOwnerUid,
+          userType: member.userType, storedEmail: member.email,
+          confirmedEmail: confirmationEmail, authUserExists: false,
+        })) {
+          throw new AdminError(403, 'Este cadastro não pode ser excluído. Confira a empresa e o e-mail de confirmação.');
+        }
+        const log = db.collection('adminAuditLog').doc();
+        transaction.delete(target.ref);
+        transaction.set(log, {
+          actorUid: actor.uid,
+          action: 'user.legacy_deleted',
+          targetUid: target.ref.id,
+          ownerUid: actor.ownerUid,
+          details: { kind: 'employee', firebaseAuthWasAbsent: true },
+          createdAt: FieldValue.serverTimestamp(),
+        });
+      });
+      res.json({ success: true, message: 'Cadastro legado excluído da equipe. Você já pode cadastrar um novo funcionário.' });
+    } catch (error) { errorOut(res, error); }
   });
 
   app.patch('/api/admin/members/:uid', async (req, res) => {

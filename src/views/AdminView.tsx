@@ -53,6 +53,8 @@ export const AdminView: React.FC<{ currentUser?: FirestoreUserProfile | null }> 
   const [editModulesDirty, setEditModulesDirty] = useState(false);
   const [ignoredLegacyModules, setIgnoredLegacyModules] = useState<string[]>([]);
   const [activationLink, setActivationLink] = useState('');
+  const [legacyToDelete, setLegacyToDelete] = useState<Member | null>(null);
+  const [deletionEmail, setDeletionEmail] = useState('');
   const [showInvite, setShowInvite] = useState(false);
   const [inviteKind, setInviteKind] = useState<InviteKind>('employee');
   const [inviteName, setInviteName] = useState('');
@@ -179,6 +181,25 @@ export const AdminView: React.FC<{ currentUser?: FirestoreUserProfile | null }> 
     });
   }
 
+  function deleteLegacyMember() {
+    const member = legacyToDelete;
+    if (!member || member.isAuthAccount || busy) return;
+    if (deletionEmail.trim().toLowerCase() !== member.email.trim().toLowerCase()) {
+      setError('Digite exatamente o e-mail do cadastro para confirmar a exclusão.');
+      return;
+    }
+    void run('delete-legacy-' + member.uid, async () => {
+      await api('members/' + encodeURIComponent(member.uid) + '/legacy', {
+        method: 'DELETE',
+        body: JSON.stringify({ confirm: true, email: deletionEmail.trim() }),
+      });
+      setLegacyToDelete(null);
+      setDeletionEmail('');
+      setNotice('Cadastro legado excluído da equipe. Agora você pode criar um novo convite.');
+      await reload();
+    });
+  }
+
   function createInvite() {
     void run('invite', async () => {
       const result = await api('invite', { method: 'POST', body: JSON.stringify({
@@ -240,6 +261,12 @@ export const AdminView: React.FC<{ currentUser?: FirestoreUserProfile | null }> 
       <button className={actionBtn} disabled={Boolean(busy)} onClick={() => activateLegacy(member)}>
         {busy === 'activate-' + member.uid ? <Loader2 className="w-4 h-4 animate-spin"/> : <KeyRound className="w-4 h-4"/>}
         Ativar conta
+      </button>
+    )}
+    {!member.isAuthAccount && member.userType === 'employee' && (
+      <button className={outlineBtn + ' text-rose-200 border-rose-500/25'} disabled={Boolean(busy)}
+        onClick={() => { setLegacyToDelete(member); setDeletionEmail(''); setError(''); }}>
+        <Trash2 className="w-4 h-4"/>Excluir cadastro
       </button>
     )}
     <button className={outlineBtn} onClick={() => openMember(member)} disabled={!member.isAuthAccount}>
@@ -520,6 +547,47 @@ export const AdminView: React.FC<{ currentUser?: FirestoreUserProfile | null }> 
           <button className={outlineBtn} onClick={() => setSelected(null)}>Cancelar</button>
         </div>
       </aside>
+    </div>}
+
+    {legacyToDelete && <div role="presentation" className="fixed inset-0 z-[80] bg-[#020816]/85 backdrop-blur-sm flex items-center justify-center p-4"
+      onMouseDown={e => { if (e.target === e.currentTarget && !busy) setLegacyToDelete(null); }}>
+      <section role="dialog" aria-modal="true" aria-label="Excluir cadastro legado"
+        className={panel + ' p-6 max-w-lg w-full space-y-4'}>
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-lg font-extrabold text-white flex gap-2 items-center">
+            <Trash2 className="w-5 h-5 text-rose-400"/>Excluir cadastro antigo
+          </h3>
+          <button className={outlineBtn} disabled={Boolean(busy)} onClick={() => setLegacyToDelete(null)} aria-label="Fechar">
+            <X className="h-4 w-4"/>
+          </button>
+        </div>
+        <p className="text-sm text-slate-200">
+          Você está excluindo o cadastro legado de <strong>{legacyToDelete.name}</strong>,
+          sem Firebase Authentication. Depois, poderá convidar a pessoa novamente.
+        </p>
+        <div className="p-3 bg-rose-500/10 border border-rose-500/25 rounded-xl text-xs text-rose-200">
+          A exclusão remove este perfil antigo da equipe e registra a ação na auditoria.
+          Não exclui projetos, tarefas ou outros conteúdos históricos.
+          Uma conta com login Firebase não pode ser apagada por esta opção.
+        </div>
+        <label className="block text-xs font-semibold text-slate-200" htmlFor="confirm-legacy-delete-email">
+          Para confirmar, digite o e-mail <strong>{legacyToDelete.email}</strong>
+        </label>
+        <input id="confirm-legacy-delete-email" type="email" className={inputStyle} value={deletionEmail}
+          autoComplete="off" autoCorrect="off" spellCheck={false} onChange={e => setDeletionEmail(e.target.value)}
+          placeholder="Digite o e-mail exatamente como aparece acima"/>
+        <div className="flex flex-wrap gap-2 justify-end">
+          <button className={outlineBtn} disabled={Boolean(busy)} onClick={() => setLegacyToDelete(null)}>Cancelar</button>
+          <button className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-rose-500 disabled:opacity-40"
+            disabled={Boolean(busy) || !legacyToDelete.email ||
+              deletionEmail.trim().toLowerCase() !== legacyToDelete.email.trim().toLowerCase()}
+            onClick={deleteLegacyMember}>
+            {busy === 'delete-legacy-' + legacyToDelete.uid
+              ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4"/>}
+            Excluir cadastro legado
+          </button>
+        </div>
+      </section>
     </div>}
 
     {activationLink && <div role="presentation" className="fixed inset-0 z-[80] bg-[#020816]/85 backdrop-blur-sm flex items-center justify-center p-4"
