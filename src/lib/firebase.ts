@@ -982,55 +982,29 @@ export async function createUserWithAuthAndPermissions(userData: {
     throw new Error('E-mail inválido ou não informado.');
   }
 
-  let targetUid = '';
-
-  // If a password with at least 6 chars was provided, create Firebase Auth account
-  // using a secondary App instance so the current Admin session isn't replaced!
-  if (userData.password && userData.password.length >= 6) {
-    const secondaryAppName = 'SecondaryAuthAppCreator';
-    const existingApps = getApps();
-    const secondaryApp =
-      existingApps.find((a) => a.name === secondaryAppName) ||
-      initializeApp(firebaseConfig, secondaryAppName);
-    const secondaryAuth = getAuth(secondaryApp);
-
-    try {
-      const userCredential = await createUserWithEmailAndPassword(
-        secondaryAuth,
-        normalizedEmail,
-        userData.password
-      );
-      targetUid = userCredential.user.uid;
-      // Immediately sign out from the secondary instance
-      await signOut(secondaryAuth);
-    } catch (authErr: any) {
-      if (authErr.code === 'auth/email-already-in-use') {
-        console.warn('E-mail já registrado no Firebase Auth. Atualizando documento Firestore.');
-      } else if (
-        authErr.code === 'auth/operation-not-allowed' ||
-        authErr.message?.includes('operation-not-allowed') ||
-        authErr.code === 'auth/admin-restricted-operation'
-      ) {
-        console.warn(
-          'Firebase Auth: Provedor de Email/Senha não habilitado ou restrito. Criando registro com credenciais no Firestore:',
-          authErr.message
-        );
-      } else {
-        console.warn('Aviso na criação no Firebase Auth, salvando no Firestore:', authErr.message || authErr);
-      }
-    }
+  // Never construct an arbitrary Firestore UID as a replacement for Firebase Auth.
+  // Admin-created accounts require real Firebase Authentication credentials.
+  if (!auth.currentUser) {
+    throw new Error('Faça login antes de cadastrar um integrante da equipe.');
   }
-
-  // If targetUid is not set (or email was already in Auth), check existing Firestore doc
+  if (!userData.password || userData.password.length < 6) {
+    throw new Error('Defina uma senha temporária de pelo menos 6 caracteres. O usuário deverá alterá-la.');
+  }
+  const secondaryAppName = 'SecondaryAuthAppCreator';
+  const secondaryApp = getApps().find((app) => app.name === secondaryAppName)
+    || initializeApp(firebaseConfig, secondaryAppName);
+  const secondaryAuth = getAuth(secondaryApp);
+  let targetUid = '';
+  try {
+    const created = await createUserWithEmailAndPassword(
+      secondaryAuth, normalizedEmail, userData.password
+    );
+    targetUid = created.user.uid;
+  } finally {
+    await signOut(secondaryAuth).catch(() => {});
+  }
   if (!targetUid) {
-    const usersRef = collection(db, 'users');
-    const q = query(usersRef, where('email', '==', normalizedEmail));
-    const querySnap = await getDocs(q);
-    if (!querySnap.empty) {
-      targetUid = querySnap.docs[0].id;
-    } else {
-      targetUid = `user-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-    }
+    throw new Error('Não foi possível confirmar a conta no Firebase Auth.');
   }
 
   const now = Date.now();
@@ -1061,7 +1035,6 @@ export async function createUserWithAuthAndPermissions(userData: {
     allowedModules: userData.allowedModules && userData.allowedModules.length > 0
       ? userData.allowedModules
       : ['dashboard', 'designer', 'social-hub', 'kanban', 'agenda', 'relatorios'],
-    tempPasswordHint: userData.password ? userData.password : undefined,
   };
 
   const userRef = doc(db, 'users', targetUid);
