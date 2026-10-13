@@ -21,24 +21,7 @@ interface HeaderNavProps {
   onNavigate?: (view: ViewType) => void;
 }
 
-const defaultUpdates: SystemUpdate[] = [
-  {
-    id: 'up-1',
-    title: 'Hub do Designer & Produção Criativa',
-    description: 'Esteira de design completa com aprovações da líder, legendas, pastas de empresas e entrega de pacotes.',
-    date: '2026-03-01',
-    version: 'v2.6',
-    type: 'Novidade',
-  },
-  {
-    id: 'up-2',
-    title: 'Módulo Social Hub & Maps Scraper',
-    description: 'Lançamento oficial da extração de leads do Google Maps e gerador de legendas com IA.',
-    date: '2026-02-28',
-    version: 'v2.5',
-    type: 'Novidade',
-  },
-];
+const defaultUpdates: SystemUpdate[] = [];
 
 export const HeaderNav: React.FC<HeaderNavProps> = ({
   title,
@@ -142,7 +125,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
             title="Atualizações do Sistema"
           >
             <Bell className="w-4 h-4" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-white" />
+            {updatesList.length > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-white" />}
           </button>
 
           {/* Notifications Dropdown Popup */}
@@ -161,6 +144,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
               </div>
 
               <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1 custom-scrollbar">
+                {updatesList.length === 0 && <p className="p-3 text-neutral-400">Nenhuma atualização registrada.</p>}
                 {updatesList.map((item) => (
                   <div
                     key={item.id}
@@ -186,7 +170,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
         {/* Live status badge */}
         <div className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-neutral-900 border border-neutral-800 text-neutral-200">
           <span className="w-2 h-2 rounded-full bg-white shrink-0" />
-          <span className="text-[11px] font-bold hidden sm:inline">Sistema online</span>
+          <span className="text-[11px] font-bold hidden sm:inline">Área da agência</span>
         </div>
       </div>
     </header>
