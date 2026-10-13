@@ -1,47 +1,17 @@
 import { AppState, ViewType } from '../types';
-import {
-  initialKPIPeriods,
-  initialCashTransactions,
-  initialAdCampaigns,
-  initialCRMLeads,
-  initialKanbanTasks,
-  initialStockItems,
-  initialAgendaEvents,
-  initialProspectionDemands,
-  initialProspectionContracts,
-} from '../data/mockInitialData';
-
 const STORAGE_KEY = 'agencyos_full_app_state_v2';
 
-export const initialSocialPosts = [
-  {
-    id: 'post-1',
-    platform: 'Instagram' as const,
-    client: 'Reteteu Comida Honesta',
-    content: '🔥 Novo Prato do Dia: Carne do Sol com Queijo Coalho Assado na Brasa! Venha conferir.',
-    scheduledDate: '2026-08-15',
-    scheduledTime: '12:00',
-    status: 'Agendado' as const,
-  },
-  {
-    id: 'post-[#2]',
-    platform: 'LinkedIn' as const,
-    client: 'Techify Agency',
-    content: '🚀 Como triplicamos a captação de leads B2B utilizando o Maps Scraper da AgencyOS.',
-    scheduledDate: '2026-08-16',
-    scheduledTime: '09:00',
-    status: 'Rascunho' as const,
-  },
-];
+// New workspaces start empty; social posts are persisted in Firebase.
+export const initialSocialPosts = [];
 
 export const getDefaultState = (): AppState => ({
   activeView: 'landing',
   organization: {
     agencyName: 'Minha Agência',
-    plan: 'Pro',
-    trialDaysRemaining: 14,
-    trialActive: true,
-    licenseKey: 'AGENCYOS-PRO-2026',
+    plan: '',
+    trialDaysRemaining: 0,
+    trialActive: false,
+    licenseKey: '',
   },
   kpiPeriods: [],
   transactions: [],
@@ -55,41 +25,42 @@ export const getDefaultState = (): AppState => ({
   prospectionContracts: [],
 });
 
+// Never cache business records or user profiles in global localStorage.
+// Doing so leaks one company's records into another account on shared devices.
 export const loadState = (): AppState => {
+  const state = getDefaultState();
   try {
-    const data = localStorage.getItem(STORAGE_KEY);
-    if (!data) return getDefaultState();
-    const parsed = JSON.parse(data);
-    return { ...getDefaultState(), ...parsed };
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Only view preference is non-sensitive and safe to restore.
+      if (typeof parsed?.activeView === 'string') {
+        state.activeView = parsed.activeView as ViewType;
+      }
+    }
   } catch (err) {
-    console.error('Error loading state from localStorage:', err);
-    return getDefaultState();
+    console.warn('Falha ao ler preferência de navegação:', err);
   }
+  return state;
 };
 
 export const saveState = (state: AppState): void => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ activeView: state.activeView }));
   } catch (err) {
-    console.error('Error saving state to localStorage:', err);
+    console.warn('Falha ao salvar preferência:', err);
   }
 };
 
 export const resetToDefaults = (): AppState => {
-  const defaultState = getDefaultState();
-  saveState(defaultState);
-  return defaultState;
+  const initialState = getDefaultState();
+  saveState(initialState);
+  return initialState;
 };
 
 // Backward-compatible Storage helper
 export const Storage = {
-  getUserProfile: () => ({
-    name: 'Marcos Henrique',
-    email: 'rickmarketing81@gmail.com',
-    plan: 'Agency',
-    status: 'active',
-    createdAt: '03/06/2026',
-  }),
+  getUserProfile: () => null,
   getCRMLeads: () => loadState().leads,
   getKPIPeriods: () => loadState().kpiPeriods,
   getCashTransactions: () => loadState().transactions,
