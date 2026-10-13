@@ -1575,17 +1575,297 @@ export default function App() {
         onNavigate={setView}
       />
 
-      {/* Never suggest public Firestore rules when permissions are denied. */}
+      {/* Firestore permission errors must never advise opening the database publicly. */}
       {firestorePermissionNotice && (
         <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-3 text-xs text-amber-200 z-30 shrink-0 flex items-center justify-between gap-3">
-          <span>
-            Acesso ao banco de dados negado. Verifique o login, as permissões da conta
-            e as regras de segurança no Firebase. Nenhuma regra pública deve ser aplicada.
-          </span>
+          <span>O Firestore negou acesso. Confira o login e as permissões da conta no Firebase.
+            Não publique regras abertas.</span>
           <button onClick={() => setFirestorePermissionNotice(false)}
             className="text-amber-300 hover:text-white px-2 py-1" title="Fechar aviso">✕</button>
         </div>
       )}
+      {/* Sidebar */}
+        <Sidebar
+          activeView={state.activeView}
+          userProfile={userProfile || effectiveProfile}
+          onSelectView={setView}
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          onLogout={async () => {
+            await logoutUser();
+            setView('landing');
+          }}
+        />
+
+        {/* Main Content View Area */}
+        <main className="flex-1 h-full min-h-0 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full overflow-y-auto">
+          {/* Trial Countdown Banner (14 Dias Grátis) */}
+          {!isMasterUser &&
+            !userProfile?.subscription?.isMasterAccount &&
+            (userProfile?.subscription?.trialEndsAt || (userProfile as any)?.trialEndsAt) && (
+              <div className="mb-4">
+                <TrialCountdownBanner
+                  trialEndsAt={
+                    userProfile?.subscription?.trialEndsAt ||
+                    (typeof (userProfile as any)?.trialEndsAt === 'number'
+                      ? new Date((userProfile as any).trialEndsAt).toISOString()
+                      : String((userProfile as any)?.trialEndsAt))
+                  }
+                  onExpire={() => setShowUpgradeModal(true)}
+                />
+              </div>
+            )}
+
+          {isCurrentViewLocked ? (
+            <LockedModuleView
+              moduleId={state.activeView}
+              userProfile={userProfile || effectiveProfile}
+              onNavigateHome={() => setView('dashboard')}
+            />
+          ) : (
+            <>
+              {state.activeView === 'dashboard' && (
+                <DashboardGeralView
+                  userProfile={userProfile}
+                  kpiPeriods={state.kpiPeriods}
+                  transactions={state.transactions}
+                  campaigns={state.campaigns}
+                  leads={state.leads}
+                  stockItems={state.stockItems}
+                  tasks={state.tasks}
+                  prospectionContracts={state.prospectionContracts}
+                  onNavigate={setView}
+                  onAddTask={handleAddTask}
+                  onUpdateTaskStatus={handleUpdateTaskStatus}
+                  onDeleteTask={handleDeleteTask}
+                  onAddTransaction={handleAddTransaction}
+                  onDeleteTransaction={handleDeleteTransaction}
+                  onAddCampaign={handleAddCampaign}
+                  onUpdateCampaign={handleUpdateCampaign}
+                  onDeleteCampaign={handleDeleteCampaign}
+                  onAddLead={handleAddLead}
+                />
+              )}
+
+              {state.activeView === 'kpis' && (
+                <KPIsView
+                  periods={state.kpiPeriods}
+                  kpiPeriods={state.kpiPeriods}
+                  onAddPeriod={handleAddKPIPeriod}
+                  onDeletePeriod={handleDeleteKPIPeriod}
+                  onExportReport={() => setView('relatorios')}
+                />
+              )}
+
+              {state.activeView === 'fluxo-caixa' && (
+                <FluxoCaixaView
+                  transactions={state.transactions}
+                  onAddTransaction={handleAddTransaction}
+                  onDeleteTransaction={handleDeleteTransaction}
+                />
+              )}
+
+              {state.activeView === 'maps-scraper' && (
+                <MapsScraperView
+                  leads={state.leads}
+                  onAddLead={handleAddLead}
+                  onUpdateLeadStatus={handleUpdateLeadStatus}
+                  onDeleteLead={handleDeleteLead}
+                />
+              )}
+
+              {state.activeView === 'profile' && (
+                <ProfileView
+                  userProfile={userProfile}
+                  timeClockRecords={state.timeClockRecords || []}
+                  onUpdateProfile={handleUpdateUserProfile}
+                  onNavigateToPonto={() => setView('ponto')}
+                />
+              )}
+
+              {state.activeView === 'prospection' && (
+                <ProspectionView
+                  demands={state.prospectionDemands || []}
+                  contracts={state.prospectionContracts || []}
+                  packages={state.techifyPackages || []}
+                  currentUser={userProfile}
+                  onAddDemand={handleAddProspectionDemand}
+                  onUpdateDemand={handleUpdateProspectionDemand}
+                  onDeleteDemand={handleDeleteProspectionDemand}
+                  onClaimDemand={handleClaimProspectionDemand}
+                  onAddContract={handleAddProspectionContract}
+                  onUpdateContract={handleUpdateProspectionContract}
+                  onDeleteContract={handleDeleteProspectionContract}
+                  onSavePackage={handleSaveTechifyPackage}
+                  onDeletePackage={handleDeleteTechifyPackage}
+                  onShareInChat={handleSharePackageInChat}
+                />
+              )}
+
+              {state.activeView === 'social-hub' && (
+                <SocialHubView
+                  posts={state.socialPosts}
+                  onAddPost={handleAddSocialPost}
+                  onDeletePost={handleDeleteSocialPost}
+                />
+              )}
+
+              {state.activeView === 'estoque' && (
+                <EstoqueView
+                  items={state.stockItems}
+                  onAddItem={handleAddStockItem}
+                  onDeleteItem={handleDeleteStockItem}
+                />
+              )}
+
+              {state.activeView === 'kanban' && (
+                <KanbanView
+                  tasks={state.tasks}
+                  onAddTask={handleAddTask}
+                  onUpdateTaskStatus={handleUpdateTaskStatus}
+                  onDeleteTask={handleDeleteTask}
+                />
+              )}
+
+              {state.activeView === 'relatorios' && (
+                <RelatoriosView
+                  kpiPeriods={state.kpiPeriods}
+                  transactions={state.transactions}
+                  campaigns={state.campaigns}
+                  leads={state.leads}
+                  stockItems={state.stockItems}
+                />
+              )}
+
+              {state.activeView === 'campanhas' && (
+                <CampanhasView
+                  campaigns={state.campaigns}
+                  onAddCampaign={handleAddCampaign}
+                  onDeleteCampaign={handleDeleteCampaign}
+                />
+              )}
+
+              {state.activeView === 'marketing' && (
+                <MarketingHubView
+                  userProfile={userProfile}
+                  marketingCampaigns={state.marketingCampaigns}
+                  marketingEditorials={state.marketingEditorials}
+                  marketingFunnels={state.marketingFunnels}
+                  marketingEmailFlows={state.marketingEmailFlows}
+                  marketingCopies={state.marketingCopies}
+                  onAddCampaign={handleAddMarketingCampaign}
+                  onUpdateCampaign={handleUpdateMarketingCampaign}
+                  onDeleteCampaign={handleDeleteMarketingCampaign}
+                  onAddEditorial={handleAddMarketingEditorial}
+                  onUpdateEditorial={handleUpdateMarketingEditorial}
+                  onDeleteEditorial={handleDeleteMarketingEditorial}
+                  onAddFunnel={handleAddMarketingFunnel}
+                  onUpdateFunnel={handleUpdateMarketingFunnel}
+                  onDeleteFunnel={handleDeleteMarketingFunnel}
+                  onAddEmailFlow={handleAddMarketingEmailFlow}
+                  onUpdateEmailFlow={handleUpdateMarketingEmailFlow}
+                  onDeleteEmailFlow={handleDeleteMarketingEmailFlow}
+                  onAddCopyScript={handleAddMarketingCopyScript}
+                  onUpdateCopyScript={handleUpdateMarketingCopyScript}
+                  onDeleteCopyScript={handleDeleteMarketingCopyScript}
+                  onClearAllMarketingData={handleClearAllMarketingData}
+                  onNavigate={setView}
+                />
+              )}
+
+              {state.activeView === 'agenda' && (
+                <AgendaView
+                  events={state.events}
+                  onAddEvent={handleAddEvent}
+                  onDeleteEvent={handleDeleteEvent}
+                />
+              )}
+
+              {state.activeView === 'calculadora-roi' && <CalculadoraROIView />}
+
+              {state.activeView === 'ia-consultora' && <IAConsultoraView />}
+
+              {state.activeView === 'designer' && (
+                <DesignerHubView
+                  userProfile={userProfile}
+                  designProjects={state.designProjects}
+                  designFolders={state.designFolders}
+                  designBriefings={state.designBriefings}
+                  designPackages={state.designPackages}
+                  designComments={state.designComments}
+                  onAddProject={handleAddDesignProject}
+                  onUpdateProject={handleUpdateDesignProject}
+                  onDeleteProject={handleDeleteDesignProject}
+                  onAddFolder={handleAddDesignFolder}
+                  onDeleteFolder={handleDeleteDesignFolder}
+                  onAddBriefing={handleAddDesignBriefing}
+                  onUpdateBriefing={handleUpdateDesignBriefing}
+                  onDeleteBriefing={handleDeleteDesignBriefing}
+                  onAddPackage={handleAddDesignPackage}
+                  onUpdatePackage={handleUpdateDesignPackage}
+                  onDeletePackage={handleDeleteDesignPackage}
+                  onAddComment={handleAddDesignComment}
+                  onDeleteComment={handleDeleteDesignComment}
+                  onClearAllData={handleClearAllDesignData}
+                  onNavigate={setView}
+                />
+              )}
+
+              {state.activeView === 'lideranca' && (
+                <PainelLiderancaView
+                  userProfile={userProfile}
+                  campaigns={state.campaigns}
+                  leads={state.leads}
+                  events={state.events}
+                  socialPosts={state.socialPosts}
+                  designProjects={state.designProjects}
+                  marketingCampaigns={state.marketingCampaigns}
+                  marketingEditorials={state.marketingEditorials}
+                  marketingFunnels={state.marketingFunnels}
+                  marketingEmailFlows={state.marketingEmailFlows}
+                  marketingCopies={state.marketingCopies}
+                  timeClockRecords={state.timeClockRecords}
+                  leadershipGoals={state.leadershipGoals}
+                  leadershipNotices={state.leadershipNotices}
+                  onAddGoal={handleAddLeadershipGoal}
+                  onUpdateGoal={handleUpdateLeadershipGoal}
+                  onDeleteGoal={handleDeleteLeadershipGoal}
+                  onAddNotice={handleAddLeadershipNotice}
+                  onDeleteNotice={handleDeleteLeadershipNotice}
+                  onNavigate={setView}
+                  onOpenPunchModal={() => setShowPunchModal(true)}
+                />
+              )}
+
+              {state.activeView === 'ponto' && (
+                <PontoView
+                  userProfile={userProfile}
+                  timeClockRecords={state.timeClockRecords}
+                  employeeWorkSchedules={state.employeeWorkSchedules}
+                  onPunchTimeClock={handlePunchTimeClock}
+                  onDeleteTimeClockRecord={handleDeleteTimeClockRecord}
+                  onUpdateTimeClockRecord={handleUpdateTimeClockRecord}
+                  onOpenPunchModal={() => setShowPunchModal(true)}
+                  onSaveSchedule={handleSaveEmployeeSchedule}
+                  onDeleteSchedule={handleDeleteEmployeeSchedule}
+                />
+              )}
+
+              {state.activeView === 'admin' && (
+                <AdminView
+                  currentUser={userProfile || effectiveProfile}
+                />
+              )}
+
+              {state.activeView === 'leadspay-master' && (
+                <LeadsPayMasterView
+                  currentUser={userProfile || effectiveProfile}
+                />
+              )}
+            </>
+          )}
+        </main>
+      </div>
 
       {/* Floating AI Assistant Widget */}
       <AIAssistantWidget />
