@@ -1,11 +1,12 @@
 import type { Express, Request, Response } from 'express';
-import { randomBytes } from 'node:crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 
 type AdminCtx = {
   uid: string; platformAdmin: boolean; ownerUid: string; email: string;
+  emailVerified: boolean; linkedOwnerUid: string | null;
   legacyOwnerProfile: boolean;
   conflictingOwnerLink: boolean;
 };
@@ -22,6 +23,21 @@ function adminServices() {
   const app = getApps().find(a => a.name === 'agencyos-admin') ||
     initializeApp({ credential: cert(JSON.parse(raw)), projectId: 'agencyos-1c3fc' }, 'agencyos-admin');
   return { db: getFirestore(app), auth: getAuth(app) };
+}
+// Protect legacy ownership mappings against document forgery even if deployed
+// Firestore rules accidentally allow client writes. Signing key is server-only.
+function signLegacyClaim(oldUid: string, claimantUid: string, email: string) {
+  const credential = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON || '{}');
+  if (!credential.private_key) throw new AdminError(503, 'Chave Firebase Admin indisponível.');
+  return createHmac('sha256', credential.private_key)
+    .update(['agencyos-legacy-workspace-v1', oldUid, claimantUid, email].join('\u0000'))
+    .digest('hex');
+}
+function legacyClaimValid(doc: any, oldUid: string, uid: string, email: string) {
+  if (!doc || doc.claimantUid !== uid || doc.verifiedEmail !== email) return false;
+  const received = Buffer.from(String(doc.signature || ''), 'hex');
+  const expected = Buffer.from(signLegacyClaim(oldUid, uid, email), 'hex');
+  return received.length === expected.length && timingSafeEqual(received, expected);
 }
 function textField(value: any, max: number) { return typeof value === 'string' ? value.trim().slice(0, max) : ''; }
 function errorOut(res: Response, error: unknown) {
@@ -64,12 +80,18 @@ async function authorize(req: Request): Promise<AdminCtx> {
   // authenticated UID, never the linked company. This is NOT a migration.
   // Such a workspace contains only employees explicitly linked to this UID.
   const legacyOwnerProfile = data.userType === 'employee' || linkedToAnotherCompany;
-  // Company management is always scoped to this verified user's UID.
-  // platform_admin only grants access to the separate SaaS customer listing.
+  let ownerUid = decoded.uid;
+  if (linkedToAnotherCompany && decoded.email_verified === true) {
+    const claim = await db.doc('verifiedLegacyWorkspaceClaims/' + rawOwner).get();
+    if (claim.exists && legacyClaimValid(claim.data(), rawOwner, decoded.uid,
+        String(decoded.email || '').trim().toLowerCase()))
+      ownerUid = rawOwner;
+  }
   return {
-    uid: decoded.uid, platformAdmin, ownerUid: decoded.uid,
-    email: decoded.email || '', legacyOwnerProfile,
-    conflictingOwnerLink: linkedToAnotherCompany,
+    uid: decoded.uid, platformAdmin, ownerUid, email: decoded.email || '',
+    emailVerified: decoded.email_verified === true,
+    linkedOwnerUid: linkedToAnotherCompany ? rawOwner : null,
+    legacyOwnerProfile, conflictingOwnerLink: linkedToAnotherCompany && ownerUid === decoded.uid,
   };
 }
 function modulesFrom(input: unknown): string[] {
@@ -119,7 +141,87 @@ async function getTarget(actor: AdminCtx, uid: string) {
     throw new AdminError(403, 'Esta pessoa não pertence ao escopo administrativo autorizado.');
   return { ref: target.ref, data };
 }
+
+type LegacyDiagnosis = { recoverable: boolean; reason: string; legacyOwnerUid: string | null;
+  memberCount: number; verifiedMemberCount: number; alreadyLinked: boolean };
+async function diagnoseLegacy(actor: AdminCtx): Promise<LegacyDiagnosis> {
+  const baseline: LegacyDiagnosis = { recoverable: false, reason: 'sem_vinculo',
+    legacyOwnerUid: null, memberCount: 0, verifiedMemberCount: 0, alreadyLinked: false };
+  const oldUid = actor.linkedOwnerUid;
+  if (!oldUid || !/^[A-Za-z0-9_-]{1,128}$/.test(oldUid)) return baseline;
+  if (!actor.emailVerified || !actor.email) return { ...baseline, reason: 'email_nao_verificado' };
+  const { db, auth } = adminServices();
+  const existing = await db.doc('verifiedLegacyWorkspaceClaims/' + oldUid).get();
+  if (existing.exists && !legacyClaimValid(existing.data(), oldUid, actor.uid, actor.email.toLowerCase()))
+    return { ...baseline, reason: 'ja_reivindicado_por_outra_conta' };
+  // Never allow adoption of an existing Firebase Authentication identity.
+  try {
+    await auth.getUser(oldUid);
+    return { ...baseline, reason: 'outra_conta_auth_ativa' };
+  } catch (error: any) {
+    if (error?.code !== 'auth/user-not-found') throw error;
+  }
+  const ownerDoc = await db.doc('users/' + oldUid).get();
+  if (!ownerDoc.exists) return { ...baseline, reason: 'perfil_legado_inexistente' };
+  const identity = await auth.getUser(actor.uid);
+  const oldEmail = String(ownerDoc.data()?.email || '').trim().toLowerCase();
+  if (!identity.emailVerified || !identity.email ||
+      identity.email.toLowerCase() !== actor.email.toLowerCase() ||
+      oldEmail !== actor.email.toLowerCase())
+    return { ...baseline, reason: 'email_proprietario_diferente' };
+  const snap = await db.collection('users').where('agencyOwnerUid', '==', oldUid).limit(150).get();
+  const docs = snap.docs.filter(d => d.id !== actor.uid && d.id !== oldUid &&
+    d.data().userType === 'employee' &&
+    String(d.data().email || '').trim().toLowerCase() !== oldEmail);
+  let verifiedMemberCount = 0;
+  for (let offset = 0; offset < docs.length; offset += 100) {
+    const group = docs.slice(offset, offset + 100);
+    const found = await auth.getUsers(group.map(d => ({ uid: d.id })));
+    const users = new Map(found.users.map(user => [user.uid, user]));
+    for (const d of group) {
+      const user = users.get(d.id);
+      if (user?.email && user.email.toLowerCase() === String(d.data().email || '').trim().toLowerCase())
+        verifiedMemberCount++;
+    }
+  }
+  return { recoverable: true, reason: 'legado_validado', legacyOwnerUid: oldUid,
+    memberCount: docs.length, verifiedMemberCount, alreadyLinked: existing.exists };
+}
+
 export function registerAdminManageRoutes(app: Express) {
+  app.get('/api/admin/legacy-workspace', async (req, res) => {
+    try {
+      const actor = await authorize(req);
+      res.json(await diagnoseLegacy(actor));
+    } catch (e) { errorOut(res, e); }
+  });
+  app.post('/api/admin/legacy-workspace/claim', async (req, res) => {
+    try {
+      const actor = await authorize(req);
+      const data = await diagnoseLegacy(actor);
+      if (!data.recoverable || !data.legacyOwnerUid ||
+          req.body?.legacyOwnerUid !== data.legacyOwnerUid || req.body?.confirm !== true)
+        throw new AdminError(403, 'Não foi possível validar a propriedade da equipe antiga.');
+      const { db } = adminServices();
+      const ref = db.doc('verifiedLegacyWorkspaceClaims/' + data.legacyOwnerUid);
+      await db.runTransaction(async tx => {
+        const exists = await tx.get(ref);
+        if (exists.exists && !legacyClaimValid(exists.data(), data.legacyOwnerUid!, actor.uid, actor.email.toLowerCase()))
+          throw new AdminError(409, 'Workspace reivindicado por outra conta.');
+        if (!exists.exists) tx.create(ref, {
+          claimantUid: actor.uid, verifiedEmail: actor.email.trim().toLowerCase(),
+          signature: signLegacyClaim(data.legacyOwnerUid, actor.uid, actor.email.trim().toLowerCase()),
+          proof: 'verified-firebase-auth+legacy-firestore-profile',
+          claimedAt: FieldValue.serverTimestamp(),
+        });
+      });
+      await audit({ ...actor, ownerUid: data.legacyOwnerUid },
+        'workspace.legacy_claimed', data.legacyOwnerUid,
+        { memberCount: data.memberCount, verifiedMemberCount: data.verifiedMemberCount });
+      res.json({ success: true, memberCount: data.memberCount });
+    } catch (e) { errorOut(res, e); }
+  });
+
   app.get('/api/admin/members', async (req, res) => {
     try {
       const actor = await authorize(req), { db, auth } = adminServices();
@@ -156,7 +258,7 @@ export function registerAdminManageRoutes(app: Express) {
         platformAdmin: actor.platformAdmin, limited: teamSnap.size >= 150 || Boolean(clientSnap && clientSnap.size >= 150),
         billingConnected: false, legacyOwnerProfile: actor.legacyOwnerProfile,
         conflictingOwnerLink: actor.conflictingOwnerLink,
-        workspaceScope: 'own',
+        workspaceScope: actor.ownerUid === actor.uid ? 'own' : 'verified_legacy',
       });
     } catch (e) { errorOut(res, e); }
   });

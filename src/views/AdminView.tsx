@@ -22,7 +22,12 @@ type AuditEvent = { id: string; actorUid: string; targetUid: string; action: str
 type Summary = {
   users: Member[]; employees: number; clients: number;
   platformAdmin: boolean; limited: boolean; billingConnected: boolean;
-  legacyOwnerProfile?: boolean; conflictingOwnerLink?: boolean; workspaceScope?: 'own';
+  legacyOwnerProfile?: boolean; conflictingOwnerLink?: boolean;
+  workspaceScope?: 'own' | 'verified_legacy';
+};
+type LegacyInfo = {
+  recoverable: boolean; reason: string; legacyOwnerUid: string | null;
+  memberCount: number; verifiedMemberCount: number; alreadyLinked: boolean;
 };
 type InviteKind = 'employee' | 'client';
 const panel = 'rounded-[22px] border border-[#23375A] bg-[#0D182C] shadow-lg shadow-[#030A19]/15';
@@ -37,6 +42,7 @@ export const AdminView: React.FC<{ currentUser?: FirestoreUserProfile | null }> 
   const [tab, setTab] = useState<AdminTab>('team');
   const [summary, setSummary] = useState<Summary | null>(null);
   const [audit, setAudit] = useState<AuditEvent[]>([]);
+  const [legacy, setLegacy] = useState<LegacyInfo | null>(null);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'active' | 'blocked' | 'pending'>('all');
   const [selected, setSelected] = useState<Member | null>(null);
@@ -89,6 +95,12 @@ export const AdminView: React.FC<{ currentUser?: FirestoreUserProfile | null }> 
         throw new Error('A API não retornou a lista de usuários. Confira a autenticação do Firebase.');
       }
       setSummary(result); setMenuUser(null);
+      if (result.conflictingOwnerLink) {
+        // Only the backend may decide if the linked legacy workspace
+        // belongs to the verified Firebase Authentication account.
+        try { setLegacy(await api('legacy-workspace')); }
+        catch { setLegacy(null); }
+      } else setLegacy(null);
       if (selected) {
         const fresh = (result.users || []).find((x: Member) => x.uid === selected.uid);
         setSelected(fresh || null);
@@ -188,6 +200,7 @@ export const AdminView: React.FC<{ currentUser?: FirestoreUserProfile | null }> 
     { id: 'activity', label: 'Auditoria', icon: Activity },
   ];
   const statusBadge = (member: Member) => {
+    if (!member.isAuthAccount) return <span className="px-2 py-1 rounded-full bg-amber-500/10 text-amber-300 text-[10px] font-bold border border-amber-500/25">Cadastro legado</span>;
     if (member.status === 'blocked') return <span className="px-2 py-1 rounded-full bg-rose-500/10 text-rose-300 text-[10px] font-bold border border-rose-500/25">Bloqueado</span>;
     if (member.invitationStatus === 'pending' && !member.hasSignedIn)
       return <span className="px-2 py-1 rounded-full bg-amber-500/10 text-amber-200 text-[10px] font-bold border border-amber-500/25">Convite pendente</span>;
@@ -198,9 +211,10 @@ export const AdminView: React.FC<{ currentUser?: FirestoreUserProfile | null }> 
     <div className="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center bg-[#1A3767] text-blue-200 font-extrabold text-sm border border-blue-500/20">
       {(member.name || member.email || '?').slice(0, 1).toUpperCase()}</div>;
   const memberActions = (member: Member) => <div className="flex flex-wrap gap-2 justify-end">
-    <button className={outlineBtn} onClick={() => openMember(member)}><Settings2 className="w-4 h-4" />Gerenciar</button>
+    <button className={outlineBtn} onClick={() => openMember(member)} disabled={!member.isAuthAccount}>
+      <Settings2 className="w-4 h-4" />Gerenciar</button>
     {member.uid !== currentUser?.uid && <button className={outlineBtn + (member.status !== 'blocked' ? ' text-rose-200' : '')}
-      onClick={() => toggleMember(member)} disabled={Boolean(busy)}>
+      onClick={() => toggleMember(member)} disabled={Boolean(busy) || !member.isAuthAccount}>
       {member.status === 'blocked' ? <UserCheck className="w-4 h-4" /> : <LockKeyhole className="w-4 h-4" />}
       {member.status === 'blocked' ? 'Reativar' : 'Bloquear'}</button>}
   </div>;
@@ -234,7 +248,9 @@ export const AdminView: React.FC<{ currentUser?: FirestoreUserProfile | null }> 
         </div>
         <div className="flex flex-wrap gap-2">
           <button className={outlineBtn} onClick={() => void reload()} disabled={loading}><RefreshCw className={'w-4 h-4 ' + (loading ? 'animate-spin' : '')} />Atualizar</button>
-          <button className={actionBtn} onClick={() => {
+          <button className={actionBtn} disabled={Boolean(summary?.conflictingOwnerLink)}
+            title={summary?.conflictingOwnerLink ? 'Confirme primeiro o workspace antigo para não cadastrar pessoas na empresa errada.' : 'Convidar um funcionário'}
+            onClick={() => {
             setInviteKind('employee'); setInvitationLink(''); setInviteName(''); setInviteEmail(''); setInviteModules([...presetModules]); setShowInvite(true);
           }}><UserPlus className="w-4 h-4" />Convidar funcionário</button>
           {summary?.platformAdmin && <button className={outlineBtn} onClick={() => {
@@ -246,11 +262,55 @@ export const AdminView: React.FC<{ currentUser?: FirestoreUserProfile | null }> 
 
     {error && <div role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 flex gap-2 text-sm text-rose-200"><AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />{error}</div>}
     {notice && <div role="status" className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-4 flex gap-2 text-sm text-emerald-200"><CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />{notice}</div>}
-    {summary?.conflictingOwnerLink ? <div role="status" className="text-xs rounded-xl border border-amber-500/30 bg-amber-500/5 text-amber-200 p-3">
-      Encontramos um vínculo antigo da sua conta com outra empresa. Por segurança, esta página mostra somente seu workspace pessoal do Firebase. Funcionários e dados do outro workspace não serão movidos ou exibidos sem verificação do proprietário. Se sua equipe antiga não aparecer, será necessário reconciliar os vínculos de cada funcionário.
-    </div> : summary?.legacyOwnerProfile && <div role="status" className="text-xs rounded-xl border border-blue-500/30 bg-blue-500/5 text-blue-200 p-3">
-      Seu cadastro usa uma classificação antiga de funcionário. O painel só mostra pessoas com vínculo explícito ao seu UID. Cadastros sem vínculo confiável precisam de revisão.
+
+    {summary?.conflictingOwnerLink && <section role="status" className="rounded-2xl border border-amber-500/30 bg-[#1C170C] p-4 sm:p-5 space-y-3">
+      <div className="flex items-center gap-2 text-amber-200 font-bold text-sm">
+        <ShieldAlert className="w-4 h-4 shrink-0" />Recuperação da equipe antiga
+      </div>
+      <p className="text-xs text-amber-100/85 leading-relaxed">
+        Existe um vínculo de cadastro legado com outro identificador de workspace.
+        Por segurança, nenhum funcionário foi transferido e nenhum dado foi apagado.
+      </p>
+      {!legacy ? <p className="text-xs text-slate-400">Ainda não foi possível confirmar a identidade do proprietário antigo. Mantenha sua equipe atual separada até a revisão.</p>
+      : legacy.recoverable ? <>
+        <p className="text-xs text-slate-200">
+          Confirmação de propriedade disponível: <b>{legacy.memberCount}</b> registros associados ao workspace antigo,
+          dos quais <b>{legacy.verifiedMemberCount}</b> têm conta Firebase Auth com e-mail correspondente.
+          Os registros sem autenticação continuarão identificados como cadastros legados.
+        </p>
+        <p className="text-[11px] text-amber-200/90">
+          A recuperação vinculará sua conta autenticada ao workspace antigo, mantendo seus dados e permissões originais.
+          Não altera as senhas, não transfere dados de outras empresas e fica registrada na auditoria.
+        </p>
+        <button className={actionBtn} disabled={Boolean(busy)} onClick={() => {
+          if (!legacy.legacyOwnerUid || !window.confirm(
+            'Confirmar que este workspace antigo pertence à sua empresa? O vínculo será registrado após validação pelo Firebase.'
+          )) return;
+          void run('legacy-recovery', async () => {
+            await api('legacy-workspace/claim', { method: 'POST',
+              body: JSON.stringify({ legacyOwnerUid: legacy.legacyOwnerUid, confirm: true }) });
+            await reload();
+            setNotice('Vínculo do workspace antigo confirmado no servidor. Os registros preservados foram recarregados.');
+          });
+        }}>
+          {busy === 'legacy-recovery' ? <Loader2 className="h-4 w-4 animate-spin"/> : <ShieldCheck className="w-4 h-4"/>}
+          Confirmar propriedade e recuperar equipe
+        </button>
+      </> : <div className="space-y-2">
+        <p className="text-xs text-amber-100">
+          A verificação não encontrou evidência suficiente para recuperar automaticamente esse workspace
+          ({legacy.reason.replaceAll('_',' ')}). Nenhuma pessoa foi movida.
+        </p>
+        <p className="text-[11px] text-slate-400">Se você é o proprietário, será necessário confirmar a vinculação antiga pelo Firebase antes de associar os colaboradores. Não é seguro recuperar contas apenas pelo nome ou pelo e-mail informado no perfil.</p>
+      </div>}
+    </section>}
+    {summary?.workspaceScope === 'verified_legacy' && <div role="status" className="text-xs rounded-xl border border-emerald-500/25 bg-emerald-500/5 text-emerald-200 p-3 flex gap-2">
+      <ShieldCheck className="h-4 w-4 shrink-0" />Workspace antigo confirmado pela autenticação Firebase. Sua equipe é exibida sem copiar cadastros para outras empresas.
     </div>}
+    {summary?.legacyOwnerProfile && !summary.conflictingOwnerLink &&
+      summary.workspaceScope !== 'verified_legacy' && <div className="text-xs rounded-xl border border-blue-500/30 bg-blue-500/5 text-blue-200 p-3">
+        Sua conta tem uma classificação antiga. Esta tela só apresenta membros com vínculo explícito ao seu workspace autenticado.
+      </div>}
     {summary?.limited && <div className="text-xs rounded-xl border border-amber-500/30 bg-amber-500/5 text-amber-200 p-3">
       A consulta foi limitada a 150 contas. A paginação para bases maiores ainda precisa ser adicionada antes de lançar o SaaS.</div>}
 
@@ -295,8 +355,11 @@ export const AdminView: React.FC<{ currentUser?: FirestoreUserProfile | null }> 
       {loading && !summary ? <div className={panel + ' p-14 text-center text-slate-400 text-sm'}>
         <Loader2 className="h-6 w-6 animate-spin mx-auto mb-3 text-blue-400" />Carregando os usuários autorizados…</div>
       : rows.length === 0 ? <div className={panel + ' py-14 px-6 text-center'}>
-        <Users className="w-10 h-10 text-blue-400 mx-auto"/><h4 className="font-bold text-white mt-4">{search || filter !== 'all' ? 'Nenhum resultado para os filtros' : 'Nenhum cadastro nesta área'}</h4>
-        <p className="text-xs text-slate-400 mt-2">Não criamos usuários fictícios. Cadastros autorizados aparecerão aqui.</p>
+        <Users className="w-10 h-10 text-blue-400 mx-auto"/><h4 className="font-bold text-white mt-4">{search || filter !== 'all' ? 'Nenhum resultado para os filtros' :
+          summary?.conflictingOwnerLink ? 'Equipe antiga aguardando verificação' : 'Nenhum cadastro nesta área'}</h4>
+        <p className="text-xs text-slate-400 mt-2">{summary?.conflictingOwnerLink
+          ? 'Use a recuperação acima para verificar a propriedade do workspace antigo. Não recrie funcionários nem cadastre novamente a mesma empresa.'
+          : 'A lista é composta por contas reais ou cadastros legados do workspace autorizado. Nenhum usuário fictício será criado.'}</p>
         {(search || filter !== 'all') && <button className={outlineBtn + ' mt-4'} onClick={() => { setSearch(''); setFilter('all'); }}>Limpar filtros</button>}
       </div> : <>
         <div className={(viewMode === 'cards' ? '' : 'lg:hidden ') + 'grid grid-cols-1 sm:grid-cols-2 gap-3'}>{rows.map(renderMemberCard)}</div>
