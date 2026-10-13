@@ -1584,7 +1584,8 @@ export default function App() {
             className="text-amber-300 hover:text-white px-2 py-1" title="Fechar aviso">✕</button>
         </div>
       )}
-      {/* Sidebar */}
+      <div className="flex flex-1 relative overflow-hidden min-h-0">
+        {/* Sidebar */}
         <Sidebar
           activeView={state.activeView}
           userProfile={userProfile || effectiveProfile}
