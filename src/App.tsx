@@ -340,6 +340,15 @@ export default function App() {
     const targetView = (view as string) === 'studio-agency' ? 'designer' : view;
     setState((prev) => ({ ...prev, activeView: targetView }));
   };
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    const gmailReturn = query.get('copilot');
+    if (gmailReturn === 'gmail-connected' || gmailReturn === 'gmail-error') {
+      setView('ia-consultora');
+      // Keep the status query until Copilot displays its result on this tab.
+    }
+  }, []);
+
 
   const handleOpenAuth = (mode: 'login' | 'signup') => {
     setAuthModalMode(mode);

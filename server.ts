@@ -1,6 +1,7 @@
 import express from 'express';
 import { registerSocialMetaRoutes } from './src/server/socialMeta';
 import { registerAdminManageRoutes } from './src/server/adminManage';
+import { registerAgencyCopilotRoutes } from './src/server/agencyCopilot';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
@@ -21,6 +22,7 @@ async function startServer() {
   app.use(express.json({ limit: '1mb', verify: (request, _response, body) => { (request as any).rawBody = Buffer.from(body); } }));
   registerSocialMetaRoutes(app);
   registerAdminManageRoutes(app);
+  registerAgencyCopilotRoutes(app);
 
   // Initialize Gemini AI Client
   const ai = new GoogleGenAI({

@@ -36,6 +36,12 @@ function legacyClaimValid(doc: any, oldUid: string, uid: string, email: string) 
   const expected = Buffer.from(signLegacyClaim(oldUid, uid, email), 'hex');
   return received.length === expected.length && timingSafeEqual(received, expected);
 }
+function copilotMembershipSignature(uid: string, ownerUid: string): string {
+  const privateKey = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON || '{}').private_key;
+  if (!privateKey) throw new AdminError(503, 'Credencial administrativa indisponível.');
+  return createHmac('sha256', privateKey)
+    .update(['agencyos-copilot-member-v1', uid, ownerUid].join('\u0000')).digest('hex');
+}
 function textField(value: any, max: number) { return typeof value === 'string' ? value.trim().slice(0, max) : ''; }
 function errorOut(res: Response, error: unknown) {
   if (error instanceof SyntaxError && process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
@@ -323,6 +329,11 @@ export function registerAdminManageRoutes(app: Express) {
           createdAt: now, designRole: kind === 'employee' ? 'funcionario' : 'cliente',
           canApproveDesigns: false, canPublishPosts: false, canDeleteDesigns: false,
         });
+        if (kind === 'employee') batch.set(db.doc('copilotMemberships/' + user.uid), {
+          uid: user.uid, ownerUid: actor.ownerUid,
+          signature: copilotMembershipSignature(user.uid, actor.ownerUid),
+          createdAt: FieldValue.serverTimestamp(),
+        });
         batch.set(db.collection('adminAuditLog').doc(), {
           actorUid: actor.uid, action: 'user.invited', targetUid: user.uid,
           ownerUid: actor.ownerUid, details: { kind },
@@ -383,6 +394,11 @@ export function registerAdminManageRoutes(app: Express) {
         batch.update(target.ref, {
           invitationStatus: 'pending', status: 'active',
           updatedAt: FieldValue.serverTimestamp(),
+        });
+        batch.set(db.doc('copilotMemberships/' + created.uid), {
+          uid: created.uid, ownerUid: actor.ownerUid,
+          signature: copilotMembershipSignature(created.uid, actor.ownerUid),
+          createdAt: FieldValue.serverTimestamp(),
         });
         batch.set(db.collection('adminAuditLog').doc(), {
           actorUid: actor.uid, action: 'user.legacy_activated', targetUid: created.uid,
