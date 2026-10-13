@@ -66,7 +66,7 @@ export async function handleUserAuthentication(user: User, plan: 'starter' | 'pr
   }
 
   // 3. Caso especial: Conta Master / Empresa Principal (rickmarketing81@gmail.com)
-  if (user.email === 'rickmarketing81@gmail.com') {
+  if (user.emailVerified && user.email?.toLowerCase() === 'rickmarketing81@gmail.com') {
     const masterProfile: UserProfile = {
       uid: user.uid,
       email: user.email,
