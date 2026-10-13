@@ -4,7 +4,10 @@ import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 
-type AdminCtx = { uid: string; platformAdmin: boolean; ownerUid: string; email: string };
+type AdminCtx = {
+  uid: string; platformAdmin: boolean; ownerUid: string; email: string;
+  legacyOwnerProfile: boolean;
+};
 class AdminError extends Error { constructor(public status: number, message: string) { super(message); } }
 const MODULES = new Set([
   'dashboard','prospection','maps-scraper','agenda','kanban','lideranca','ponto',
@@ -45,12 +48,26 @@ async function authorize(req: Request): Promise<AdminCtx> {
   if (!profile.exists || profile.data()?.status === 'blocked' || profile.data()?.status === 'cancelled')
     throw new AdminError(403, 'Sua conta não está autorizada.');
   const data = profile.data() || {};
+  // A verified Firebase Auth UID owns its own workspace unless there is an
+  // explicit binding to a DIFFERENT real account. Legacy versions incorrectly
+  // saved actual owners as userType='employee' with no owner UID, or with the
+  // non-UID placeholder 'agency-master-owner'. That label cannot grant or deny
+  // ownership by itself. No email, plan, title or role can grant global access.
   const platformAdmin = decoded.platform_admin === true;
-  // Platform admin must be granted through a Firebase custom claim,
-  // never a profile field, hardcoded email or a client-submitted role.
-  const isOwner = data.userType !== 'employee' && (!data.agencyOwnerUid || data.agencyOwnerUid === decoded.uid);
-  if (!platformAdmin && !isOwner) throw new AdminError(403, 'Somente o responsável pela empresa pode gerenciar acessos.');
-  return { uid: decoded.uid, platformAdmin, ownerUid: decoded.uid, email: decoded.email || '' };
+  const rawOwner = typeof data.agencyOwnerUid === 'string' ? data.agencyOwnerUid.trim() : '';
+  const linkedToAnotherCompany = rawOwner !== '' &&
+    rawOwner !== decoded.uid &&
+    rawOwner !== 'agency-master-owner';
+  if (linkedToAnotherCompany && !platformAdmin) {
+    throw new AdminError(403, 'Esta conta está vinculada como colaborador a outra empresa. Entre com a conta proprietária para gerenciar os acessos.');
+  }
+  const legacyOwnerProfile = data.userType === 'employee' && !linkedToAnotherCompany;
+  // Company management is always scoped to this verified user's UID.
+  // platform_admin only grants access to the separate SaaS customer listing.
+  return {
+    uid: decoded.uid, platformAdmin, ownerUid: decoded.uid,
+    email: decoded.email || '', legacyOwnerProfile,
+  };
 }
 function modulesFrom(input: unknown): string[] {
   if (!Array.isArray(input)) throw new AdminError(400, 'Selecione os módulos autorizados.');
@@ -89,32 +106,54 @@ async function getTarget(actor: AdminCtx, uid: string) {
   if (!target.exists) throw new AdminError(404, 'Conta não encontrada.');
   const data = target.data() || {};
   if (uid === actor.uid) throw new AdminError(403, 'Você não pode alterar seus próprios privilégios por esta tela.');
-  if (!actor.platformAdmin && !(data.userType === 'employee' && data.agencyOwnerUid === actor.ownerUid))
-    throw new AdminError(403, 'Esta pessoa não pertence à sua empresa.');
+  // Company owners can only modify their own employees. The platform admin
+  // can additionally manage SaaS customer accounts, but cannot edit employees
+  // belonging to a different company from this company-facing endpoint.
+  const ownEmployee = data.userType === 'employee' && data.agencyOwnerUid === actor.ownerUid;
+  const saasClient = actor.platformAdmin && data.userType === 'client' &&
+    (!data.agencyOwnerUid || data.agencyOwnerUid === target.id);
+  if (!ownEmployee && !saasClient)
+    throw new AdminError(403, 'Esta pessoa não pertence ao escopo administrativo autorizado.');
   return { ref: target.ref, data };
 }
 export function registerAdminManageRoutes(app: Express) {
   app.get('/api/admin/members', async (req, res) => {
     try {
       const actor = await authorize(req), { db, auth } = adminServices();
-      const snap = actor.platformAdmin
-        ? await db.collection('users').limit(150).get()
-        : await db.collection('users').where('agencyOwnerUid', '==', actor.ownerUid).limit(150).get();
-      const profiles = snap.docs.filter(d => actor.platformAdmin ||
-        (d.data().userType === 'employee' && d.data().agencyOwnerUid === actor.ownerUid));
-      // Firebase Admin batch lookup avoids one authentication request per row.
-      const identified = new Map<string, any>();
-      for (let offset = 0; offset < profiles.length; offset += 100) {
-        const batch = profiles.slice(offset, offset + 100);
-        const found = await auth.getUsers(batch.map(d => ({ uid: d.id })));
-        for (const user of found.users) identified.set(user.uid, user);
+      // The company's team is ALWAYS scoped to its own owner UID.
+      // Even a platform administrator must not blend everyone into their team.
+      const teamSnap = await db.collection('users')
+        .where('agencyOwnerUid', '==', actor.ownerUid).limit(150).get();
+      const teamDocs = teamSnap.docs.filter(d =>
+        d.id !== actor.ownerUid &&
+        d.data().agencyOwnerUid === actor.ownerUid &&
+        d.data().userType === 'employee'
+      );
+      // SaaS client accounts are a distinct area, available only to a
+      // custom-claim platform administrator (not based on email/role/plan).
+      const clientSnap = actor.platformAdmin
+        ? await db.collection('users').where('userType', '==', 'client').limit(150).get()
+        : null;
+      const clientDocs = (clientSnap?.docs || []).filter(d =>
+        d.data().userType === 'client' &&
+        (!d.data().agencyOwnerUid || d.data().agencyOwnerUid === d.id)
+      );
+      const documents = [...teamDocs, ...clientDocs.filter(d => !teamDocs.some(m => m.id === d.id))];
+      const identities = new Map<string, any>();
+      for (let offset = 0; offset < documents.length; offset += 100) {
+        const chunk = documents.slice(offset, offset + 100);
+        const found = await auth.getUsers(chunk.map(d => ({ uid: d.id })));
+        for (const user of found.users) identities.set(user.uid, user);
       }
-      const result = profiles.map(d => safeProfile(d, identified.get(d.id)));
-      const [employee, client] = [result.filter(p => p.userType === 'employee'),
-        actor.platformAdmin ? result.filter(p => p.userType !== 'employee') : []];
-      res.json({ users: result, employees: employee.length, clients: client.length,
-        platformAdmin: actor.platformAdmin, limited: snap.size >= 150,
-        billingConnected: false });
+      const members = documents.map(d => safeProfile(d, identities.get(d.id)));
+      const employeeCount = members.filter(p => p.userType === 'employee').length;
+      const clientCount = members.filter(p => p.userType === 'client').length;
+      res.json({
+        users: members, employees: employeeCount, clients: clientCount,
+        platformAdmin: actor.platformAdmin, limited: teamSnap.size >= 150 || Boolean(clientSnap && clientSnap.size >= 150),
+        billingConnected: false, legacyOwnerProfile: actor.legacyOwnerProfile,
+        workspaceScope: 'own',
+      });
     } catch (e) { errorOut(res, e); }
   });
 

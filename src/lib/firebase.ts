@@ -259,159 +259,41 @@ export async function getOrCreateUserProfile(user: User, customAgencyName?: stri
   const userRef = doc(db, 'users', user.uid);
   const snap = await getDoc(userRef);
 
-  const linked = await findLinkedCompanyForEmail(cleanEmail, user.uid);
-
-  // 1. If document already exists by user.uid
+  // A company is identified by its authenticated Firebase UID, never by a
+  // global email lookup or another user's profile document. Admin invitations
+  // already create a Firestore profile keyed by the invited user's Auth UID.
+  // For existing accounts preserve every field and their explicit relationship.
   if (snap.exists()) {
-    const existing = snap.data() as FirestoreUserProfile;
-    // If the user is linked to an agency/company but their document is missing agencyOwnerUid or points to itself
-    if (
-      linked?.agencyOwnerUid &&
-      (!existing.agencyOwnerUid || existing.agencyOwnerUid === user.uid || existing.agencyOwnerUid === 'agency-master-owner')
-    ) {
-      const merged: FirestoreUserProfile = {
-        ...existing,
-        avatarUrl: user.photoURL || existing.avatarUrl || '',
-        photoURL: user.photoURL || (existing as any).photoURL || '',
-        agencyOwnerUid: linked.agencyOwnerUid,
-        agencyName: linked.agencyName || existing.agencyName,
-        userType: linked.userType || 'employee',
-        role: linked.role || existing.role || 'Membro da Equipe',
-        department: (linked.department as any) || existing.department || 'gestao',
-        allowedModules: linked.allowedModules || existing.allowedModules,
-        designRole: linked.designRole || existing.designRole,
-        canEditDesigns: linked.canEditDesigns !== undefined ? linked.canEditDesigns : existing.canEditDesigns,
-        canCreateDesigns: linked.canCreateDesigns !== undefined ? linked.canCreateDesigns : existing.canCreateDesigns,
-        canApproveDesigns: linked.canApproveDesigns !== undefined ? linked.canApproveDesigns : existing.canApproveDesigns,
-        canPublishPosts: linked.canPublishPosts !== undefined ? linked.canPublishPosts : existing.canPublishPosts,
-      };
-      await setDoc(userRef, sanitizeFirestorePayload(merged), { merge: true });
-      return merged;
-    }
-    return existing;
+    return { ...(snap.data() as FirestoreUserProfile), uid: user.uid };
   }
 
-  // 2. Check if an existing profile exists in Firestore with this email
-  if (cleanEmail) {
-    try {
-      const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('email', '==', cleanEmail));
-      const querySnap = await getDocs(q);
-      if (!querySnap.empty) {
-        const foundDoc = querySnap.docs[0];
-        const existingData = foundDoc.data() as FirestoreUserProfile;
-        const merged: FirestoreUserProfile = {
-          ...existingData,
-          uid: foundDoc.id,
-          avatarUrl: user.photoURL || existingData.avatarUrl || '',
-          photoURL: user.photoURL || (existingData as any).photoURL || '',
-        };
-        // Also map to auth uid if different
-        if (foundDoc.id !== user.uid) {
-          await setDoc(userRef, sanitizeFirestorePayload({ ...merged, uid: user.uid, linkedOriginalId: foundDoc.id }), { merge: true });
-        }
-        return merged;
-      }
-    } catch (e) {
-      console.warn('Erro ao consultar usuário existente por email:', e);
-    }
-  }
-
-  // 3. Check if this is the Master Admin or pre-registered team member
-  if (
-    user.emailVerified &&
-    ['rickmarketing81@gmail.com', 'agencyosoficial@gmail.com', 'oficialtechify@gmail.com'].includes(cleanEmail)
-  ) {
-    const nowIso = new Date().toISOString();
-    const masterProfile: FirestoreUserProfile = {
-      uid: user.uid,
-      name: user.displayName || 'Marcos Henrique',
-      email: cleanEmail,
-      agencyName: 'Techify Agência',
-      plan: 'Agency',
-      status: 'active',
-      role: 'CEO & Administrador Master',
-      userType: 'employee',
-      department: 'gestao',
-      avatarUrl: user.photoURL || '',
-      trialStartDate: Date.now(),
-      trialEndsAt: Date.now() + 365 * 24 * 60 * 60 * 1000,
-      createdAt: nowIso,
-      allowedModules: [
-        'dashboard',
-        'profile',
-        'lideranca',
-        'ponto',
-        'chat',
-        'kpis',
-        'fluxo-caixa',
-        'campanhas',
-        'social-hub',
-        'designer',
-        'kanban',
-        'prospection',
-        'agenda',
-        'leadspay-companies',
-        'admin',
-        'leadspay-master',
-        'relatorios',
-        'calculadora-roi',
-        'ia-consultora',
-      ],
-    };
-    await setDoc(userRef, sanitizeFirestorePayload(masterProfile), { merge: true });
-    return masterProfile;
-  }
-
-  // 4. Create new company profile ("as empresas conseguem criar a conta so pelo google")
+  // New independent company. Never infer another agency by matching email,
+  // display name, plan or role and never grant a paid plan automatically.
   const now = Date.now();
-  const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
-  const isEmployee = Boolean(linked?.agencyOwnerUid) || linked?.userType === 'employee';
-  const companyName = customAgencyName || (user.displayName ? `Empresa ${user.displayName}` : 'Sua Empresa');
-
-  const newProfile: FirestoreUserProfile = {
+  const trialMs = 14 * 24 * 60 * 60 * 1000;
+  const profile: FirestoreUserProfile = {
     uid: user.uid,
-    name: user.displayName || cleanEmail.split('@')[0] || 'Empresa Cliente',
+    name: user.displayName || cleanEmail.split('@')[0] || 'Responsável',
     email: cleanEmail,
+    agencyName: customAgencyName?.trim() || (user.displayName ? `Empresa ${user.displayName}` : 'Minha Empresa'),
     avatarUrl: user.photoURL || '',
     photoURL: user.photoURL || '',
-    agencyName: linked?.agencyName || companyName,
-    agencyOwnerUid: linked?.agencyOwnerUid,
-    userType: isEmployee ? 'employee' : 'client',
-    role: linked?.role || (isEmployee ? 'Membro da Equipe' : 'Cliente AgencyOS'),
-    department: (linked?.department as any) || 'gestao',
-    allowedModules: linked?.allowedModules || [
-      'dashboard',
-      'designer',
-      'social-hub',
-      'kanban',
-      'agenda',
-      'relatorios',
-      'calculadora-roi',
-      'ia-consultora',
-    ],
-    plan: isEmployee ? 'Gratuito / Equipe' : 'Pro',
+    userType: 'client',
+    role: 'CEO & Dono da Empresa',
+    department: 'gestao',
+    allowedModules: ['dashboard', 'profile', 'kanban', 'agenda', 'ponto'],
+    plan: 'Trial Gratuito',
     status: 'active',
-    designRole: linked?.designRole || 'cliente',
-    canEditDesigns: linked?.canEditDesigns ?? true,
-    canCreateDesigns: linked?.canCreateDesigns ?? true,
-    canApproveDesigns: linked?.canApproveDesigns ?? true,
-    canPublishPosts: linked?.canPublishPosts ?? false,
+    designRole: 'cliente',
+    canEditDesigns: true,
+    canCreateDesigns: true,
+    canApproveDesigns: false,
+    canPublishPosts: false,
     trialStartDate: now,
-    trialEndsAt: now + FOURTEEN_DAYS_MS,
+    trialEndsAt: now + trialMs,
     createdAt: new Date().toISOString(),
   };
-
-  await setDoc(userRef, sanitizeFirestorePayload(newProfile));
-
-  // Sync original invitation document if created with temporary ID
-  if (linked?.profileDocId && linked.profileDocId !== user.uid) {
-    try {
-      await setDoc(doc(db, 'users', linked.profileDocId), { linkedAuthUid: user.uid }, { merge: true });
-    } catch (linkSyncErr) {
-      console.warn('Aviso ao sincronizar documento de convite:', linkSyncErr);
-    }
-  }
+  await setDoc(userRef, sanitizeFirestorePayload(profile));
 
   // Seed default workspace subcollections for the company in Firestore
   try {
@@ -420,7 +302,7 @@ export async function getOrCreateUserProfile(user: User, customAgencyName?: stri
     console.warn('Workspace seed:', seedErr);
   }
 
-  return newProfile;
+  return profile;
 }
 
 export async function updateUserProfile(uid: string, data: Partial<FirestoreUserProfile>) {

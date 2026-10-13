@@ -19,7 +19,11 @@ type Member = {
   subscriptionStatus?: string; isAuthAccount: boolean;
 };
 type AuditEvent = { id: string; actorUid: string; targetUid: string; action: string; createdAt: string };
-type Summary = { users: Member[]; employees: number; clients: number; platformAdmin: boolean; limited: boolean; billingConnected: boolean };
+type Summary = {
+  users: Member[]; employees: number; clients: number;
+  platformAdmin: boolean; limited: boolean; billingConnected: boolean;
+  legacyOwnerProfile?: boolean; workspaceScope?: 'own';
+};
 type InviteKind = 'employee' | 'client';
 const panel = 'rounded-[22px] border border-[#23375A] bg-[#0D182C] shadow-lg shadow-[#030A19]/15';
 const actionBtn = 'inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 text-white px-4 py-2.5 text-xs font-bold hover:bg-blue-500 disabled:opacity-50 transition-colors';
@@ -242,6 +246,9 @@ export const AdminView: React.FC<{ currentUser?: FirestoreUserProfile | null }> 
 
     {error && <div role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 flex gap-2 text-sm text-rose-200"><AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />{error}</div>}
     {notice && <div role="status" className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-4 flex gap-2 text-sm text-emerald-200"><CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />{notice}</div>}
+    {summary?.legacyOwnerProfile && <div role="status" className="text-xs rounded-xl border border-blue-500/30 bg-blue-500/5 text-blue-200 p-3">
+      Seu cadastro antigo está marcado como funcionário, mas foi reconhecido como responsável pelo próprio workspace. Só pessoas vinculadas a esta empresa aparecerão aqui. Registros antigos sem vínculo precisam de revisão antes de serem associados.
+    </div>}
     {summary?.limited && <div className="text-xs rounded-xl border border-amber-500/30 bg-amber-500/5 text-amber-200 p-3">
       A consulta foi limitada a 150 contas. A paginação para bases maiores ainda precisa ser adicionada antes de lançar o SaaS.</div>}
 
