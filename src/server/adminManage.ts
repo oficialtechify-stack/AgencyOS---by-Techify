@@ -21,6 +21,17 @@ function adminServices() {
 }
 function textField(value: any, max: number) { return typeof value === 'string' ? value.trim().slice(0, max) : ''; }
 function errorOut(res: Response, error: unknown) {
+  if (error instanceof SyntaxError && process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+    console.error('Admin API: invalid Firebase Admin service account JSON');
+    return res.status(503).json({
+      error: 'FIREBASE_SERVICE_ACCOUNT_JSON não contém um JSON válido. Confira o arquivo cadastrado na Vercel.',
+    });
+  }
+  const code = typeof error === 'object' && error !== null && 'code' in error
+    ? String((error as { code: unknown }).code) : '';
+  if (code === 'auth/invalid-credential' || code === 'app/invalid-credential') {
+    return res.status(503).json({ error: 'Credencial administrativa do Firebase inválida. Confira o projeto e a chave de serviço.' });
+  }
   if (error instanceof AdminError) return res.status(error.status).json({ error: error.message });
   console.error('Admin API:', error instanceof Error ? error.message : 'unexpected');
   return res.status(500).json({ error: 'Não foi possível concluir a operação administrativa.' });

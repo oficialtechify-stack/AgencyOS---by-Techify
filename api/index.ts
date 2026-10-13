@@ -15,6 +15,22 @@ import { scrapeRealLeads } from '../src/server/leadScraperEngine';
 import { handleLeadsPayWebhookEvent } from '../src/server/leadspayHandler';
 
 const app = express();
+
+// Vercel routes wildcard API requests to one serverless Express function.
+// The rewrite carries the original route as a query parameter; restore it
+// before Express matches endpoints, including /api/admin/members.
+// Without this, /api/admin/members can arrive as /api and return an HTML 404.
+app.use((req, res, next) => {
+  const location = new URL(req.url, 'https://agencyos.internal');
+  const route = location.searchParams.get('__agencyRoute');
+  if (!route) return next();
+  if (!/^[a-zA-Z0-9_/-]{1,300}$/.test(route) || route.includes('//') || route.includes('..')) {
+    return res.status(400).json({ error: 'Rota inválida.' });
+  }
+  location.searchParams.delete('__agencyRoute');
+  req.url = '/api/' + route.replace(/^\/+/, '') + location.search;
+  return next();
+});
 app.use(express.json({ limit: '1mb', verify: (request, _response, body) => { (request as any).rawBody = Buffer.from(body); } }));
 registerSocialMetaRoutes(app);
 registerAdminManageRoutes(app);

@@ -62,8 +62,18 @@ export const AdminView: React.FC<{ currentUser?: FirestoreUserProfile | null }> 
     const result = await fetch('/api/admin/' + path, { ...init,
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token, ...(init.headers || {}) },
     });
-    const json = await result.json().catch(() => ({}));
-    if (!result.ok) throw new Error(json.error || 'Não foi possível concluir a operação.');
+    const responseType = result.headers.get('content-type') || '';
+    const json = responseType.includes('application/json')
+      ? await result.json().catch(() => null)
+      : null;
+    if (!result.ok) {
+      if (typeof json?.error === 'string') throw new Error(json.error);
+      throw new Error(
+        'API administrativa indisponível (HTTP ' + result.status +
+        '). Confira a implantação da função na Vercel.'
+      );
+    }
+    if (!json) throw new Error('Resposta inesperada da API administrativa. Verifique a rota no servidor.');
     return json;
   }, []);
 
@@ -71,12 +81,15 @@ export const AdminView: React.FC<{ currentUser?: FirestoreUserProfile | null }> 
     setLoading(true); setError('');
     try {
       const result = await api('members');
+      if (!Array.isArray(result.users)) {
+        throw new Error('A API não retornou a lista de usuários. Confira a autenticação do Firebase.');
+      }
       setSummary(result); setMenuUser(null);
       if (selected) {
         const fresh = (result.users || []).find((x: Member) => x.uid === selected.uid);
         setSelected(fresh || null);
       }
-    } catch (e: any) { setError(e.message || 'Não foi possível carregar as contas.'); }
+    } catch (e: any) { setSummary(null); setError(e.message || 'Não foi possível carregar as contas.'); }
     finally { setLoading(false); }
   }, [api, selected?.uid]);
 
@@ -234,10 +247,10 @@ export const AdminView: React.FC<{ currentUser?: FirestoreUserProfile | null }> 
 
     <section aria-label="Resumo administrativo" className="grid grid-cols-2 xl:grid-cols-4 gap-3">
       {[
-        { label: 'Membros da equipe', value: String(employees.length), icon: Users, note: activeEmployees + ' habilitados' },
+        { label: 'Membros da equipe', value: summary ? String(employees.length) : '—', icon: Users, note: activeEmployees + ' habilitados' },
         { label: 'Clientes cadastrados', value: summary?.platformAdmin ? String(clients.length) : '—', icon: Building2,
           note: summary?.platformAdmin ? 'Contas SaaS no Firebase' : 'Visão exclusiva do administrador global' },
-        { label: 'Convites pendentes', value: String(pendingInvites), icon: Mail, note: 'Aguardando primeiro acesso' },
+        { label: 'Convites pendentes', value: summary ? String(pendingInvites) : '—', icon: Mail, note: 'Aguardando primeiro acesso' },
         { label: 'MRR confirmado', value: '—', icon: DollarSign, note: 'Aguardando integração de cobranças' },
       ].map(item => { const Icon = item.icon; return <div className={panel + ' p-4 sm:p-5'} key={item.label}>
         <div className="flex justify-between gap-2 text-xs text-slate-400"><span>{item.label}</span><Icon className="w-4 h-4 shrink-0 text-blue-400" /></div>
