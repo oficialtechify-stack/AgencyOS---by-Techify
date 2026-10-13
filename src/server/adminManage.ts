@@ -7,6 +7,7 @@ import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 type AdminCtx = {
   uid: string; platformAdmin: boolean; ownerUid: string; email: string;
   legacyOwnerProfile: boolean;
+  conflictingOwnerLink: boolean;
 };
 class AdminError extends Error { constructor(public status: number, message: string) { super(message); } }
 const MODULES = new Set([
@@ -58,15 +59,17 @@ async function authorize(req: Request): Promise<AdminCtx> {
   const linkedToAnotherCompany = rawOwner !== '' &&
     rawOwner !== decoded.uid &&
     rawOwner !== 'agency-master-owner';
-  if (linkedToAnotherCompany && !platformAdmin) {
-    throw new AdminError(403, 'Esta conta está vinculada como colaborador a outra empresa. Entre com a conta proprietária para gerenciar os acessos.');
-  }
-  const legacyOwnerProfile = data.userType === 'employee' && !linkedToAnotherCompany;
+  // A linked employee is NOT an owner of their employer's workspace.
+  // They can still inspect/manage an independent workspace under their own
+  // authenticated UID, never the linked company. This is NOT a migration.
+  // Such a workspace contains only employees explicitly linked to this UID.
+  const legacyOwnerProfile = data.userType === 'employee' || linkedToAnotherCompany;
   // Company management is always scoped to this verified user's UID.
   // platform_admin only grants access to the separate SaaS customer listing.
   return {
     uid: decoded.uid, platformAdmin, ownerUid: decoded.uid,
     email: decoded.email || '', legacyOwnerProfile,
+    conflictingOwnerLink: linkedToAnotherCompany,
   };
 }
 function modulesFrom(input: unknown): string[] {
@@ -152,6 +155,7 @@ export function registerAdminManageRoutes(app: Express) {
         users: members, employees: employeeCount, clients: clientCount,
         platformAdmin: actor.platformAdmin, limited: teamSnap.size >= 150 || Boolean(clientSnap && clientSnap.size >= 150),
         billingConnected: false, legacyOwnerProfile: actor.legacyOwnerProfile,
+        conflictingOwnerLink: actor.conflictingOwnerLink,
         workspaceScope: 'own',
       });
     } catch (e) { errorOut(res, e); }

@@ -22,7 +22,7 @@ type AuditEvent = { id: string; actorUid: string; targetUid: string; action: str
 type Summary = {
   users: Member[]; employees: number; clients: number;
   platformAdmin: boolean; limited: boolean; billingConnected: boolean;
-  legacyOwnerProfile?: boolean; workspaceScope?: 'own';
+  legacyOwnerProfile?: boolean; conflictingOwnerLink?: boolean; workspaceScope?: 'own';
 };
 type InviteKind = 'employee' | 'client';
 const panel = 'rounded-[22px] border border-[#23375A] bg-[#0D182C] shadow-lg shadow-[#030A19]/15';
@@ -246,8 +246,10 @@ export const AdminView: React.FC<{ currentUser?: FirestoreUserProfile | null }> 
 
     {error && <div role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 flex gap-2 text-sm text-rose-200"><AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />{error}</div>}
     {notice && <div role="status" className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-4 flex gap-2 text-sm text-emerald-200"><CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />{notice}</div>}
-    {summary?.legacyOwnerProfile && <div role="status" className="text-xs rounded-xl border border-blue-500/30 bg-blue-500/5 text-blue-200 p-3">
-      Seu cadastro antigo está marcado como funcionário, mas foi reconhecido como responsável pelo próprio workspace. Só pessoas vinculadas a esta empresa aparecerão aqui. Registros antigos sem vínculo precisam de revisão antes de serem associados.
+    {summary?.conflictingOwnerLink ? <div role="status" className="text-xs rounded-xl border border-amber-500/30 bg-amber-500/5 text-amber-200 p-3">
+      Encontramos um vínculo antigo da sua conta com outra empresa. Por segurança, esta página mostra somente seu workspace pessoal do Firebase. Funcionários e dados do outro workspace não serão movidos ou exibidos sem verificação do proprietário. Se sua equipe antiga não aparecer, será necessário reconciliar os vínculos de cada funcionário.
+    </div> : summary?.legacyOwnerProfile && <div role="status" className="text-xs rounded-xl border border-blue-500/30 bg-blue-500/5 text-blue-200 p-3">
+      Seu cadastro usa uma classificação antiga de funcionário. O painel só mostra pessoas com vínculo explícito ao seu UID. Cadastros sem vínculo confiável precisam de revisão.
     </div>}
     {summary?.limited && <div className="text-xs rounded-xl border border-amber-500/30 bg-amber-500/5 text-amber-200 p-3">
       A consulta foi limitada a 150 contas. A paginação para bases maiores ainda precisa ser adicionada antes de lançar o SaaS.</div>}
