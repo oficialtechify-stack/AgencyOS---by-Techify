@@ -374,7 +374,8 @@ export function registerAdminManageRoutes(app: Express) {
         });
         const batch = db.batch();
         batch.update(target.ref, {
-          invitationStatus: 'pending', updatedAt: FieldValue.serverTimestamp(),
+          invitationStatus: 'pending', status: 'active',
+          updatedAt: FieldValue.serverTimestamp(),
         });
         batch.set(db.collection('adminAuditLog').doc(), {
           actorUid: actor.uid, action: 'user.legacy_activated', targetUid: created.uid,

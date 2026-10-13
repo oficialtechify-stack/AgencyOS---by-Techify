@@ -166,7 +166,7 @@ export const AdminView: React.FC<{ currentUser?: FirestoreUserProfile | null }> 
   }
   function activateLegacy(member: Member) {
     if (member.isAuthAccount || busy || !window.confirm(
-      'Ativar este cadastro antigo? O funcionário precisará definir uma senha em um link oficial do Firebase. Nenhuma senha anterior será reutilizada.'
+      'Ativar este cadastro antigo e liberar seu acesso? O funcionário precisará definir uma senha pelo link oficial do Firebase. Nenhuma senha anterior será reutilizada.'
     )) return;
     void run('activate-' + member.uid, async () => {
       const result = await api('members/' + encodeURIComponent(member.uid) + '/activate', {
@@ -206,7 +206,7 @@ export const AdminView: React.FC<{ currentUser?: FirestoreUserProfile | null }> 
   }, [tab, search, filter, summary]);
   const employees = (summary?.users || []).filter(p => p.userType === 'employee');
   const clients = (summary?.users || []).filter(p => p.userType !== 'employee');
-  const activeEmployees = employees.filter(p => p.isAuthAccount && p.status === 'active' && p.hasSignedIn).length;
+  const activeEmployees = employees.filter(p => p.isAuthAccount && p.status === 'active').length;
   const pendingInvites = (summary?.users || []).filter(p => p.invitationStatus === 'pending' && !p.hasSignedIn).length;
   const duplicates = useMemo(() => {
     const count = new Map<string, number>();
