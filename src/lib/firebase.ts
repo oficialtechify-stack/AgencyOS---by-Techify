@@ -620,142 +620,9 @@ export function resolveUserAvatar(userOrUrl?: any): string {
   return '';
 }
 
-export const AGENCY_REGISTERED_TEAM_MEMBERS: FirestoreUserProfile[] = [
-  {
-    uid: 'user-rick-marcos',
-    name: 'Marcos Henrique',
-    email: 'rickmarketing81@gmail.com',
-    avatarUrl: '',
-    instagram: 'rickzinxx_',
-    bio: 'CEO & Fundador da Techify AgencyOS • Direção executiva e tecnologia.',
-    agencyName: 'Techify Agência',
-    role: 'CEO & Diretor Executivo',
-    department: 'gestao',
-    leadershipRole: 'lider_geral',
-    workStatus: 'online',
-    plan: 'Agency',
-    status: 'active',
-    designRole: 'admin',
-    canEditDesigns: true,
-    canCreateDesigns: true,
-    canApproveDesigns: true,
-    canPublishPosts: true,
-    canDeleteDesigns: true,
-    userType: 'employee',
-    trialStartDate: Date.now(),
-    trialEndsAt: Date.now() + 14 * 86400000,
-    createdAt: new Date().toISOString(),
-    allowedModules: ['dashboard', 'designer', 'social-hub', 'marketing', 'prospection', 'kanban', 'agenda', 'kpis', 'fluxo-caixa', 'maps-scraper', 'relatorios', 'chat', 'ponto', 'admin'],
-  },
-  {
-    uid: 'user-vitoria-ellen',
-    name: 'Vitoria Ellen da Silva',
-    email: 'vitoriajob02@gmail.com',
-    avatarUrl: '',
-    instagram: 'vitoria.design',
-    bio: 'Líder de Design & Criativos • Especialista em identidade visual e criativos de alta conversão.',
-    agencyName: 'Techify Agência',
-    role: 'Lider de Designer',
-    department: 'design',
-    leadershipRole: 'lider_geral',
-    workStatus: 'online',
-    plan: 'Gratuito / Equipe',
-    status: 'active',
-    designRole: 'lider',
-    canEditDesigns: true,
-    canCreateDesigns: true,
-    canApproveDesigns: true,
-    canPublishPosts: true,
-    canDeleteDesigns: true,
-    userType: 'employee',
-    tempPasswordHint: 'AgOS@D3LPuH',
-    trialStartDate: Date.now(),
-    trialEndsAt: Date.now() + 14 * 86400000,
-    createdAt: new Date().toISOString(),
-    allowedModules: ['dashboard', 'designer', 'social-hub', 'kanban', 'agenda', 'relatorios', 'chat', 'ponto'],
-  },
-  {
-    uid: 'user-lucas-marketing',
-    name: 'Lucas Lider do marketing',
-    email: 'lucassgabriell876@gmail.com',
-    avatarUrl: '',
-    instagram: 'lucas.mkt',
-    bio: 'Líder de Marketing & Gestão de Tráfego Pago • Escala de campanhas Meta & Google Ads.',
-    agencyName: 'Techify Agência',
-    role: 'Gestor de Tráfego',
-    department: 'marketing',
-    leadershipRole: 'lider_marketing',
-    workStatus: 'online',
-    plan: 'Gratuito / Equipe',
-    status: 'active',
-    designRole: 'lider',
-    canEditDesigns: true,
-    canCreateDesigns: true,
-    canApproveDesigns: true,
-    canPublishPosts: true,
-    canDeleteDesigns: false,
-    userType: 'employee',
-    tempPasswordHint: 'lucasgmail',
-    trialStartDate: Date.now(),
-    trialEndsAt: Date.now() + 14 * 86400000,
-    createdAt: new Date().toISOString(),
-    allowedModules: ['dashboard', 'marketing', 'campanhas', 'social-hub', 'relatorios', 'chat', 'ponto'],
-  },
-  {
-    uid: 'user-sabrina-suellen',
-    name: 'Sabrina Suellen',
-    email: 'suellensabrina36@gmail.com',
-    avatarUrl: '',
-    instagram: 'sabrina.sdr',
-    bio: 'Closer & SDR Comercial • Prospecção ativa B2B e fechamento de novos clientes.',
-    agencyName: 'Techify Agência',
-    role: 'Closer / SDR de Prospecção',
-    department: 'prospeccao',
-    leadershipRole: 'lider_prospeccao',
-    workStatus: 'online',
-    plan: 'Gratuito / Equipe',
-    status: 'active',
-    designRole: 'funcionario',
-    canEditDesigns: false,
-    canCreateDesigns: true,
-    canApproveDesigns: false,
-    canPublishPosts: true,
-    canDeleteDesigns: false,
-    userType: 'employee',
-    tempPasswordHint: '123456',
-    trialStartDate: Date.now(),
-    trialEndsAt: Date.now() + 14 * 86400000,
-    createdAt: new Date().toISOString(),
-    allowedModules: ['dashboard', 'prospection', 'maps-scraper', 'agenda', 'relatorios', 'chat', 'ponto'],
-  },
-  {
-    uid: 'user-marcos-design',
-    name: 'MARCOS HENRIQUE',
-    email: 'aigerakabane81983521523@gmail.com',
-    avatarUrl: '',
-    instagram: 'marcos.design',
-    bio: 'Líder Geral & Design • Gestão de projetos criativos e branding.',
-    agencyName: 'Techify Agência',
-    role: 'Líder Geral',
-    department: 'design',
-    leadershipRole: 'lider_design',
-    workStatus: 'online',
-    plan: 'Gratuito / Equipe',
-    status: 'active',
-    designRole: 'lider',
-    canEditDesigns: true,
-    canCreateDesigns: true,
-    canApproveDesigns: true,
-    canPublishPosts: true,
-    canDeleteDesigns: false,
-    userType: 'employee',
-    tempPasswordHint: '12345678',
-    trialStartDate: Date.now(),
-    trialEndsAt: Date.now() + 14 * 86400000,
-    createdAt: new Date().toISOString(),
-    allowedModules: ['dashboard', 'designer', 'social-hub', 'marketing', 'prospection', 'kanban', 'agenda', 'kpis', 'fluxo-caixa', 'maps-scraper', 'relatorios', 'chat', 'ponto'],
-  },
-];
+// Never inject sample accounts, passwords or assumed employees into a live tenant.
+// Real team members must be invited and provisioned via verified Firebase Auth.
+export const AGENCY_REGISTERED_TEAM_MEMBERS: FirestoreUserProfile[] = [];
 
 // Local + Firestore deleted user registry to guarantee permanent deletion ("nada fake")
 const DELETED_USERS_STORAGE_KEY = 'agencyos_deleted_user_keys_v3';
@@ -796,57 +663,9 @@ export function removeTeamMemberFromMemory(uid?: string | null, email?: string |
   }
 }
 
-let hasSeededTeamInDb = false;
-
-// Ensure that all registered agency team members are written to Firestore as real documents
-export async function ensureAgencyTeamInFirestore() {
-  if (hasSeededTeamInDb) return;
-  hasSeededTeamInDb = true;
-  try {
-    const usersRef = collection(db, 'users');
-    const existingSnap = await getDocs(usersRef);
-    const existingDocsByEmail = new Map<string, { id: string; avatarUrl?: string }>();
-    const deletedKeys = getDeletedUserKeys();
-    
-    const batch = writeBatch(db);
-    let writesCount = 0;
-
-    existingSnap.forEach((d) => {
-      const u = d.data();
-      if (u && u.email) {
-        const cleanAv = resolveUserAvatar(u);
-        existingDocsByEmail.set(u.email.toLowerCase().trim(), {
-          id: d.id,
-          avatarUrl: cleanAv,
-        });
-      }
-    });
-
-    for (const member of AGENCY_REGISTERED_TEAM_MEMBERS) {
-      const email = member.email.toLowerCase().trim();
-      // Skip if deleted by administrator
-      if (deletedKeys.has(email) || deletedKeys.has(member.uid.toLowerCase().trim())) {
-        continue;
-      }
-      const existingDoc = existingDocsByEmail.get(email);
-      if (!existingDoc) {
-        const memberRef = doc(db, 'users', member.uid);
-        batch.set(memberRef, sanitizeFirestorePayload(member), { merge: true });
-        writesCount++;
-      } else if (!existingDoc.avatarUrl && member.avatarUrl) {
-        const memberRef = doc(db, 'users', existingDoc.id);
-        batch.set(memberRef, { avatarUrl: member.avatarUrl, photoURL: member.avatarUrl, avatar: member.avatarUrl }, { merge: true });
-        writesCount++;
-      }
-    }
-
-    if (writesCount > 0) {
-      await batch.commit();
-      console.log(`✅ Sincronização de equipe no Firestore realizada (${writesCount} registros).`);
-    }
-  } catch (err) {
-    console.warn('Sincronização de equipe no Firestore:', err);
-  }
+// Legacy auto-seeding is disabled to prevent writing sample employees to Firestore.
+export async function ensureAgencyTeamInFirestore(): Promise<void> {
+  return;
 }
 
 // Subscribe to ALL Users across the platform for Admin Panel and Chat
@@ -854,9 +673,6 @@ export function subscribeAllUsers(
   onData: (users: FirestoreUserProfile[]) => void,
   onError?: (err: any) => void
 ) {
-  // Proactively ensure team is initialized in Firestore
-  ensureAgencyTeamInFirestore().catch((e) => console.warn(e));
-
   const usersRef = collection(db, 'users');
   return onSnapshot(
     usersRef,
