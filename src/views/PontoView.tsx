@@ -352,188 +352,93 @@ export const PontoView: React.FC<PontoViewProps> = ({
   const monthlyLateCount = monthlyRecords.filter((record) => record.status === 'late').length;
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
-      {/* Top Banner / Header */}
-      <div className="p-6 rounded-3xl bg-gradient-to-r from-neutral-900 via-neutral-950 to-neutral-900 border border-neutral-800 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-white text-black flex items-center justify-center font-black shadow-lg">
-            <Clock className="w-6 h-6 text-black" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                Ponto Eletrônico Seguro
-              </h2>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                Auditado por GPS & Biometria
-              </span>
-              <span
-                className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${currentStatusBadge.color}`}
-              >
-                {currentStatusBadge.text}
-              </span>
-              {isMaster && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/10 text-amber-300 border border-amber-500/30 flex items-center gap-1">
-                  <ShieldCheck className="w-3 h-3 text-amber-400" />
-                  Controle Master (Edição & Exclusão Exclusivas)
-                </span>
-              )}
+    <div className="space-y-6 animate-in fade-in duration-200 text-slate-100 max-w-[1600px] mx-auto pb-10">
+      {/* Header with clear primary action, without unverified security claims */}
+      <section className="relative overflow-hidden rounded-[26px] border border-[#1B3262] bg-gradient-to-br from-[#10234D] via-[#0B1732] to-[#0A1021] p-5 sm:p-7 lg:p-8 shadow-xl shadow-blue-950/10">
+        <div className="pointer-events-none absolute -right-20 -top-32 h-72 w-72 rounded-full bg-blue-600/10 blur-3xl" />
+        <div className="relative flex flex-col xl:flex-row xl:items-center justify-between gap-6">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.17em] text-blue-300 mb-3">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-blue-500/30 bg-blue-500/15"><Clock className="h-4 w-4" /></span>
+              Gestão de jornada
             </div>
-            <p className="text-xs sm:text-sm text-neutral-400 font-medium mt-1">
-              Todos os colaboradores registram ponto com 1 clique. Somente o Gestor Master pode alterar e editar registros.
+            <div className="flex flex-wrap items-center gap-3">
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Meu ponto eletrônico</h2>
+              <span className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-bold ${currentStatusBadge.color}`}>{currentStatusBadge.text}</span>
+            </div>
+            <p className="text-slate-400 text-sm mt-3 max-w-xl">
+              Acompanhe sua jornada, confira registros e consulte o espelho de ponto em um só lugar.
             </p>
+            <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-400 mt-4">
+              <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5 text-blue-400" />{dateNow.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}</span>
+              <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-blue-400" />Histórico com dados dos registros</span>
+            </div>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2.5 flex-wrap">
-          {canManageSchedules && (
-            <button
-              type="button"
-              onClick={() => setShowScheduleModal(true)}
-              className="px-4 py-3 rounded-2xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-white font-bold text-xs transition-all flex items-center gap-2 cursor-pointer shadow-sm"
-              title="Ajustar e vincular horários para cada funcionário"
-            >
-              <Sliders className="w-4 h-4 text-amber-400" />
-              <span>Ajustar Escalas</span>
+          <div className="flex flex-wrap items-center gap-2.5 xl:justify-end">
+            <button type="button" onClick={handleExportCSV}
+              className="inline-flex items-center gap-2 rounded-xl border border-[#2C4270] bg-[#142548]/70 px-4 py-3 text-xs font-semibold text-slate-200 hover:bg-[#1B315B] transition-colors">
+              <Download className="h-4 w-4" />Exportar espelho
             </button>
-          )}
-
-          {canEditOrAlter && (
-            <button
-              type="button"
-              onClick={() => setShowManualPunchModal(true)}
-              className="px-4 py-3 rounded-2xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-amber-300 font-bold text-xs transition-all flex items-center gap-2 cursor-pointer shadow-sm"
-              title="Adicionar ponto retroativo ou manual para qualquer colaborador"
-            >
-              <PlusCircle className="w-4 h-4 text-amber-400" />
-              <span>+ Ponto Manual</span>
+            {canManageSchedules && (
+              <button type="button" onClick={() => setShowScheduleModal(true)}
+                className="inline-flex items-center gap-2 rounded-xl border border-[#2C4270] bg-[#142548]/70 px-4 py-3 text-xs font-semibold text-slate-200 hover:bg-[#1B315B] transition-colors">
+                <Sliders className="h-4 w-4" />Gerenciar escalas
+              </button>
+            )}
+            <button type="button" onClick={onOpenPunchModal}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-xs sm:text-sm font-bold text-white shadow-lg shadow-blue-700/20 hover:bg-blue-500 transition-colors">
+              <Clock className="h-4 w-4" />Bater ponto agora <ArrowRight className="h-4 w-4" />
             </button>
-          )}
-
-          <button
-            type="button"
-            onClick={onOpenPunchModal}
-            className="px-5 py-3 rounded-2xl bg-white hover:bg-neutral-200 text-black font-black text-xs sm:text-sm transition-all shadow-lg flex items-center gap-2 cursor-pointer"
-          >
-            <Clock className="w-4 h-4" />
-            <span>Bater Ponto Agora</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleExportCSV}
-            className="px-4 py-3 rounded-2xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-white font-bold text-xs transition-all flex items-center gap-2 cursor-pointer"
-          >
-            <FileSpreadsheet className="w-4 h-4" />
-            <span>Exportar CSV</span>
-          </button>
-        </div>
-      </div>
-
-      {/* KPI Cards Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-5 rounded-2xl bg-neutral-900 border border-neutral-800">
-          <div className="flex items-center justify-between text-neutral-400 text-xs font-bold mb-2">
-            <span>Meu Status Hoje</span>
-            <Clock className="w-4 h-4 text-neutral-400" />
-          </div>
-          <div className="text-lg font-black text-white">
-            {hasExit ? 'Expediente Encerrado' : hasEntry ? 'Em Expediente' : 'Pendente Entrada'}
-          </div>
-          <div className="text-[11px] text-neutral-400 mt-1">
-            Entrada vinculada:{' '}
-            <strong className="text-white font-mono">{mySchedule.entryTime}</strong>
           </div>
         </div>
+      </section>
 
-        <div className="p-5 rounded-2xl bg-neutral-900 border border-neutral-800">
-          <div className="flex items-center justify-between text-neutral-400 text-xs font-bold mb-2">
-            <span>Pontos no Mês</span>
-            <Calendar className="w-4 h-4 text-neutral-400" />
-          </div>
-          <div className="text-2xl font-black text-white">
-            {isMaster ? timeClockRecords.filter((r) => (r.date || '').startsWith(selectedMonth)).length : monthlyRecords.length}
-          </div>
-          <div className="text-[11px] text-neutral-400 mt-1">
-            {isMaster ? `Total geral na agência (${selectedMonth})` : `Meus registros em ${selectedMonth}`}
-          </div>
+      {/* Summary cards. No invented attendance, GPS, hours or schedule metrics. */}
+      <section aria-label="Resumo do ponto" className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5 sm:gap-4">
+        <div className="rounded-2xl border border-[#1B2B4C] bg-[#0E172B] p-5 min-h-36">
+          <div className="flex items-center justify-between text-xs text-slate-400 font-medium"><span>Status de hoje</span><Clock className="w-4 h-4 text-blue-400" /></div>
+          <div className="mt-3 text-xl font-extrabold tracking-tight text-white">{hasExit ? 'Jornada concluída' : hasLunchStart && !hasLunchEnd ? 'Em intervalo' : hasEntry ? 'Em expediente' : 'Aguardando entrada'}</div>
+          <p className="mt-2 text-[11px] text-slate-400">Próximo passo: {hasExit ? 'Expediente encerrado' : nextPunchLabel.replace(/^\d+\.\s*/, '')}</p>
         </div>
-
-        <div className="p-5 rounded-2xl bg-neutral-900 border border-neutral-800">
-          <div className="flex items-center justify-between text-neutral-400 text-xs font-bold mb-2">
-            <span>{isMaster ? 'Pontualidade da Agência' : 'Minha Escala Vinculada'}</span>
-            <Lock className="w-4 h-4 text-white" />
-          </div>
-          {isMaster ? (
-            <>
-              <div className="text-2xl font-black text-emerald-400">{punctualityRate}%</div>
-              <div className="text-[11px] text-neutral-400 mt-1">
-                {latePunches} atrasos registrados • {overtimePunches} horas extras
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="text-sm font-black text-white font-mono">
-                {mySchedule.entryTime} → {mySchedule.lunchStartTime} → {mySchedule.exitTime}
-              </div>
-              <div className="text-[11px] text-neutral-400 mt-1">
-                Tolerância: ±{mySchedule.toleranceMinutes} min (Trava:{' '}
-                {mySchedule.strictEnforcement ? 'Ativa' : 'Off'})
-              </div>
-            </>
-          )}
+        <div className="rounded-2xl border border-[#1B2B4C] bg-[#0E172B] p-5 min-h-36">
+          <div className="flex items-center justify-between text-xs text-slate-400 font-medium"><span>Registros de hoje</span><ClipboardCheck className="w-4 h-4 text-blue-400" /></div>
+          <div className="mt-3 text-3xl font-extrabold text-white tabular-nums">{myTodayRecords.length}</div>
+          <p className="mt-1 text-[11px] text-slate-400">{completedSteps} de 4 etapas principais concluídas</p>
         </div>
-
-        <div className="p-5 rounded-2xl bg-neutral-900 border border-neutral-800">
-          <div className="flex items-center justify-between text-neutral-400 text-xs font-bold mb-2">
-            <span>Identificação & Auditoria</span>
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-          </div>
-          <div className="text-xs font-black text-white truncate">{userName}</div>
-          <div className="text-[11px] text-neutral-400 truncate">
-            {userRole} {isMaster && '• Permissão Master'}
-          </div>
+        <div className="rounded-2xl border border-[#1B2B4C] bg-[#0E172B] p-5 min-h-36">
+          <div className="flex items-center justify-between text-xs text-slate-400 font-medium"><span>Meu mês</span><CalendarDays className="w-4 h-4 text-blue-400" /></div>
+          <div className="mt-3 text-3xl font-extrabold text-white tabular-nums">{monthlyRecords.length}</div>
+          <p className="mt-1 text-[11px] text-slate-400">{totalMonthlyDays} dias com registros • {monthlyLateCount} registros em atraso</p>
         </div>
-      </div>
+        <div className="rounded-2xl border border-[#1B2B4C] bg-[#0E172B] p-5 min-h-36">
+          <div className="flex items-center justify-between text-xs text-slate-400 font-medium"><span>Escala e segurança</span><ShieldCheck className="w-4 h-4 text-blue-400" /></div>
+          <div className={`mt-3 text-base sm:text-lg font-extrabold ${persistedSchedule ? 'text-emerald-400' : 'text-amber-300'}`}>
+            {persistedSchedule ? 'Escala vinculada' : 'Escala não vinculada'}
+          </div>
+          <p className="mt-2 text-[11px] text-slate-400">{persistedSchedule ? `Entrada prevista: ${persistedSchedule.entryTime}` : 'Configure uma escala para confirmar o horário oficial.'}</p>
+        </div>
+      </section>
 
-      {/* Tabs Switcher */}
-      <div className="flex border-b border-neutral-800 gap-3">
-        <button
-          onClick={() => setActiveTab('meu-ponto')}
-          className={`pb-3 px-4 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
-            activeTab === 'meu-ponto'
-              ? 'border-white text-white'
-              : 'border-transparent text-neutral-400 hover:text-neutral-200'
-          }`}
-        >
-          <User className="w-4 h-4" />
-          <span>Meu Espelho de Ponto</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('equipe')}
-          className={`pb-3 px-4 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
-            activeTab === 'equipe'
-              ? 'border-white text-white'
-              : 'border-transparent text-neutral-400 hover:text-neutral-200'
-          }`}
-        >
-          <Users className="w-4 h-4" />
-          <span>Funcionários que Bateram Ponto ({timeClockRecords.length} Registros • {Object.keys(teamTodayGrouped).length} Ativos Hoje)</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('escalas')}
-          className={`pb-3 px-4 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
-            activeTab === 'escalas'
-              ? 'border-white text-white'
-              : 'border-transparent text-neutral-400 hover:text-neutral-200'
-          }`}
-        >
-          <Sliders className="w-4 h-4" />
-          <span>Escalas Vinculadas ({effectiveSchedules.length})</span>
-        </button>
+      {/* Concise, responsive navigation; management tabs are restricted */}
+      <div role="tablist" aria-label="Seções do ponto eletrônico"
+        className="flex w-full gap-1.5 overflow-x-auto rounded-2xl border border-[#1D2B4A] bg-[#0A1225] p-1.5">
+        {([
+          { id: 'meu-ponto', text: 'Meu ponto', icon: Clock },
+          ...(isMaster ? [{ id: 'equipe', text: 'Equipe', icon: Users }, { id: 'escalas', text: 'Escalas', icon: Calendar }] : []),
+          { id: 'auditoria', text: 'Auditoria', icon: ShieldCheck },
+        ] as { id: 'meu-ponto' | 'equipe' | 'escalas' | 'auditoria'; text: string; icon: typeof Clock }[]).map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <button key={tab.id} type="button" role="tab" aria-selected={activeTab === tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-xs sm:text-sm font-semibold transition-colors ${activeTab === tab.id
+                ? 'bg-[#1B376C] text-white shadow-sm ring-1 ring-blue-500/30'
+                : 'text-slate-400 hover:bg-[#142342] hover:text-white'}`}>
+              <Icon className="h-4 w-4" />{tab.text}
+              {tab.id === 'equipe' && <span className="rounded-full bg-white/10 px-1.5 py-0.5 text-[10px]">{Object.keys(teamTodayGrouped).length}</span>}
+            </button>
+          );
+        })}
       </div>
 
       {/* Tab: Meu Espelho de Ponto */}
