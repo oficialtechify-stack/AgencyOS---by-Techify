@@ -1,44 +1,85 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users and their individual dashboard workspace collections
+    // STAGED POLICY — migrate legacy global listeners and provision custom claims
+    // before deploying these rules to the live Firebase project.
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // This claim MUST be set by a trusted server using the Firebase Admin SDK.
+    // User-submitted Firestore profile fields must never grant administrator access.
+    function platformAdmin() {
+      return signedIn() && request.auth.token.platform_admin == true;
+    }
+
+    function employeeOf(workspaceUid) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.agencyOwnerUid == workspaceUid;
+    }
+
+    function mayReadWorkspace(workspaceUid) {
+      return signedIn() &&
+        (request.auth.uid == workspaceUid || platformAdmin() || employeeOf(workspaceUid));
+    }
+
+    function selfCreateIsUnprivileged(userUid) {
+      return signedIn()
+        && request.auth.uid == userUid
+        && request.resource.data.uid == userUid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.role in ['CEO & Dono da Empresa', 'Cliente AgencyOS', 'owner']
+        && request.resource.data.userType == 'client'
+        && !('agencyOwnerUid' in request.resource.data)
+        && (!('allowedModules' in request.resource.data)
+            || (request.resource.data.allowedModules is list
+                && !request.resource.data.allowedModules.hasAny([
+                  'admin', 'leadspay-master', 'leadspay-companies'
+                ])));
+    }
+
+    function selfUpdateHasNoPrivilegeChanges() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+        'uid', 'email', 'role', 'userType', 'agencyOwnerUid', 'organizationId',
+        'permissions', 'allowedModules', 'subscription', 'plan',
+        'status', 'isMasterAccount', 'designRole', 'canApproveDesigns',
+        'canPublishPosts', 'canDeleteDesigns'
+      ]);
+    }
+
     match /users/{userId} {
-      allow read, write: if true;
-      
-      match /{allSubcollections=**} {
-        allow read, write: if true;
+      allow get: if mayReadWorkspace(userId);
+      // Global user searches must be replaced by scoped queries for tenants.
+      allow list: if platformAdmin();
+      allow create: if platformAdmin() || selfCreateIsUnprivileged(userId);
+      allow update: if platformAdmin()
+        || (signedIn() && request.auth.uid == userId && selfUpdateHasNoPrivilegeChanges());
+      allow delete: if platformAdmin();
+
+      match /{collectionId}/{documentId} {
+        allow read: if mayReadWorkspace(userId);
+        // Scoped member write permissions must be implemented per module.
+        allow write: if platformAdmin() || (signedIn() && request.auth.uid == userId);
       }
     }
 
-    // Creative Hub / Designer Projects
-    match /designProjects/{projectId} {
-      allow read, write: if true;
+    match /invited_employees/{email} {
+      allow get: if platformAdmin() || (signedIn() && request.auth.token.email == email);
+      allow list, create, update, delete: if platformAdmin();
     }
 
-    // Designer Folders
-    match /designFolders/{folderId} {
-      allow read, write: if true;
+    // Legacy global chat / designer collections are not tenant-safe.
+    // Migrate them under /users/{workspaceUid}/... with scoped rules first.
+    match /agencyChatMessages/{messageId} {
+      allow read, write: if platformAdmin();
+    }
+    match /agencyChatChannels/{channelId} {
+      allow read, write: if platformAdmin();
     }
 
-    // Designer Briefings / Demands
-    match /designBriefings/{briefingId} {
-      allow read, write: if true;
-    }
-
-    // Designer Packages
-    match /designPackages/{packageId} {
-      allow read, write: if true;
-    }
-
-    // Designer Comments & Chat
-    match /designComments/{commentId} {
-      allow read, write: if true;
-    }
-
-    // Catch-all for other operational collections
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
   }
 }
-
