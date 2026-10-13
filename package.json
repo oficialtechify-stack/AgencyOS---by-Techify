@@ -23,7 +23,8 @@
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "vite": "^6.2.3",
-    "firebase-admin": "^13.4.0"
+    "firebase-admin": "^13.4.0",
+    "fflate": "^0.8.2"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

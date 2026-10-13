@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { auth } from '../lib/firebase';
+import { HyperframesVideoStudio } from '../components/marketing/HyperframesVideoStudio';
 import {
   Instagram, MessageSquare, Link2, Link2Off, ShieldCheck, CalendarDays, PenLine,
   Inbox, Bot, BarChart3, Sparkles, Send, Image, Copy, AlertCircle, CheckCircle2,
@@ -22,6 +23,7 @@ const noAccount: Account = { connected: false };
 
 export const SocialHubView: React.FC = () => {
   const [tab, setTab] = useState<Tab>('connections');
+  const [studioKind, setStudioKind] = useState<'posts' | 'video'>('posts');
   const [config, setConfig] = useState<Config | null>(null);
   const [state, setState] = useState<State | null>(null);
   const [drafts, setDrafts] = useState<Draft[]>([]);
@@ -280,7 +282,12 @@ export const SocialHubView: React.FC = () => {
       </section>
     </div>}
 
-    {tab === 'studio' && <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
+    {tab === 'studio' && <div className="space-y-5">
+      <div className="flex flex-wrap gap-2 rounded-2xl p-2 border border-[#294269] bg-[#0C1930]">
+        <button type="button" onClick={() => setStudioKind('posts')} className={(studioKind === 'posts' ? 'bg-[#204277] text-white ' : 'text-slate-400 hover:bg-[#1B3152] ') + 'px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2'}><PenLine className="w-4 h-4" />Posts e legendas</button>
+        <button type="button" onClick={() => setStudioKind('video')} className={(studioKind === 'video' ? 'bg-[#204277] text-white ' : 'text-slate-400 hover:bg-[#1B3152] ') + 'px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2'}><Sparkles className="w-4 h-4" />Vídeos com IA · HyperFrames</button>
+      </div>
+      {studioKind === 'video' ? <HyperframesVideoStudio /> : <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
       <section className={card + ' xl:col-span-7 p-5 sm:p-6 space-y-4'}>
         <div><h3 className="text-lg font-bold text-white flex gap-2 items-center"><Sparkles className="w-5 h-5 text-blue-400" />Estúdio de publicações</h3>
           <p className="text-xs text-slate-400 mt-1">Crie, revise e salve publicações para o Instagram.</p></div>
@@ -316,6 +323,7 @@ export const SocialHubView: React.FC = () => {
         <p className="text-xs whitespace-pre-wrap text-slate-300 mt-5 line-clamp-6">{caption || 'Sua legenda aparecerá aqui após ser escrita.'}</p>
         <div className="mt-5 text-xs text-slate-400 border-t border-[#26395A] pt-4">O sistema só marca como publicada uma postagem confirmada pela API da Meta.</div>
       </aside>
+    </div>}
     </div>}
 
     {tab === 'planner' && <div className="space-y-4">
