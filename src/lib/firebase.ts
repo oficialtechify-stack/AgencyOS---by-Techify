@@ -1509,35 +1509,26 @@ export interface ActiveSession {
   agencyOwnerUid?: string;
 }
 
+// A browser-stored UID or email is never proof of authentication.
+// Firebase Auth is the only source of identity and session state.
 const SESSION_KEY = 'agencyos_auth_session';
 
 export function getStoredSession(): ActiveSession | null {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && parsed.uid === 'logged-out') return null;
-      return parsed;
-    }
-  } catch (e) {
-    console.warn('Aviso ao ler sessão salva:', e);
-  }
+  const firebaseUser = auth.currentUser;
+  if (!firebaseUser) return null;
   return {
-    uid: 'user-rick-marcos',
-    email: 'rickmarketing81@gmail.com',
-    name: 'Marcos Henrique',
+    uid: firebaseUser.uid,
+    email: firebaseUser.email || '',
+    name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Usuário',
   };
 }
 
-export function setStoredSession(session: ActiveSession | null) {
+export function setStoredSession(_session: ActiveSession | null) {
   try {
-    if (session) {
-      localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-    } else {
-      localStorage.setItem(SESSION_KEY, JSON.stringify({ uid: 'logged-out', email: '' }));
-    }
+    // Remove legacy fake/local sessions, including the hardcoded Master fallback.
+    localStorage.removeItem(SESSION_KEY);
   } catch (e) {
-    console.warn('Aviso ao salvar sessão:', e);
+    console.warn('Não foi possível limpar a sessão legada:', e);
   }
   window.dispatchEvent(new Event('agencyos_session_changed'));
 }
@@ -1548,128 +1539,18 @@ export async function loginWithEmailOrFirestoreCredentials(
   passwordInput?: string
 ): Promise<FirestoreUserProfile> {
   const cleanEmail = (emailInput || '').toLowerCase().trim();
-  const cleanPassword = (passwordInput || '').trim();
-
   if (!cleanEmail || !cleanEmail.includes('@')) {
-    throw new Error('Por favor, informe um e-mail válido.');
+    throw new Error('Informe um e-mail válido.');
   }
-
-  // 1. Attempt standard Firebase Auth sign in if password was provided
-  let authSuccess = false;
-  let authUser: User | null = null;
-  if (cleanPassword) {
-    try {
-      const res = await signInWithEmailAndPassword(auth, cleanEmail, cleanPassword);
-      authUser = res.user;
-      authSuccess = true;
-    } catch (authErr: any) {
-      console.log('Firebase Auth direto não autenticou ou está restrito. Verificando cadastro no Firestore:', authErr?.code || authErr?.message);
-    }
+  if (!passwordInput) {
+    throw new Error('Digite sua senha ou utilize Entrar com Conta Google.');
   }
-
-  if (authSuccess && authUser) {
-    const profile = await getOrCreateUserProfile(authUser);
-    setStoredSession({
-      uid: profile.uid,
-      email: profile.email,
-      name: profile.name,
-    });
-    return profile;
-  }
-
-  // 2. Query Firestore 'users' collection for the user registered in the database
-  const usersRef = collection(db, 'users');
-  const q = query(usersRef, where('email', '==', cleanEmail));
-  const querySnap = await getDocs(q);
-
-  if (querySnap.empty) {
-    // If not found with exact query, fetch all and search case-insensitively
-    const allUsersSnap = await getDocs(usersRef);
-    let matchedDoc: any = null;
-    allUsersSnap.forEach((d) => {
-      const data = d.data();
-      if ((data.email || '').toLowerCase().trim() === cleanEmail) {
-        matchedDoc = { id: d.id, ...data };
-      }
-    });
-
-    if (!matchedDoc) {
-      // Master Admin Instant Bypass: Never lock out the platform owner
-      if (
-        cleanEmail === 'rickmarketing81@gmail.com' ||
-        cleanEmail === 'agencyosoficial@gmail.com' ||
-        cleanEmail === 'rickmarketing81@gamail.com' ||
-        cleanEmail.includes('rickmarketing81')
-      ) {
-        const masterProfile: FirestoreUserProfile = {
-          uid: 'user-rick-marcos',
-          name: 'Marcos Henrique',
-          email: cleanEmail,
-          agencyName: 'Techify Agência',
-          plan: 'Agency',
-          status: 'active',
-          role: 'CEO & Administrador Master',
-          userType: 'employee',
-          department: 'gestao',
-          trialStartDate: Date.now(),
-          trialEndsAt: Date.now() + 365 * 24 * 60 * 60 * 1000,
-          createdAt: new Date().toISOString(),
-          allowedModules: [
-            'dashboard',
-            'profile',
-            'lideranca',
-            'ponto',
-            'kpis',
-            'fluxo-caixa',
-            'campanhas',
-            'social-hub',
-            'designer',
-            'kanban',
-            'prospection',
-            'relatorios',
-            'agenda',
-            'calculadora-roi',
-            'ia-consultora',
-            'admin',
-            'leadspay-master',
-            'leadspay-companies',
-          ],
-        };
-        setStoredSession({
-          uid: masterProfile.uid,
-          email: masterProfile.email,
-          name: masterProfile.name,
-        });
-        try {
-          await setDoc(doc(db, 'users', masterProfile.uid), masterProfile, { merge: true });
-        } catch (e) {
-          console.warn('Persist master profile:', e);
-        }
-        return masterProfile;
-      }
-
-      // Check registered team defaults if not deleted
-      const deletedKeys = getDeletedUserKeys();
-      const foundInMem = AGENCY_REGISTERED_TEAM_MEMBERS.find(
-        (m) =>
-          (m.email || '').toLowerCase().trim() === cleanEmail &&
-          !deletedKeys.has(m.uid.toLowerCase()) &&
-          !deletedKeys.has(cleanEmail)
-      );
-      if (foundInMem) {
-        return handleValidateFirestoreProfile(foundInMem, cleanPassword);
-      }
-
-      throw new Error(
-        'Acesso não autorizado: O e-mail informado não está cadastrado no sistema. Apenas usuários cadastrados previamente pelo administrador podem acessar o painel.'
-      );
-    }
-
-    return handleValidateFirestoreProfile(matchedDoc, cleanPassword);
-  }
-
-  const userDoc = { uid: querySnap.docs[0].id, ...querySnap.docs[0].data() } as unknown as FirestoreUserProfile;
-  return handleValidateFirestoreProfile(userDoc, cleanPassword);
+  // Do not fall back to reading a Firestore document. Database records are
+  // not Firebase Authentication credentials.
+  const credential = await signInWithEmailAndPassword(auth, cleanEmail, passwordInput);
+  const profile = await getOrCreateUserProfile(credential.user);
+  setStoredSession({ uid: credential.user.uid, email: credential.user.email || cleanEmail, name: profile.name });
+  return profile;
 }
 
 // Database helper: Verify if an email is registered in Firestore
@@ -1718,47 +1599,8 @@ export async function loginWithRegisteredEmailOnly(emailInput: string): Promise<
   return loginWithEmailOrFirestoreCredentials(emailInput, '');
 }
 
-// Helper to validate Firestore user status and password
-async function handleValidateFirestoreProfile(
-  userProfile: FirestoreUserProfile,
-  passwordInput: string
-): Promise<FirestoreUserProfile> {
-  if (userProfile.status === 'blocked') {
-    throw new Error('Sua conta foi suspensa ou bloqueada pelo administrador. Entre em contato com o suporte.');
-  }
-
-  if (userProfile.status === 'cancelled') {
-    throw new Error('Seu acesso/assinatura foi cancelado.');
-  }
-
-  // Verify password if a password was configured
-  if (userProfile.tempPasswordHint && userProfile.tempPasswordHint.trim() !== passwordInput) {
-    throw new Error('Senha incorreta para este usuário.');
-  }
-
-  // Ensure UID is set
-  const uid = userProfile.uid || (userProfile as any).id || `user-${Date.now()}`;
-  const fullProfile: FirestoreUserProfile = {
-    ...userProfile,
-    uid,
-  };
-
-  // Set active custom session
-  setStoredSession({
-    uid: fullProfile.uid,
-    email: fullProfile.email,
-    name: fullProfile.name || fullProfile.email.split('@')[0],
-  });
-
-  // Seed default workspace subcollections if needed
-  try {
-    await seedInitialUserData(fullProfile.uid);
-  } catch (seedErr) {
-    console.warn('Workspace subcollections already seeded or initialized:', seedErr);
-  }
-
-  return fullProfile;
-}
+// Legacy Firestore-only login intentionally removed: it allowed signing in
+// using an email address and sometimes an unverified plaintext hint.
 
 // Unified Signup Handler
 export async function signUpWithEmailOrFirestore(
@@ -1778,46 +1620,24 @@ export async function signUpWithEmailOrFirestore(
     throw new Error('A senha deve ter no mínimo 6 caracteres.');
   }
 
-  // Try standard Firebase Auth signup
+  // Creating a Firestore profile without a corresponding Firebase Auth user
+  // previously allowed anyone to claim another identity. Never do that.
   try {
     const res = await createUserWithEmailAndPassword(auth, cleanEmail, cleanPassword);
     try {
       await sendUserVerificationEmail(res.user);
-    } catch (vErr) {
-      console.warn('Erro ao enviar e-mail de verificação:', vErr);
+    } catch (verificationError) {
+      console.warn('Falha ao enviar confirmação por e-mail:', verificationError);
     }
     const profile = await getOrCreateUserProfile(res.user, agencyNameInput);
-    setStoredSession({
-      uid: profile.uid,
-      email: profile.email,
-      name: profile.name,
-    });
+    setStoredSession({ uid: res.user.uid, email: res.user.email || cleanEmail, name: profile.name });
     return profile;
   } catch (authErr: any) {
-    if (authErr.code === 'auth/email-already-in-use') {
-      throw new Error('Este e-mail já está cadastrado. Faça login na aba Entrar.');
+    if (authErr?.code === 'auth/email-already-in-use') {
+      throw new Error('Este e-mail já está cadastrado. Faça login ou recupere sua senha.');
     }
-    console.log('Criando conta com registro direto no Firestore:', authErr?.message || authErr);
+    throw authErr;
   }
-
-  // Create directly via Firestore with full trial permissions
-  const newProfile = await createUserWithAuthAndPermissions({
-    email: cleanEmail,
-    password: cleanPassword,
-    name: nameInput?.trim() || cleanEmail.split('@')[0],
-    agencyName: agencyNameInput?.trim() || 'Sua Agência Digital',
-    plan: 'Trial Gratuito',
-    status: 'active',
-    allowedModules: ['dashboard', 'kpis', 'fluxo-caixa', 'campanhas', 'agenda', 'maps-scraper', 'social-hub', 'estoque', 'kanban', 'relatorios', 'calculadora-roi', 'ia-consultora'],
-  });
-
-  setStoredSession({
-    uid: newProfile.uid,
-    email: newProfile.email,
-    name: newProfile.name,
-  });
-
-  return newProfile;
 }
 
 // Auth Helper Functions
@@ -1935,109 +1755,18 @@ export async function checkIfEmailIsRegisteredInSystem(email: string): Promise<F
   return null;
 }
 
-// Login or Create Company Account with Google Email (database-backed)
+// Backward-compatible API: only work with a real Firebase authenticated user.
 export async function loginOrCreateAccountWithGoogleEmail(
   googleEmail: string,
-  displayName?: string,
-  photoUrl?: string
+  _displayName?: string,
+  _photoUrl?: string
 ): Promise<FirestoreUserProfile> {
-  const cleanEmail = (googleEmail || '').toLowerCase().trim();
-  if (!cleanEmail || !cleanEmail.includes('@')) {
-    throw new Error('Informe um e-mail Google válido.');
+  const authenticated = auth.currentUser;
+  if (!authenticated || !authenticated.email ||
+      authenticated.email.toLowerCase() !== (googleEmail || '').trim().toLowerCase()) {
+    throw new Error('Entre com o Google para confirmar a identidade desta conta.');
   }
-
-  const deletedKeys = getDeletedUserKeys();
-  if (deletedKeys.has(cleanEmail)) {
-    throw new Error('Esta conta foi excluída pelo administrador.');
-  }
-
-  // 1. Check if email already has an account in Firestore or static team
-  const existingProfile = await checkIfEmailIsRegisteredInSystem(cleanEmail);
-  if (existingProfile) {
-    if (existingProfile.status === 'blocked') {
-      throw new Error('Sua conta foi suspensa pelo administrador.');
-    }
-
-    let targetOwnerUid = existingProfile.agencyOwnerUid;
-    const isMasterUser =
-      cleanEmail === 'rickmarketing81@gmail.com' ||
-      cleanEmail === 'agencyosoficial@gmail.com' ||
-      cleanEmail.includes('rickmarketing81');
-    if (!targetOwnerUid && !isMasterUser) {
-      targetOwnerUid = (await resolvePrimaryAgencyOwnerUid()) || 'user-rick-marcos';
-      existingProfile.agencyOwnerUid = targetOwnerUid;
-    }
-
-    const fullProfile: FirestoreUserProfile = {
-      ...existingProfile,
-      uid: existingProfile.uid || `user-${Date.now()}`,
-      agencyOwnerUid: targetOwnerUid,
-      avatarUrl: photoUrl || existingProfile.avatarUrl || '',
-    };
-
-    setStoredSession({
-      uid: fullProfile.uid,
-      email: fullProfile.email,
-      name: fullProfile.name,
-      agencyOwnerUid: targetOwnerUid,
-    });
-
-    return fullProfile;
-  }
-
-  // 2. New Company Signup via Google ("as empresas conseguem criar a conta so pelo google")
-  const targetUid = `user-google-${cleanEmail.replace(/[^a-zA-Z0-9]/g, '_')}`;
-  const now = Date.now();
-  const FOURTEEN_DAYS = 14 * 24 * 60 * 60 * 1000;
-  const companyName = displayName ? `Empresa ${displayName}` : `Empresa ${cleanEmail.split('@')[0]}`;
-
-  const newCompanyProfile: FirestoreUserProfile = {
-    uid: targetUid,
-    name: displayName || cleanEmail.split('@')[0],
-    email: cleanEmail,
-    avatarUrl: photoUrl || '',
-    photoURL: photoUrl || '',
-    agencyName: companyName,
-    role: 'Cliente AgencyOS',
-    userType: 'client',
-    plan: 'Pro',
-    status: 'active',
-    designRole: 'cliente',
-    canEditDesigns: true,
-    canCreateDesigns: true,
-    canApproveDesigns: true,
-    canPublishPosts: false,
-    trialStartDate: now,
-    trialEndsAt: now + FOURTEEN_DAYS,
-    createdAt: new Date().toISOString(),
-    allowedModules: [
-      'dashboard',
-      'designer',
-      'social-hub',
-      'kanban',
-      'agenda',
-      'relatorios',
-      'calculadora-roi',
-      'ia-consultora',
-    ],
-  };
-
-  // Save in Firestore 'users' collection
-  try {
-    const userRef = doc(db, 'users', targetUid);
-    await setDoc(userRef, sanitizeFirestorePayload(newCompanyProfile), { merge: true });
-    await seedInitialUserData(targetUid);
-  } catch (err) {
-    console.warn('Erro ao criar conta de empresa no Firestore:', err);
-  }
-
-  setStoredSession({
-    uid: newCompanyProfile.uid,
-    email: newCompanyProfile.email,
-    name: newCompanyProfile.name,
-  });
-
-  return newCompanyProfile;
+  return getOrCreateUserProfile(authenticated);
 }
 
 // Backward-compatibility wrapper
