@@ -18,7 +18,6 @@ import {
   Clock,
   Copy,
   Check,
-  Send,
   RefreshCw,
   ChevronDown,
   ChevronUp,
@@ -26,20 +25,17 @@ import {
   Search,
   Filter,
   Key,
-  CheckCircle2,
-  AlertTriangle,
   XCircle,
-  ArrowUpRight,
+  AlertTriangle,
   DollarSign,
   Users,
   Settings,
   LayoutDashboard,
   FileCode,
-  Sparkles,
   Eye,
   EyeOff,
 } from 'lucide-react';
-import { db, FirestoreUserProfile, getStoredSession, setStoredSession } from '../lib/firebase';
+import { db, FirestoreUserProfile } from '../lib/firebase';
 import { isUserMasterAdmin } from '../lib/permissions';
 
 interface LeadsPayMasterViewProps {
@@ -113,9 +109,7 @@ export const LeadsPayMasterView: React.FC<LeadsPayMasterViewProps> = ({
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [copiedSecret, setCopiedSecret] = useState(false);
   const [showSecret, setShowSecret] = useState(false);
-  const [simulating, setSimulating] = useState(false);
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
-  const [testResult, setTestResult] = useState<string | null>(null);
   const [selectedEventFilter, setSelectedEventFilter] = useState<string>('all');
 
   // Access is tied to the authenticated Firebase user, never an email string.
@@ -202,21 +196,9 @@ export const LeadsPayMasterView: React.FC<LeadsPayMasterViewProps> = ({
             <h3 className="text-xl font-black text-white tracking-tight">Painel Master LeadsPay</h3>
             <p className="text-xs text-neutral-400">
               Ambiente de gestão restrito ao Super Admin (<strong>rickmarketing81@gmail.com</strong>).
+              Faça login com a conta autorizada para acessar.
             </p>
           </div>
-          <button
-            onClick={() => {
-              setStoredSession({
-                uid: 'user-rick-marcos',
-                email: 'rickmarketing81@gmail.com',
-                name: 'Marcos Henrique',
-              });
-            }}
-            className="w-full py-3 px-4 rounded-xl bg-lime-400 hover:bg-lime-300 text-black font-black text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg shadow-lime-400/20"
-          >
-            <Zap className="w-4 h-4 fill-black text-black" />
-            <span>Desbloquear Acesso Master Agora</span>
-          </button>
         </div>
       </div>
     );
@@ -239,15 +221,6 @@ export const LeadsPayMasterView: React.FC<LeadsPayMasterViewProps> = ({
     navigator.clipboard.writeText(webhookSecret);
     setCopiedSecret(true);
     setTimeout(() => setCopiedSecret(false), 2500);
-  };
-
-  // Production must never synthesize payment-success webhook events.
-  // Test webhooks belong to an isolated staging environment with a test secret.
-  const handleSimulateWebhook = async (
-    _type: 'company.activated' | 'payment.success' | 'subscription.renewed',
-    _companyTarget?: LeadsPayCompany
-  ) => {
-    setTestResult('Simulações desativadas: utilize um ambiente de testes isolado.');
   };
 
   // Toggle Company Status
@@ -410,24 +383,8 @@ export const LeadsPayMasterView: React.FC<LeadsPayMasterViewProps> = ({
             {copiedUrl ? <Check className="w-3.5 h-3.5 text-lime-400" /> : <Copy className="w-3.5 h-3.5 text-neutral-400" />}
             <span>{copiedUrl ? 'URL Copiada!' : 'Copiar URL Webhook'}</span>
           </button>
-
-          <button
-            onClick={() => handleSimulateWebhook('payment.success')}
-            disabled={simulating}
-            className="px-3.5 py-2 rounded-xl bg-lime-400 hover:bg-lime-300 text-black text-xs font-black transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 shadow-lg shadow-lime-400/10"
-          >
-            {simulating ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-            <span>Simular Pagamento</span>
-          </button>
         </div>
       </div>
-
-      {testResult && (
-        <div className="p-3.5 rounded-xl bg-neutral-900 border border-lime-500/40 text-xs text-lime-300 flex items-center gap-2.5">
-          <CheckCircle2 className="w-4 h-4 text-lime-400 shrink-0" />
-          <span>{testResult}</span>
-        </div>
-      )}
 
       {/* Tabs Navigation */}
       <div className="flex bg-neutral-900/80 p-1.5 rounded-2xl border border-neutral-800 max-w-xl">
@@ -486,9 +443,8 @@ export const LeadsPayMasterView: React.FC<LeadsPayMasterViewProps> = ({
               <p className="text-2xl sm:text-3xl font-black text-white mt-3 tracking-tight">
                 {totalRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </p>
-              <div className="flex items-center gap-1.5 text-[11px] text-lime-400 mt-2 font-bold">
-                <ArrowUpRight className="w-3.5 h-3.5" />
-                <span>+18.4% este mês</span>
+              <div className="flex items-center gap-1.5 text-[11px] text-neutral-500 mt-2 font-bold">
+                <span>—</span>
               </div>
             </div>
 
@@ -532,40 +488,9 @@ export const LeadsPayMasterView: React.FC<LeadsPayMasterViewProps> = ({
               <p className="text-3xl font-black text-white mt-3 tracking-tight">
                 {stats?.total_events || recentEvents.length}
               </p>
-              <div className="flex items-center gap-1.5 text-[11px] text-neutral-400 mt-2">
-                <span className="w-2 h-2 rounded-full bg-lime-400 animate-ping" />
-                <span>Webhooks 99.9% entregues</span>
+              <div className="flex items-center gap-1.5 text-[11px] text-neutral-500 mt-2">
+                <span>—</span>
               </div>
-            </div>
-          </div>
-
-          {/* Quick Simulation Banner */}
-          <div className="p-4 rounded-2xl bg-neutral-950 border border-neutral-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="space-y-0.5">
-              <p className="text-xs font-bold text-white flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-lime-400" />
-                <span>Simulador de Integração & Testes LeadsPay</span>
-              </p>
-              <p className="text-[11px] text-neutral-400">
-                Dispare webhooks simulados para testar em tempo real a recepção no Firestore e a telemetria do webhook.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => handleSimulateWebhook('company.activated')}
-                disabled={simulating}
-                className="px-3 py-1.5 rounded-lg bg-neutral-900 border border-neutral-700 hover:bg-neutral-800 text-xs font-bold text-white transition-all cursor-pointer disabled:opacity-50"
-              >
-                + Nova Empresa
-              </button>
-              <button
-                onClick={() => handleSimulateWebhook('subscription.renewed')}
-                disabled={simulating}
-                className="px-3 py-1.5 rounded-lg bg-neutral-900 border border-neutral-700 hover:bg-neutral-800 text-xs font-bold text-white transition-all cursor-pointer disabled:opacity-50"
-              >
-                Renovar Assinatura
-              </button>
             </div>
           </div>
 
@@ -847,15 +772,6 @@ export const LeadsPayMasterView: React.FC<LeadsPayMasterViewProps> = ({
                           {/* Ações */}
                           <td className="py-3.5 px-4 text-right">
                             <div className="flex items-center justify-end gap-2">
-                              {/* Simular webhook para esta empresa */}
-                              <button
-                                onClick={() => handleSimulateWebhook('payment.success', comp)}
-                                className="px-2 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 font-bold text-[10px] transition-colors cursor-pointer"
-                                title="Disparar webhook de teste para esta empresa"
-                              >
-                                Testar Webhook
-                              </button>
-
                               {/* Toggle Status */}
                               <button
                                 onClick={() => handleToggleCompanyStatus(comp)}

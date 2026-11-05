@@ -88,6 +88,8 @@ export interface AdCampaign {
   clicks: number;
   conversions: number;
   roas: number;
+  /** Leads gerados, quando registrados separadamente de `conversions`. */
+  leads?: number;
   status: 'Ativa' | 'Pausada' | 'Finalizada';
 }
 

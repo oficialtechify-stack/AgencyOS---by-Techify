@@ -228,8 +228,8 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const myEmail = (userProfile?.email || currentUser?.email || 'rickmarketing81@gmail.com').toLowerCase().trim();
-  const myName = userProfile?.name || currentUser?.name || 'Colaborador Techify';
+  const myEmail = (userProfile?.email || currentUser?.email || '').toLowerCase().trim();
+  const myName = userProfile?.name || currentUser?.name || '—';
   const myAvatar = resolveUserAvatar(userProfile) || resolveUserAvatar(currentUser);
   const myRole = userProfile?.role || 'Membro da Equipe';
   const myDepartment = userProfile?.department || 'marketing';
@@ -315,9 +315,12 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
   // Scroll to bottom on new message and mark as read only when unread messages exist
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    const hasUnread = messages.some(
-      (m) => m.channelId === activeChannelId && (!myEmail || !m.readBy?.[myEmail])
-    );
+    // Sem usuário logado não há e-mail próprio para conferir leitura.
+    const hasUnread = myEmail
+      ? messages.some(
+          (m) => m.channelId === activeChannelId && !m.readBy?.[myEmail]
+        )
+      : false;
     if (hasUnread) {
       onMarkChannelAsRead(activeChannelId);
     }
@@ -897,7 +900,7 @@ export const EmpresaChatView: React.FC<EmpresaChatViewProps> = ({
                     name: msg.senderName,
                     email: msg.senderEmail,
                     avatarUrl: effectiveSenderAvatar,
-                    role: msg.senderRole || 'Colaborador Techify',
+                    role: msg.senderRole || 'Membro da Equipe',
                     department: msg.senderDepartment || 'geral',
                     agencyName: userProfile?.agencyName || 'Techify Agência',
                     workStatus: 'online',

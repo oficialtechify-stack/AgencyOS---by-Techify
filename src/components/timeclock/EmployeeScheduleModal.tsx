@@ -37,6 +37,7 @@ export const EmployeeScheduleModal: React.FC<EmployeeScheduleModalProps> = ({
   const [isCreating, setIsCreating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Form State
   const [userEmail, setUserEmail] = useState('');
@@ -89,11 +90,12 @@ export const EmployeeScheduleModal: React.FC<EmployeeScheduleModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userEmail.trim()) {
-      alert('Preencha o e-mail do colaborador.');
+      setErrorMsg('Preencha o e-mail do colaborador.');
       return;
     }
     setSaving(true);
     setSuccessMsg(null);
+    setErrorMsg(null);
 
     const updated: EmployeeWorkSchedule = {
       id: selectedSchedule?.id || `sched-${Date.now()}`,
@@ -121,7 +123,7 @@ export const EmployeeScheduleModal: React.FC<EmployeeScheduleModalProps> = ({
       setTimeout(() => setSuccessMsg(null), 3000);
     } catch (err: any) {
       console.error('Error saving schedule:', err);
-      alert('Erro ao salvar escala: ' + err.message);
+      setErrorMsg('Erro ao salvar escala: ' + (err?.message || 'tente novamente.'));
     } finally {
       setSaving(false);
     }
@@ -229,6 +231,18 @@ export const EmployeeScheduleModal: React.FC<EmployeeScheduleModalProps> = ({
               <div className="mb-4 p-3 rounded-2xl bg-emerald-950/60 border border-emerald-800/80 text-emerald-300 text-xs font-bold flex items-center gap-2 animate-in fade-in">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                 {successMsg}
+              </div>
+            )}
+
+            {errorMsg && (
+              <div className="mb-4 p-3 rounded-2xl bg-red-950/60 border border-red-800/80 text-red-300 text-xs font-bold flex items-center justify-between gap-2 animate-in fade-in">
+                <span className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+                  {errorMsg}
+                </span>
+                <button type="button" onClick={() => setErrorMsg(null)} className="text-red-400 hover:text-white shrink-0" aria-label="Fechar aviso">
+                  <X className="w-4 h-4" />
+                </button>
               </div>
             )}
 

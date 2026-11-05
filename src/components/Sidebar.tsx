@@ -14,6 +14,7 @@ import {
   LogOut,
   MapPin,
   Megaphone,
+  MessageSquare,
   Package,
   Palette,
   Search,
@@ -76,6 +77,7 @@ const navigationGroups: NavigationGroup[] = [
       { id: 'kanban', label: 'Projetos e tarefas', icon: Folder },
       { id: 'lideranca', label: 'Equipe e liderança', icon: Users },
       { id: 'ponto', label: 'Registro de ponto', icon: Clock },
+      { id: 'chat', label: 'Chat da empresa', icon: MessageSquare, description: 'Conversa da equipe em tempo real' },
     ],
   },
   {

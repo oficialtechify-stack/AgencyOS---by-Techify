@@ -52,9 +52,19 @@ app.use('/api/social/hyperframes', async (req, res, next) => {
   }
 });
 
-// Enable CORS for Vercel deployments and preview iframes
+// CORS restrito à origem do próprio app (nunca '*': há rotas de admin
+// neste arquivo). Origens extras (ex.: preview em outro domínio) entram
+// via env ALLOWED_ORIGINS, separadas por vírgula.
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://agency-os-by-techify.vercel.app,http://localhost:5173')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
+  const origin = req.headers.origin;
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Vary', 'Origin');
+  }
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-leadspay-signature');
   if (req.method === 'OPTIONS') {
@@ -160,7 +170,7 @@ Responda sempre em Português do Brasil com formatação rica em markdown, objet
     // 1. Tentar Gemini primeiro
     const gemini = await getGeminiClient();
     if (gemini) {
-      const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+      const modelsToTry = ['gemini-3.8-flash', 'gemini-3.5-flash-lite'];
       const contents: any[] = [];
       if (Array.isArray(history) && history.length > 0) {
         for (const h of history) {
@@ -229,7 +239,7 @@ app.post('/api/ai/social-caption', async (req, res) => {
     if (gemini) {
       try {
         const response = await gemini.models.generateContent({
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3.8-flash',
           contents: prompt,
         });
         result = response.text || '';

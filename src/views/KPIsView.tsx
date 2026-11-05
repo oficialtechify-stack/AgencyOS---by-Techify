@@ -15,17 +15,67 @@ export const KPIsView: React.FC<KPIsViewProps> = ({
   kpiPeriods,
   onAddPeriod,
   onDeletePeriod,
-  onExportReport,
+  // onExportReport: legado — a exportação agora é feita aqui dentro
+  // (exportKPIReport); o App.tsx pode deixar de passar a prop (ver DIFFS-A.md).
 }) => {
   const periodList = kpiPeriods || periods || [];
+
+  // Ordena por mês (MM/AAAA) decrescente: o "último período" é o mês mais
+  // recente, não o último inserido.
+  const monthKey = (s: string) => {
+    const [m, y] = (s || '').split('/').map(Number);
+    return (y || 0) * 12 + (m || 0);
+  };
+  const sortedPeriods = [...periodList].sort((a, b) => monthKey(b.monthYear) - monthKey(a.monthYear));
+  const latest = sortedPeriods[0] ?? null;
+
+  const currentMonthYear = (() => {
+    const now = new Date();
+    return `${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+  })();
+
   const [showModal, setShowModal] = useState(false);
-  const [monthYear, setMonthYear] = useState('08/2026');
+  const [monthYear, setMonthYear] = useState(currentMonthYear);
   const [mrr, setMrr] = useState('');
   const [arr, setArr] = useState('');
   const [ltv, setLtv] = useState('');
   const [cac, setCac] = useState('');
   const [churnRate, setChurnRate] = useState('');
   const [activeClients, setActiveClients] = useState('');
+
+  // Exportação real do relatório de KPIs (download .txt, mesmo formato da
+  // Central de Relatórios). Não apenas navega para outra tela.
+  const exportKPIReport = () => {
+    let text = `=========================================\n`;
+    text += `   RELATÓRIO DE KPIs - AGENCYOS\n`;
+    text += `   Gerado em: ${new Date().toLocaleString('pt-BR')}\n`;
+    text += `=========================================\n\n`;
+
+    if (latest) {
+      text += `PERÍODO MAIS RECENTE (${latest.monthYear}):\n`;
+      text += `- MRR: R$ ${latest.mrr.toLocaleString('pt-BR')}\n`;
+      text += `- ARR: R$ ${latest.arr.toLocaleString('pt-BR')}\n`;
+      text += `- LTV: R$ ${latest.ltv.toLocaleString('pt-BR')}\n`;
+      text += `- CAC: R$ ${latest.cac.toLocaleString('pt-BR')}\n`;
+      text += `- Churn Rate: ${latest.churnRate}%\n`;
+      text += `- Clientes Ativos: ${latest.activeClients}\n\n`;
+    } else {
+      text += `Nenhum período registrado.\n\n`;
+    }
+
+    text += `HISTÓRICO DE PERÍODOS (${sortedPeriods.length}):\n`;
+    sortedPeriods.forEach((p, i) => {
+      text += `${i + 1}. ${p.monthYear} | MRR: R$ ${p.mrr.toLocaleString('pt-BR')} | ARR: R$ ${p.arr.toLocaleString('pt-BR')} | LTV: R$ ${p.ltv.toLocaleString('pt-BR')} | CAC: R$ ${p.cac.toLocaleString('pt-BR')} | Churn: ${p.churnRate}% | Clientes: ${p.activeClients}\n`;
+    });
+
+    const element = document.createElement('a');
+    const file = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    element.href = URL.createObjectURL(file);
+    element.download = `relatorio_kpis_agencyos_${Date.now()}.txt`;
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,8 +99,6 @@ export const KPIsView: React.FC<KPIsViewProps> = ({
     setActiveClients('');
   };
 
-  const latest = periodList.length > 0 ? periodList[periodList.length - 1] : null;
-
   return (
     <div className="space-y-6 text-neutral-200 font-sans max-w-7xl mx-auto pb-16">
       {/* Top Header Controls */}
@@ -61,7 +109,7 @@ export const KPIsView: React.FC<KPIsViewProps> = ({
 
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <button
-            onClick={() => onExportReport && onExportReport()}
+            onClick={exportKPIReport}
             className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-xs font-bold text-neutral-200 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
           >
             <Download className="w-4 h-4 text-white" />
@@ -86,7 +134,7 @@ export const KPIsView: React.FC<KPIsViewProps> = ({
             <DollarSign className="w-4 h-4 text-white" />
           </div>
           <div className="text-3xl font-black text-white">
-            R$ {latest ? latest.mrr.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}
+            {latest ? `R$ ${latest.mrr.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—'}
           </div>
           <p className="text-[10px] text-neutral-500">Métrica base do mês atual</p>
         </div>
@@ -98,7 +146,7 @@ export const KPIsView: React.FC<KPIsViewProps> = ({
             <TrendingUp className="w-4 h-4 text-white" />
           </div>
           <div className="text-3xl font-black text-white">
-            R$ {latest ? latest.arr.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}
+            {latest ? `R$ ${latest.arr.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—'}
           </div>
           <p className="text-[10px] text-neutral-500">Projeção anual de faturamento</p>
         </div>
@@ -110,7 +158,7 @@ export const KPIsView: React.FC<KPIsViewProps> = ({
             <Users className="w-4 h-4 text-white" />
           </div>
           <div className="text-3xl font-black text-white">
-            R$ {latest ? latest.ltv.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}
+            {latest ? `R$ ${latest.ltv.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—'}
           </div>
           <p className="text-[10px] text-neutral-500">Lucro médio por cliente retido</p>
         </div>
@@ -122,7 +170,7 @@ export const KPIsView: React.FC<KPIsViewProps> = ({
             <DollarSign className="w-4 h-4 text-white" />
           </div>
           <div className="text-3xl font-black text-white">
-            R$ {latest ? latest.cac.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}
+            {latest ? `R$ ${latest.cac.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—'}
           </div>
           <p className="text-[10px] text-neutral-500">Custo médio para atrair 1 cliente</p>
         </div>
@@ -134,7 +182,7 @@ export const KPIsView: React.FC<KPIsViewProps> = ({
             <TrendingDown className="w-4 h-4 text-neutral-400" />
           </div>
           <div className="text-3xl font-black text-white">
-            {latest ? latest.churnRate.toFixed(1) : '0.0'}%
+            {latest ? `${latest.churnRate.toFixed(1)}%` : '—'}
           </div>
           <p className="text-[10px] text-neutral-500">Percentual de perda de clientes</p>
         </div>
@@ -145,7 +193,7 @@ export const KPIsView: React.FC<KPIsViewProps> = ({
             <span>Clientes Ativos</span>
             <Users className="w-4 h-4 text-white" />
           </div>
-          <div className="text-3xl font-black text-white">{latest ? latest.activeClients : 0}</div>
+          <div className="text-3xl font-black text-white">{latest ? latest.activeClients : '—'}</div>
           <p className="text-[10px] text-neutral-500">Total de contratos vigentes</p>
         </div>
       </div>
@@ -174,7 +222,7 @@ export const KPIsView: React.FC<KPIsViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-800/60">
-                {periodList.map((p) => (
+                {sortedPeriods.map((p) => (
                   <tr key={p.id} className="hover:bg-neutral-900/40 transition-colors">
                     <td className="p-3 font-bold text-white">{p.monthYear}</td>
                     <td className="p-3 font-semibold text-white">

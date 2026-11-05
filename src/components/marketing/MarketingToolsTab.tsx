@@ -26,7 +26,7 @@ export const MarketingToolsTab: React.FC<MarketingToolsTabProps> = ({
   showToast,
   onOpenFullGuide,
 }) => {
-  const [toolView, setToolView] = useState<'simulador' | 'gerador-ia'>('simulador');
+  const [toolView, setToolView] = useState<'simulador' | 'modelos-prontos'>('simulador');
 
   // Simulator state
   const [budget, setBudget] = useState<number>(5000);
@@ -62,7 +62,7 @@ export const MarketingToolsTab: React.FC<MarketingToolsTabProps> = ({
   >([]);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
-  const handleGenerateCopyTemplates = () => {
+  const handleLoadCopyTemplates = () => {
     const templates: typeof generatedCopies = [
       {
         title: `Gancho de Quebra de Objeção: ${generatorNiche}`,
@@ -87,7 +87,7 @@ export const MarketingToolsTab: React.FC<MarketingToolsTabProps> = ({
       },
     ];
     setGeneratedCopies(templates);
-    showToast('Novos scripts estratégicos gerados com sucesso!');
+    showToast('Modelos prontos carregados — edite o texto antes de usar.');
   };
 
   const handleSaveGeneratedToLibrary = async (template: (typeof generatedCopies)[0]) => {
@@ -99,7 +99,7 @@ export const MarketingToolsTab: React.FC<MarketingToolsTabProps> = ({
     try {
       await onAddCopyScript({
         title: template.title,
-        clientName: 'Gerador Estratégico',
+        clientName: 'Modelos prontos',
         category: template.category,
         targetAudience: generatorNiche,
         hookText: template.hookText,
@@ -119,9 +119,9 @@ export const MarketingToolsTab: React.FC<MarketingToolsTabProps> = ({
     <div className="space-y-6">
       {/* Tab Guide Banner */}
       <TabGuideBanner
-        title="Simulação Financeira & Inteligência de Copy"
+        title="Simulação Financeira & Modelos de Copy"
         badge="Ferramentas & Viabilidade"
-        description="Calcule a viabilidade de campanhas antes de investir e gere ganchos de alta conversão para acelerar sua esteira de criação."
+        description="Calcule a viabilidade de campanhas antes de investir e use modelos prontos de ganchos para acelerar sua esteira de criação."
         tips={[
           {
             label: '1. Validação Prévia',
@@ -133,7 +133,7 @@ export const MarketingToolsTab: React.FC<MarketingToolsTabProps> = ({
           },
           {
             label: '3. Exportação para Acervo',
-            text: 'Gere ideias de copy por IA e salve diretamente no seu Acervo com 1 clique.',
+            text: 'Use modelos prontos de copy e salve diretamente no seu Acervo com 1 clique.',
           },
         ]}
         benchmark="Trabalhe sempre com meta de CAC no máximo igual a 30% do LTV (Life-Time Value) do cliente."
@@ -155,15 +155,15 @@ export const MarketingToolsTab: React.FC<MarketingToolsTabProps> = ({
         </button>
 
         <button
-          onClick={() => setToolView('gerador-ia')}
+          onClick={() => setToolView('modelos-prontos')}
           className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer transition-all ${
-            toolView === 'gerador-ia'
+            toolView === 'modelos-prontos'
               ? 'bg-white text-black shadow-sm'
               : 'bg-[#0e0e0e] text-neutral-400 hover:text-white border border-neutral-800'
           }`}
         >
           <Wand2 className="w-4 h-4" />
-          <span>Gerador Inteligente de Head/Hooks</span>
+          <span>Modelos prontos de Head/Hooks</span>
         </button>
       </div>
 
@@ -313,24 +313,24 @@ export const MarketingToolsTab: React.FC<MarketingToolsTabProps> = ({
         </div>
       )}
 
-      {toolView === 'gerador-ia' && (
+      {toolView === 'modelos-prontos' && (
         <div className="p-6 rounded-2xl bg-[#0e0e0e] border border-neutral-800 space-y-6 shadow-sm">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pb-4 border-b border-neutral-800">
             <div>
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-white" />
-                Gerador Estratégico de Ângulos & Copies
+                Modelos prontos de ângulos & copies
               </h3>
               <p className="text-xs text-neutral-400 mt-0.5">
-                Crie ganchos de alta conversão para anúncios, posts e páginas com 1 clique.
+                Modelos prontos de ganchos para anúncios, posts e páginas — edite o texto antes de usar.
               </p>
             </div>
             <button
-              onClick={handleGenerateCopyTemplates}
+              onClick={handleLoadCopyTemplates}
               className="px-5 py-2.5 rounded-xl bg-white text-black font-extrabold text-xs flex items-center justify-center gap-2 hover:bg-neutral-200 cursor-pointer shadow-sm transition-all"
             >
               <Zap className="w-4 h-4 text-black stroke-[2.5]" />
-              <span>Gerar Scripts & Ganchos</span>
+              <span>Carregar modelos prontos</span>
             </button>
           </div>
 

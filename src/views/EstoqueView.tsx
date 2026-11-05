@@ -1,17 +1,21 @@
 import React, { useState } from 'react';
-import { Package, Plus, Trash2, AlertTriangle, CheckCircle, Search } from 'lucide-react';
+import { Package, Plus, Trash2, AlertTriangle, CheckCircle, Search, Pencil, AlertCircle } from 'lucide-react';
 import { StockItem } from '../types';
 
 interface EstoqueViewProps {
   items?: StockItem[];
   onAddItem?: (item: Omit<StockItem, 'id'>) => void;
+  onUpdateItem?: (id: string, data: Partial<Omit<StockItem, 'id'>>) => void;
   onDeleteItem?: (id: string) => void;
 }
 
-export const EstoqueView: React.FC<EstoqueViewProps> = ({ items = [], onAddItem, onDeleteItem }) => {
+export const EstoqueView: React.FC<EstoqueViewProps> = ({ items = [], onAddItem, onUpdateItem, onDeleteItem }) => {
   const [showModal, setShowModal] = useState(false);
   const [filter, setFilter] = useState<'Todos' | 'Estoque Baixo' | 'Ativos' | 'Esgotados'>('Todos');
   const [searchTerm, setSearchTerm] = useState('');
+  const [itemToEdit, setItemToEdit] = useState<StockItem | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<StockItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [name, setName] = useState('');
   const [category, setCategory] = useState('Geral');
@@ -24,17 +28,55 @@ export const EstoqueView: React.FC<EstoqueViewProps> = ({ items = [], onAddItem,
   const outOfStockCount = items.filter((i) => i.quantity === 0).length;
   const totalValue = items.reduce((acc, i) => acc + i.quantity * i.unitPrice, 0);
 
+  const resetForm = () => {
+    setName('');
+    setCategory('Geral');
+    setQuantity('');
+    setMinQuantity('');
+    setUnitPrice('');
+    setItemToEdit(null);
+  };
+
+  const openCreateModal = () => {
+    resetForm();
+    setShowModal(true);
+  };
+
+  const openEditModal = (item: StockItem) => {
+    setItemToEdit(item);
+    setName(item.name);
+    setCategory(item.category);
+    setQuantity(String(item.quantity));
+    setMinQuantity(String(item.minQuantity));
+    setUnitPrice(String(item.unitPrice));
+    setShowModal(true);
+  };
+
+  const computeStatus = (q: number, minQ: number): 'Ativo' | 'Estoque Baixo' | 'Esgotado' => {
+    if (q === 0) return 'Esgotado';
+    if (q <= minQ) return 'Estoque Baixo';
+    return 'Ativo';
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
     const q = parseInt(quantity) || 0;
     const minQ = parseInt(minQuantity) || 5;
+    const status = computeStatus(q, minQ);
 
-    let status: 'Ativo' | 'Estoque Baixo' | 'Esgotado' = 'Ativo';
-    if (q === 0) status = 'Esgotado';
-    else if (q <= minQ) status = 'Estoque Baixo';
-
-    if (onAddItem) {
+    if (itemToEdit) {
+      if (onUpdateItem) {
+        onUpdateItem(itemToEdit.id, {
+          name: name.trim(),
+          category: category.trim() || 'Geral',
+          quantity: q,
+          minQuantity: minQ,
+          unitPrice: parseFloat(unitPrice) || 0,
+          status,
+        });
+      }
+    } else if (onAddItem) {
       onAddItem({
         name: name.trim(),
         category: category.trim() || 'Geral',
@@ -46,18 +88,30 @@ export const EstoqueView: React.FC<EstoqueViewProps> = ({ items = [], onAddItem,
     }
 
     setShowModal(false);
-    setName('');
-    setQuantity('');
-    setMinQuantity('');
-    setUnitPrice('');
+    resetForm();
+  };
+
+  const confirmDeleteItem = () => {
+    if (!itemToDelete || !onDeleteItem) return;
+    setIsDeleting(true);
+    try {
+      onDeleteItem(itemToDelete.id);
+    } finally {
+      setIsDeleting(false);
+      setItemToDelete(null);
+    }
   };
 
   const filteredItems = items.filter((i) => {
-    const matchesSearch = i.name.toLowerCase().includes(searchTerm.toLowerCase());
+    // A busca vale junto com o filtro: o item precisa passar nos dois.
+    const matchesSearch =
+      i.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      i.category.toLowerCase().includes(searchTerm.toLowerCase());
+    if (!matchesSearch) return false;
     if (filter === 'Estoque Baixo') return i.quantity > 0 && i.quantity <= i.minQuantity;
     if (filter === 'Esgotados') return i.quantity === 0;
     if (filter === 'Ativos') return i.quantity > i.minQuantity;
-    return matchesSearch;
+    return true;
   });
 
   return (
@@ -131,7 +185,7 @@ export const EstoqueView: React.FC<EstoqueViewProps> = ({ items = [], onAddItem,
           </div>
 
           <button
-            onClick={() => setShowModal(true)}
+            onClick={openCreateModal}
             className="px-4 py-2 rounded-xl bg-white hover:bg-neutral-200 text-black font-extrabold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all"
           >
             <Plus className="w-4 h-4" /> + Novo Item
@@ -180,13 +234,22 @@ export const EstoqueView: React.FC<EstoqueViewProps> = ({ items = [], onAddItem,
                       </span>
                     </td>
                     <td className="p-3 text-right">
-                      <button
-                        onClick={() => onDeleteItem && onDeleteItem(item.id)}
-                        className="p-1.5 text-neutral-500 hover:text-white hover:bg-neutral-800 rounded transition-colors cursor-pointer"
-                        title="Excluir item"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => openEditModal(item)}
+                          className="p-1.5 text-neutral-500 hover:text-white hover:bg-neutral-800 rounded transition-colors cursor-pointer"
+                          title="Editar item"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setItemToDelete(item)}
+                          className="p-1.5 text-neutral-500 hover:text-rose-400 hover:bg-neutral-800 rounded transition-colors cursor-pointer"
+                          title="Excluir item"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -196,11 +259,13 @@ export const EstoqueView: React.FC<EstoqueViewProps> = ({ items = [], onAddItem,
         )}
       </div>
 
-      {/* New Item Modal */}
+      {/* New / Edit Item Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
           <div className="w-full max-w-md bg-[#0e0e0e] border border-neutral-700 rounded-2xl p-6 shadow-2xl space-y-4">
-            <h3 className="text-base font-bold text-white">Cadastrar Item no Estoque</h3>
+            <h3 className="text-base font-bold text-white">
+              {itemToEdit ? 'Editar Item do Estoque' : 'Cadastrar Item no Estoque'}
+            </h3>
 
             <form onSubmit={handleSubmit} className="space-y-3 text-xs">
               <div>
@@ -265,7 +330,10 @@ export const EstoqueView: React.FC<EstoqueViewProps> = ({ items = [], onAddItem,
               <div className="flex items-center justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={() => {
+                    setShowModal(false);
+                    resetForm();
+                  }}
                   className="px-4 py-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white cursor-pointer"
                 >
                   Cancelar
@@ -274,10 +342,51 @@ export const EstoqueView: React.FC<EstoqueViewProps> = ({ items = [], onAddItem,
                   type="submit"
                   className="px-4 py-2 rounded-xl bg-white hover:bg-neutral-200 text-black font-extrabold cursor-pointer"
                 >
-                  Cadastrar Item
+                  {itemToEdit ? 'Salvar Alterações' : 'Cadastrar Item'}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {itemToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-md bg-[#121212] border border-neutral-700 rounded-2xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-rose-400">
+              <AlertCircle className="w-6 h-6 shrink-0" />
+              <h3 className="text-base font-bold text-white">Confirmar Exclusão de Item</h3>
+            </div>
+
+            <p className="text-xs text-neutral-300 leading-relaxed">
+              Você tem certeza de que deseja excluir o item{' '}
+              <strong className="text-white">"{itemToDelete.name}"</strong>
+              {itemToDelete.category ? (
+                <span> ({itemToDelete.category})</span>
+              ) : null}
+              ? Esta ação não pode ser desfeita.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-3">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setItemToDelete(null)}
+                className="px-4 py-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-neutral-300 text-xs font-semibold cursor-pointer transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={confirmDeleteItem}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors disabled:opacity-50"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                {isDeleting ? 'Excluindo...' : 'Confirmar e Excluir'}
+              </button>
+            </div>
           </div>
         </div>
       )}

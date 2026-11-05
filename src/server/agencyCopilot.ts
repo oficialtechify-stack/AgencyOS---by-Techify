@@ -49,7 +49,7 @@ async function modelAnswer(system:string,conversation:{role:string;content:strin
   try{
    const gemini=new GoogleGenAI({apiKey:key});
    const response=await gemini.models.generateContent({
-    model:process.env.COPILOT_GEMINI_MODEL||'gemini-2.5-flash',
+    model:process.env.COPILOT_GEMINI_MODEL||'gemini-3.8-flash',
     contents:conversation.map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]})),
     config:{systemInstruction:system,temperature:0.35,maxOutputTokens:1250},
    });

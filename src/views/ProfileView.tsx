@@ -6,19 +6,13 @@ import {
   Phone,
   Instagram,
   Briefcase,
-  Building2,
   Clock,
-  ShieldCheck,
   Sparkles,
   Check,
   X,
   Upload,
-  QrCode,
-  Calendar,
-  Layers,
   Save,
   MessageSquare,
-  Globe,
   Share2,
 } from 'lucide-react';
 import { FirestoreUserProfile, cleanAvatarUrl } from '../lib/firebase';
@@ -46,7 +40,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [phone, setPhone] = useState(userProfile?.phone || '');
   const [whatsapp, setWhatsapp] = useState(userProfile?.whatsapp || '');
   const [instagram, setInstagram] = useState(userProfile?.instagram || '');
-  const [role, setRole] = useState(userProfile?.role || 'Especialista Digital');
+  const [role, setRole] = useState(userProfile?.role || '');
   const [department, setDepartment] = useState<string>(userProfile?.department || 'marketing');
   const [bio, setBio] = useState(userProfile?.bio || '');
   const [workStatus, setWorkStatus] = useState<'online' | 'busy' | 'lunch' | 'away' | 'offline'>(
@@ -191,6 +185,27 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   };
 
   const currentDept = departments.find((d) => d.id === department) || departments[0];
+
+  // Compartilhamento real do crachá: copia um resumo em texto para a área de transferência.
+  const handleCopyBadge = async () => {
+    const lines = [
+      name.trim() || '—',
+      role.trim() || '—',
+      currentDept.label,
+      email.trim() ? `E-mail: ${email.trim()}` : null,
+      phone.trim() ? `Telefone: ${phone.trim()}` : null,
+      whatsapp.trim() ? `WhatsApp: ${whatsapp.trim()}` : null,
+      instagram.trim() ? `Instagram: ${instagram.trim()}` : null,
+      userProfile?.agencyName ? `Agência: ${userProfile.agencyName}` : null,
+    ].filter((line): line is string => Boolean(line));
+    try {
+      await navigator.clipboard.writeText(lines.join('\n'));
+      setFeedback({ type: 'success', text: 'Crachá copiado. Cole onde quiser compartilhar.' });
+      setTimeout(() => setFeedback(null), 4000);
+    } catch (err) {
+      setFeedback({ type: 'error', text: 'Não foi possível copiar o crachá neste navegador.' });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#070707] text-white p-4 sm:p-6 lg:p-8 space-y-6">
@@ -415,18 +430,31 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
               <div>
                 <label className="text-xs font-bold text-neutral-300 block mb-1">
-                  Telefone / WhatsApp
+                  Telefone
                 </label>
                 <div className="relative">
                   <Phone className="w-4 h-4 text-neutral-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="tel"
                     placeholder="(81) 99999-9999"
-                    value={phone || whatsapp}
-                    onChange={(e) => {
-                      setPhone(e.target.value);
-                      setWhatsapp(e.target.value);
-                    }}
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-neutral-900 border border-neutral-800 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-neutral-300 block mb-1">
+                  WhatsApp
+                </label>
+                <div className="relative">
+                  <MessageSquare className="w-4 h-4 text-neutral-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="tel"
+                    placeholder="(81) 99999-9999"
+                    value={whatsapp}
+                    onChange={(e) => setWhatsapp(e.target.value)}
                     className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-neutral-900 border border-neutral-800 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-purple-500"
                   />
                 </div>
@@ -474,6 +502,19 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="text-xs font-bold text-neutral-300 block mb-1">
+                  Status personalizado
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: Em atendimento ao cliente Alpha"
+                  value={customStatus}
+                  onChange={(e) => setCustomStatus(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-900 border border-neutral-800 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-purple-500"
+                />
               </div>
 
               <div className="sm:col-span-2">
@@ -529,10 +570,22 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   </div>
                 </div>
 
-                <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[9px] font-black uppercase flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  Ativo
-                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[9px] font-black uppercase flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Ativo
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={handleCopyBadge}
+                    className="px-2 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-[10px] font-bold text-neutral-300 hover:text-white flex items-center gap-1 cursor-pointer transition-all"
+                    title="Copiar crachá como texto"
+                  >
+                    <Share2 className="w-3 h-3" />
+                    Copiar crachá
+                  </button>
+                </div>
               </div>
 
               {/* Photo & Role */}
@@ -552,10 +605,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
                 <div className="space-y-1 min-w-0">
                   <h3 className="text-base font-black text-white truncate leading-tight">
-                    {name || 'Nome do Colaborador'}
+                    {name || '—'}
                   </h3>
                   <div className="text-xs font-bold text-purple-400 truncate">
-                    {role || 'Especialista Digital'}
+                    {role || '—'}
                   </div>
                   <span
                     className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold border ${currentDept.color}`}
@@ -577,13 +630,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 <div>
                   <span className="text-neutral-500 text-[10px] block">Agência</span>
                   <strong className="text-white truncate block">
-                    {userProfile?.agencyName || 'Techify Digital'}
+                    {userProfile?.agencyName || '—'}
                   </strong>
                 </div>
                 <div>
                   <span className="text-neutral-500 text-[10px] block">Instagram</span>
                   <strong className="text-neutral-300 truncate block">
-                    {instagram || '@techify'}
+                    {instagram || '—'}
                   </strong>
                 </div>
               </div>

@@ -66,10 +66,10 @@ export const LandingView: React.FC<LandingViewProps> = ({
       headline: 'Previsibilidade total de caixa com MRR, ARR, LTV e CAC em tempo real',
       description: 'Diga adeus às planilhas desconectadas. Acompanhe entradas, saídas, inadimplência e a taxa de retenção dos seus clientes com conciliação automática.',
       metrics: [
-        { label: 'MRR Atual', val: 'R$ 48.500', change: '+14.2%' },
-        { label: 'LTV Médio', val: 'R$ 12.800', change: '+8.1%' },
-        { label: 'CAC Real', val: 'R$ 620', change: '-12.0%' },
-        { label: 'Churn Rate', val: '1.8%', change: '-0.4%' },
+        { label: 'MRR Atual', val: '—', change: '—' },
+        { label: 'LTV Médio', val: '—', change: '—' },
+        { label: 'CAC Real', val: '—', change: '—' },
+        { label: 'Churn Rate', val: '—', change: '—' },
       ],
       highlights: [
         'Demonstrativo de Resultado do Exercício (DRE) automático',
@@ -84,10 +84,10 @@ export const LandingView: React.FC<LandingViewProps> = ({
       headline: 'Gestão de mídia paga, ROAS por canal e funis de conversão',
       description: 'Monitore campanhas no Meta Ads, Google Ads e TikTok Ads com cálculo de ROAS real, CPL e taxa de conversão em cada etapa do funil.',
       metrics: [
-        { label: 'Investimento Mídia', val: 'R$ 32.400', change: 'Mês atual' },
-        { label: 'Receita Gerada', val: 'R$ 142.800', change: '4.41x ROAS' },
-        { label: 'Cliques Qualificados', val: '18.920', change: 'CPC R$ 1,71' },
-        { label: 'Leads Captados', val: '1.450', change: 'CPL R$ 22,34' },
+        { label: 'Investimento Mídia', val: '—', change: '—' },
+        { label: 'Receita Gerada', val: '—', change: '—' },
+        { label: 'Cliques Qualificados', val: '—', change: '—' },
+        { label: 'Leads Captados', val: '—', change: '—' },
       ],
       highlights: [
         'Comparativo de ROAS e ROI entre plataformas de anúncios',
@@ -102,10 +102,10 @@ export const LandingView: React.FC<LandingViewProps> = ({
       headline: 'Esteira de criativos com controle de briefings, prazos e aprovações',
       description: 'Organize pastas por cliente, aprove peças criativas com status rigorosos e exporte pacotes prontos para campanhas sem atritos.',
       metrics: [
-        { label: 'Projetos em Andamento', val: '24', change: 'No prazo' },
-        { label: 'Aprovados na 1ª Versão', val: '88%', change: '+12%' },
-        { label: 'Tempo Médio Entrega', val: '1.4 dias', change: '-35%' },
-        { label: 'Pacotes Entregues', val: '142', change: 'Neste trimestre' },
+        { label: 'Projetos em Andamento', val: '—', change: '—' },
+        { label: 'Aprovados na 1ª Versão', val: '—', change: '—' },
+        { label: 'Tempo Médio Entrega', val: '—', change: '—' },
+        { label: 'Pacotes Entregues', val: '—', change: '—' },
       ],
       highlights: [
         'Fluxo de aprovação: Briefing → Em Criação → Revisão Líder → Aprovado',
@@ -117,13 +117,13 @@ export const LandingView: React.FC<LandingViewProps> = ({
       id: 'crm',
       title: 'Maps Scraper & CRM',
       icon: MapPin,
-      headline: 'Prospecção ativa automatizada direto do Google Maps para o seu funil',
+      headline: 'Prospecção ativa de leads direto para o seu funil',
       description: 'Encontre negócios locais em qualquer cidade e segmento, filtre por nota e presença online, e importe contatos diretamente para o pipeline comercial.',
       metrics: [
-        { label: 'Leads Minerados/Mês', val: '2.500+', change: 'Sem limites' },
-        { label: 'Validação de Telefone', val: '96.4%', change: 'WhatsApp ativo' },
-        { label: 'Taxa de Resposta', val: '28.5%', change: 'Outbound' },
-        { label: 'Reuniões Agendadas', val: '46', change: 'Mês anterior' },
+        { label: 'Leads Minerados/Mês', val: '—', change: '—' },
+        { label: 'Validação de Telefone', val: '—', change: '—' },
+        { label: 'Taxa de Resposta', val: '—', change: '—' },
+        { label: 'Reuniões Agendadas', val: '—', change: '—' },
       ],
       highlights: [
         'Extração de telefones, e-mails, websites e perfis no Instagram',
@@ -135,13 +135,13 @@ export const LandingView: React.FC<LandingViewProps> = ({
       id: 'ia',
       title: 'IA Consultora Copilot',
       icon: Bot,
-      headline: 'Inteligência artificial com RAG conectada aos números da sua agência',
+      headline: 'Inteligência artificial conectada aos números da sua agência',
       description: 'Receba diagnósticos precisos sobre onde cortar custos, como melhorar a precificação de contratos e quais serviços ofertar para aumentar seu LTV.',
       metrics: [
-        { label: 'Tempo de Diagnóstico', val: '< 3 seg', change: 'Instantâneo' },
-        { label: 'Modelos de Consultoria', val: '12+', change: 'Especializados' },
-        { label: 'Análise de Margem', val: '100%', change: 'Em tempo real' },
-        { label: 'Sugestões de Upsell', val: 'Ativas', change: 'Por cliente' },
+        { label: 'Tempo de Diagnóstico', val: '—', change: '—' },
+        { label: 'Modelos de Consultoria', val: '—', change: '—' },
+        { label: 'Análise de Margem', val: '—', change: '—' },
+        { label: 'Sugestões de Upsell', val: '—', change: '—' },
       ],
       highlights: [
         'Consultoria orientada aos seus números reais de faturamento',
@@ -153,6 +153,10 @@ export const LandingView: React.FC<LandingViewProps> = ({
 
   const currentFeature = interactiveFeatures.find((f) => f.id === activeTab) || interactiveFeatures[0];
 
+  // Planos espelham PLAN_MODULES em src/lib/plans.ts (starter/professional/
+  // enterprise): os nomes e os módulos de cada plano vêm de lá. O plans.ts
+  // não define preços — os valores abaixo são a única fonte de preço do
+  // painel e coincidem com as mensalidades usadas no LeadsPayMasterView.
   const plans = [
     {
       name: 'Starter',
@@ -161,13 +165,10 @@ export const LandingView: React.FC<LandingViewProps> = ({
       priceAnnual: 157,
       popular: false,
       features: [
-        'Dashboard Financeiro (MRR, LTV, CAC, Churn)',
+        'Dashboard Geral',
         'Controle de Fluxo de Caixa & DRE',
         'Agenda de Reuniões & Compromissos',
-        'Calculadora de ROI & Rentabilidade',
         'Kanban de Tarefas e Projetos',
-        'Até 3 usuários na equipe',
-        'Suporte por e-mail e comunidade',
       ],
       cta: 'Iniciar 14 Dias Grátis',
       ctaStyle: 'bg-neutral-900 hover:bg-neutral-800 text-white border border-neutral-700',
@@ -184,11 +185,9 @@ export const LandingView: React.FC<LandingViewProps> = ({
         'Dashboard de Tráfego Pago (Meta & Google Ads)',
         'Hub de Marketing, Funis & Copywriting',
         'Hub do Designer com Fluxo de Aprovações',
-        'Maps Scraper B2B (Leads Ilimitados)',
-        'IA Consultora de Negócios (RAG Integrado)',
-        'Relatórios Executivos com 1 clique',
-        'Até 10 usuários com controle de permissões',
-        'Suporte prioritário via WhatsApp',
+        'Maps Scraper B2B',
+        'Prospecção & Fechamentos',
+        'Indicadores & KPIs',
       ],
       cta: 'Experimentar Plano Pro',
       ctaStyle: 'bg-white hover:bg-neutral-200 text-black font-extrabold',
@@ -201,13 +200,9 @@ export const LandingView: React.FC<LandingViewProps> = ({
       popular: false,
       features: [
         'Tudo incluso no plano Professional',
-        'Usuários e Colaboradores Ilimitados',
-        'Social Hub Completo (Instagram & WhatsApp)',
-        'Controle Avançado de Estoque e Suprimentos',
-        'Painel Master de Administração & Multi-Agência',
-        'Auditoria de Logs e Segurança Avançada',
-        'Onboarding personalizado com nosso time',
-        'SLA de 99.9% e Gerente de Contas Dedicado',
+        'Ponto Eletrônico',
+        'Social Hub Completo',
+        'Controle de Estoque e Suprimentos',
       ],
       cta: 'Contratar Enterprise',
       ctaStyle: 'bg-neutral-900 hover:bg-neutral-800 text-white border border-neutral-700',
@@ -233,7 +228,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
     },
     {
       q: 'Como funciona o Maps Scraper de Leads?',
-      a: 'O módulo pesquisa diretamente estabelecimentos no Google Maps conforme a cidade e nicho selecionados (ex: "Clínicas Odontológicas em Curitiba"), capturando telefones, endereços, websites e links sociais prontos para prospecção.',
+      a: 'O módulo busca estabelecimentos a partir de um cadastro interno de demonstração e de dados do OpenStreetMap, com apoio de IA — ele não consulta o Google Maps diretamente. Para conferir um endereço no Google Maps, use os links de busca direta da tela do Scraper, que abrem a pesquisa no navegador.',
     },
   ];
 
@@ -330,7 +325,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
             onClick={handleLogin}
             className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
           >
-            <span>Acessar Painel Demonstração</span>
+            <span>Acessar Painel</span>
             <ArrowRight className="w-4 h-4 text-neutral-400" />
           </button>
         </div>
@@ -450,7 +445,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
 
             <div className="p-3 rounded-lg bg-[#181818] border border-neutral-800 text-[11px] text-neutral-400 flex items-center justify-between">
               <span>Sincronização com Firestore e Auth</span>
-              <span className="text-white font-bold font-mono">Conectado (99.9% SLA)</span>
+              <span className="text-white font-bold font-mono">—</span>
             </div>
           </div>
         </div>
@@ -518,7 +513,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
               </li>
               <li className="flex items-start gap-2.5">
                 <CheckCircle2 className="w-4 h-4 text-white shrink-0 mt-0.5" />
-                <span>Mineração de contatos qualificados no Google Maps direto para o Kanban de vendas.</span>
+                <span>Mineração de contatos direto para o Kanban de vendas.</span>
               </li>
             </ul>
           </div>

@@ -83,7 +83,7 @@ async function createStoryboard(brief:string,aspect:Aspect,duration:number){
  let content='';
  if(process.env.GEMINI_API_KEY){
   try{const client=new GoogleGenAI({apiKey:process.env.GEMINI_API_KEY});
-   const result=await client.models.generateContent({model:'gemini-2.5-flash',contents:prompt,
+   const result=await client.models.generateContent({model:'gemini-3.8-flash',contents:prompt,
     config:{responseMimeType:'application/json',temperature:.45}});
    content=result.text||'';
   }catch{console.warn('HyperFrames: Gemini temporarily unavailable');}

@@ -40,7 +40,6 @@ import { EditTimeClockModal } from '../components/timeclock/EditTimeClockModal';
 import { ManualPunchModal } from '../components/timeclock/ManualPunchModal';
 import { InspectTimeClockModal } from '../components/timeclock/InspectTimeClockModal';
 import {
-  DEFAULT_WORK_SCHEDULES,
   getEmployeeSchedule,
   getRoleBadgeStyle,
   getStrictSequentialStatus,
@@ -86,6 +85,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
   const [recordToInspect, setRecordToInspect] = useState<TimeClockRecord | null>(null);
   const [recordToDelete, setRecordToDelete] = useState<TimeClockRecord | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [exportMsg, setExportMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Exclusive Master Admin Permission check
   const userEmail = userProfile?.email || '';
@@ -234,7 +234,7 @@ export const PontoView: React.FC<PontoViewProps> = ({
     const recordsToExport = (isMaster && activeTab === 'equipe' ? filteredTeamRecords : myRecords)
       .filter((r) => (r.date || '').startsWith(selectedMonth));
     if (recordsToExport.length === 0) {
-      alert('Nenhum registro para exportar.');
+      setExportMsg({ type: 'error', text: 'Nenhum registro para exportar neste mês.' });
       return;
     }
 
@@ -286,6 +286,10 @@ export const PontoView: React.FC<PontoViewProps> = ({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    setExportMsg({
+      type: 'success',
+      text: `Espelho de ponto exportado (${recordsToExport.length} registro${recordsToExport.length === 1 ? '' : 's'}).`,
+    });
   };
 
   const stepsList = [
@@ -399,6 +403,25 @@ export const PontoView: React.FC<PontoViewProps> = ({
           </div>
         </div>
       </section>
+
+      {/* Export feedback (na tela, sem alert) */}
+      {exportMsg && (
+        <div
+          className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-xs font-bold ${
+            exportMsg.type === 'success'
+              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+              : 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+          }`}
+        >
+          <span className="flex items-center gap-2">
+            {exportMsg.type === 'success' ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <AlertTriangle className="h-4 w-4 shrink-0" />}
+            {exportMsg.text}
+          </span>
+          <button type="button" onClick={() => setExportMsg(null)} className="text-slate-400 hover:text-white shrink-0" aria-label="Fechar aviso">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {/* Summary cards. No invented attendance, GPS, hours or schedule metrics. */}
       <section aria-label="Resumo do ponto" className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5 sm:gap-4">

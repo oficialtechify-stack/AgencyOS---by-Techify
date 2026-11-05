@@ -1,19 +1,22 @@
 import React, { useState } from 'react';
-import { Megaphone, Plus, Trash2, TrendingUp, DollarSign, MousePointer, Target } from 'lucide-react';
+import { Megaphone, Plus, Trash2, TrendingUp, DollarSign, MousePointer, Target, Pause, Play, Pencil, CheckCircle2 } from 'lucide-react';
 import { AdCampaign } from '../types';
 
 interface CampanhasViewProps {
   campaigns?: AdCampaign[];
   onAddCampaign?: (campaign: Omit<AdCampaign, 'id'>) => void;
+  onUpdateCampaign?: (id: string, updates: Partial<AdCampaign>) => void;
   onDeleteCampaign?: (id: string) => void;
 }
 
 export const CampanhasView: React.FC<CampanhasViewProps> = ({
   campaigns = [],
   onAddCampaign,
+  onUpdateCampaign,
   onDeleteCampaign,
 }) => {
   const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [platform, setPlatform] = useState<'Meta Ads' | 'Google Ads' | 'TikTok Ads' | 'LinkedIn Ads'>('Meta Ads');
   const [spend, setSpend] = useState('');
@@ -25,7 +28,32 @@ export const CampanhasView: React.FC<CampanhasViewProps> = ({
   const totalRevenue = campaigns.reduce((acc, c) => acc + c.revenue, 0);
   const totalClicks = campaigns.reduce((acc, c) => acc + c.clicks, 0);
   const totalConversions = campaigns.reduce((acc, c) => acc + c.conversions, 0);
-  const avgRoas = totalSpend > 0 ? (totalRevenue / totalSpend).toFixed(2) : '0.00';
+  // Sem investimento registrado não há ROAS: "—" em vez de 0.00x.
+  const avgRoas: number | null = totalSpend > 0 ? totalRevenue / totalSpend : null;
+
+  const cpl = (c: AdCampaign): number | null =>
+    c.conversions > 0 ? c.spend / c.conversions : null;
+
+  const openNewCampaign = () => {
+    setEditingId(null);
+    setName('');
+    setSpend('');
+    setRevenue('');
+    setClicks('');
+    setConversions('');
+    setShowModal(true);
+  };
+
+  const openEditCampaign = (c: AdCampaign) => {
+    setEditingId(c.id);
+    setName(c.name);
+    setPlatform(c.platform);
+    setSpend(String(c.spend));
+    setRevenue(String(c.revenue));
+    setClicks(String(c.clicks));
+    setConversions(String(c.conversions));
+    setShowModal(true);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +64,19 @@ export const CampanhasView: React.FC<CampanhasViewProps> = ({
     const conv = parseInt(conversions) || 0;
     const roasCalc = sp > 0 ? parseFloat((rev / sp).toFixed(2)) : 0;
 
-    if (onAddCampaign) {
+    if (editingId) {
+      if (onUpdateCampaign) {
+        onUpdateCampaign(editingId, {
+          name: name.trim(),
+          platform,
+          spend: sp,
+          revenue: rev,
+          roas: roasCalc,
+          clicks: clk,
+          conversions: conv,
+        });
+      }
+    } else if (onAddCampaign) {
       onAddCampaign({
         name: name.trim(),
         platform,
@@ -50,6 +90,7 @@ export const CampanhasView: React.FC<CampanhasViewProps> = ({
     }
 
     setShowModal(false);
+    setEditingId(null);
     setName('');
     setSpend('');
     setRevenue('');
@@ -88,7 +129,7 @@ export const CampanhasView: React.FC<CampanhasViewProps> = ({
             <span>ROAS MÉDIO</span>
             <Target className="w-4 h-4 text-white" />
           </div>
-          <div className="text-2xl font-black text-white">{avgRoas}x</div>
+          <div className="text-2xl font-black text-white">{avgRoas !== null ? `${avgRoas.toFixed(2)}x` : '—'}</div>
           <p className="text-[10px] text-neutral-500">Multiplicador do investimento</p>
         </div>
 
@@ -117,7 +158,7 @@ export const CampanhasView: React.FC<CampanhasViewProps> = ({
           <Megaphone className="w-5 h-5 text-white" /> Gestão de Anúncios & Performance
         </h3>
         <button
-          onClick={() => setShowModal(true)}
+          onClick={openNewCampaign}
           className="px-4 py-2 rounded-xl bg-white hover:bg-neutral-200 text-black font-extrabold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all"
         >
           <Plus className="w-4 h-4" /> + Nova Campanha
@@ -142,6 +183,7 @@ export const CampanhasView: React.FC<CampanhasViewProps> = ({
                   <th className="p-3">ROAS</th>
                   <th className="p-3">Cliques</th>
                   <th className="p-3">Conversões</th>
+                  <th className="p-3">CPL (R$)</th>
                   <th className="p-3">Status</th>
                   <th className="p-3 text-right rounded-r-lg">Ação</th>
                 </tr>
@@ -161,22 +203,65 @@ export const CampanhasView: React.FC<CampanhasViewProps> = ({
                     <td className="p-3 font-bold text-white">
                       R$ {c.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </td>
-                    <td className="p-3 font-extrabold text-white">{c.roas}x</td>
+                    <td className="p-3 font-extrabold text-white">{c.spend > 0 ? `${c.roas}x` : '—'}</td>
                     <td className="p-3 text-neutral-300">{c.clicks.toLocaleString('pt-BR')}</td>
                     <td className="p-3 text-neutral-300">{c.conversions.toLocaleString('pt-BR')}</td>
+                    <td className="p-3 text-neutral-300">
+                      {cpl(c) !== null ? `R$ ${cpl(c)!.toFixed(2)}` : '—'}
+                    </td>
                     <td className="p-3">
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-neutral-900 border border-neutral-700 text-white">
                         {c.status}
                       </span>
                     </td>
                     <td className="p-3 text-right">
-                      <button
-                        onClick={() => onDeleteCampaign && onDeleteCampaign(c.id)}
-                        className="p-1.5 text-neutral-500 hover:text-white hover:bg-neutral-800 rounded transition-colors cursor-pointer"
-                        title="Excluir campanha"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center justify-end gap-1">
+                        {onUpdateCampaign && (
+                          <>
+                            <button
+                              onClick={() => openEditCampaign(c)}
+                              className="p-1.5 text-neutral-500 hover:text-white hover:bg-neutral-800 rounded transition-colors cursor-pointer"
+                              title="Editar campanha"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            {c.status === 'Ativa' && (
+                              <button
+                                onClick={() => onUpdateCampaign(c.id, { status: 'Pausada' })}
+                                className="p-1.5 text-neutral-500 hover:text-white hover:bg-neutral-800 rounded transition-colors cursor-pointer"
+                                title="Pausar campanha"
+                              >
+                                <Pause className="w-4 h-4" />
+                              </button>
+                            )}
+                            {c.status === 'Pausada' && (
+                              <button
+                                onClick={() => onUpdateCampaign(c.id, { status: 'Ativa' })}
+                                className="p-1.5 text-neutral-500 hover:text-white hover:bg-neutral-800 rounded transition-colors cursor-pointer"
+                                title="Retomar campanha"
+                              >
+                                <Play className="w-4 h-4" />
+                              </button>
+                            )}
+                            {c.status !== 'Finalizada' && (
+                              <button
+                                onClick={() => onUpdateCampaign(c.id, { status: 'Finalizada' })}
+                                className="p-1.5 text-neutral-500 hover:text-white hover:bg-neutral-800 rounded transition-colors cursor-pointer"
+                                title="Finalizar campanha"
+                              >
+                                <CheckCircle2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </>
+                        )}
+                        <button
+                          onClick={() => onDeleteCampaign && onDeleteCampaign(c.id)}
+                          className="p-1.5 text-neutral-500 hover:text-white hover:bg-neutral-800 rounded transition-colors cursor-pointer"
+                          title="Excluir campanha"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -190,7 +275,7 @@ export const CampanhasView: React.FC<CampanhasViewProps> = ({
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
           <div className="w-full max-w-md bg-[#0e0e0e] border border-neutral-700 rounded-2xl p-6 shadow-2xl space-y-4">
-            <h3 className="text-base font-bold text-white">Cadastrar Campanha de Tráfego</h3>
+            <h3 className="text-base font-bold text-white">{editingId ? 'Editar Campanha de Tráfego' : 'Cadastrar Campanha de Tráfego'}</h3>
 
             <form onSubmit={handleSubmit} className="space-y-3 text-xs">
               <div>
@@ -200,7 +285,7 @@ export const CampanhasView: React.FC<CampanhasViewProps> = ({
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Ex: Meta Ads Conversão Whatsapp"
+                  placeholder="Ex: Campanha de lançamento"
                   className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-white placeholder-neutral-500 focus:outline-none focus:border-white"
                 />
               </div>
@@ -272,7 +357,10 @@ export const CampanhasView: React.FC<CampanhasViewProps> = ({
               <div className="flex items-center justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={() => {
+                    setShowModal(false);
+                    setEditingId(null);
+                  }}
                   className="px-4 py-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white cursor-pointer"
                 >
                   Cancelar
@@ -281,7 +369,7 @@ export const CampanhasView: React.FC<CampanhasViewProps> = ({
                   type="submit"
                   className="px-4 py-2 rounded-xl bg-white hover:bg-neutral-200 text-black font-extrabold cursor-pointer"
                 >
-                  Salvar Campanha
+                  {editingId ? 'Salvar Alterações' : 'Salvar Campanha'}
                 </button>
               </div>
             </form>

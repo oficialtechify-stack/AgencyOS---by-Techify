@@ -125,6 +125,8 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
 
     let createdGoogleEventId: string | undefined = undefined;
     let createdHtmlLink: string | undefined = undefined;
+    let googleSyncFailed = false;
+    let googleErrorMsg = '';
 
     const token = getCachedGoogleAccessToken();
     if (syncWithGoogleCheck && token) {
@@ -134,12 +136,15 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
           client: client.trim() || 'Cliente Prospect',
           date,
           time,
-          meetUrl: meetUrl.trim() || 'https://meet.google.com/new',
+          meetUrl: meetUrl.trim() || undefined,
         });
         createdGoogleEventId = gEvent.id;
         createdHtmlLink = gEvent.htmlLink;
-      } catch (err) {
+      } catch (err: any) {
         console.error('Erro ao salvar no Google Calendar:', err);
+        // Falha no Google não é engolida: o evento fica só local e o erro aparece na tela.
+        googleSyncFailed = true;
+        googleErrorMsg = err?.message ? `: ${err.message}` : '';
       }
     }
 
@@ -150,8 +155,8 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
         date,
         time,
         type,
-        meetUrl: meetUrl.trim() || 'https://meet.google.com/new',
-        status: createdGoogleEventId ? 'Sincronizado' : 'Agendado',
+        meetUrl: meetUrl.trim() || undefined,
+        status: createdGoogleEventId ? 'Sincronizado' : googleSyncFailed ? 'Só local' : 'Agendado',
         googleEventId: createdGoogleEventId,
         htmlLink: createdHtmlLink,
         syncWithGoogle: !!createdGoogleEventId,
@@ -162,6 +167,12 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
     setTitle('');
     setClient('');
     setMeetUrl('');
+
+    if (googleSyncFailed) {
+      setSyncStatusMsg(
+        `Falha ao salvar no Google Calendar${googleErrorMsg}. Evento salvo só localmente — não foi agendado no Google.`
+      );
+    }
 
     if (token) {
       fetchGoogleEvents(token);
@@ -331,6 +342,14 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                       Google
                     </span>
                   )}
+                  {ev.status === 'Só local' && (
+                    <span
+                      title="Salvo só nesta agenda — não foi criado no Google Calendar"
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-950/60 text-amber-300 border border-amber-500/20 shrink-0"
+                    >
+                      Só local
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-1.5 text-xs text-neutral-400">
@@ -341,14 +360,18 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
 
               <div className="flex items-center justify-between pt-3 border-t border-neutral-800 gap-2">
                 <div className="flex items-center gap-2">
-                  <a
-                    href={ev.meetUrl || 'https://meet.google.com/new'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3 py-1.5 rounded-lg bg-neutral-900 hover:bg-white text-neutral-300 hover:text-black font-bold text-xs flex items-center gap-1.5 border border-neutral-700 transition-colors"
-                  >
-                    <Video className="w-3.5 h-3.5" /> Entrar na Sala
-                  </a>
+                  {ev.meetUrl ? (
+                    <a
+                      href={ev.meetUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 rounded-lg bg-neutral-900 hover:bg-white text-neutral-300 hover:text-black font-bold text-xs flex items-center gap-1.5 border border-neutral-700 transition-colors"
+                    >
+                      <Video className="w-3.5 h-3.5" /> Entrar na Sala
+                    </a>
+                  ) : (
+                    <span className="px-3 py-1.5 text-xs text-neutral-600">Sem link de reunião</span>
+                  )}
 
                   {ev.htmlLink && (
                     <a
@@ -503,7 +526,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                   type="url"
                   value={meetUrl}
                   onChange={(e) => setMeetUrl(e.target.value)}
-                  placeholder="https://meet.google.com/new"
+                  placeholder="Cole o link da sala (opcional)"
                   className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-white placeholder-neutral-500 focus:outline-none focus:border-white"
                 />
               </div>

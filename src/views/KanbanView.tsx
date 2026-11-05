@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Kanban, Plus, Trash2, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Kanban, Plus, Trash2, ArrowRight, ArrowLeft, Pencil, AlertCircle } from 'lucide-react';
 import { KanbanTask } from '../types';
 
 interface KanbanViewProps {
   tasks?: KanbanTask[];
   onAddTask?: (task: Omit<KanbanTask, 'id'>) => void;
+  onUpdateTask?: (id: string, data: Partial<Omit<KanbanTask, 'id'>>) => void;
   onUpdateTaskStatus?: (id: string, status: KanbanTask['status']) => void;
   onDeleteTask?: (id: string) => void;
 }
@@ -12,6 +13,7 @@ interface KanbanViewProps {
 export const KanbanView: React.FC<KanbanViewProps> = ({
   tasks = [],
   onAddTask,
+  onUpdateTask,
   onUpdateTaskStatus,
   onDeleteTask,
 }) => {
@@ -20,16 +22,50 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
   const [client, setClient] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<'Baixa' | 'Média' | 'Alta'>('Média');
+  const [taskToEdit, setTaskToEdit] = useState<KanbanTask | null>(null);
+  const [taskToDelete, setTaskToDelete] = useState<KanbanTask | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const columns: KanbanTask['status'][] = ['Backlog', 'Em Andamento', 'Revisão', 'Concluído'];
 
   const getTaskCount = (status: KanbanTask['status']) =>
     tasks.filter((t) => t.status === status).length;
 
+  const resetForm = () => {
+    setTitle('');
+    setClient('');
+    setDescription('');
+    setPriority('Média');
+    setTaskToEdit(null);
+  };
+
+  const openCreateModal = () => {
+    resetForm();
+    setShowModal(true);
+  };
+
+  const openEditModal = (task: KanbanTask) => {
+    setTaskToEdit(task);
+    setTitle(task.title);
+    setClient(task.client);
+    setDescription(task.description);
+    setPriority(task.priority);
+    setShowModal(true);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
-    if (onAddTask) {
+    if (taskToEdit) {
+      if (onUpdateTask) {
+        onUpdateTask(taskToEdit.id, {
+          title: title.trim(),
+          client: client.trim() || 'Interno',
+          description: description.trim() || 'Sem descrição.',
+          priority,
+        });
+      }
+    } else if (onAddTask) {
       onAddTask({
         title: title.trim(),
         client: client.trim() || 'Interno',
@@ -39,9 +75,18 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
       });
     }
     setShowModal(false);
-    setTitle('');
-    setClient('');
-    setDescription('');
+    resetForm();
+  };
+
+  const confirmDeleteTask = () => {
+    if (!taskToDelete || !onDeleteTask) return;
+    setIsDeleting(true);
+    try {
+      onDeleteTask(taskToDelete.id);
+    } finally {
+      setIsDeleting(false);
+      setTaskToDelete(null);
+    }
   };
 
   const getNextStatus = (current: KanbanTask['status']): KanbanTask['status'] | null => {
@@ -74,7 +119,7 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
           <Kanban className="w-5 h-5 text-white" /> Projetos & Demandas
         </h3>
         <button
-          onClick={() => setShowModal(true)}
+          onClick={openCreateModal}
           className="px-4 py-2 rounded-xl bg-white hover:bg-neutral-200 text-black font-extrabold text-xs flex items-center gap-1.5 shadow-md cursor-pointer transition-all"
         >
           <Plus className="w-4 h-4" /> + Novo Projeto
@@ -145,12 +190,22 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
                             )}
                           </div>
 
-                          <button
-                            onClick={() => onDeleteTask && onDeleteTask(t.id)}
-                            className="p-1 text-neutral-500 hover:text-white cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => openEditModal(t)}
+                              title="Editar projeto"
+                              className="p-1 rounded bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white cursor-pointer"
+                            >
+                              <Pencil className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={() => setTaskToDelete(t)}
+                              title="Excluir projeto"
+                              className="p-1 text-neutral-500 hover:text-rose-400 cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );
@@ -162,11 +217,13 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
         })}
       </div>
 
-      {/* Add Task Modal */}
+      {/* Add / Edit Task Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
           <div className="w-full max-w-md bg-[#0e0e0e] border border-neutral-700 rounded-2xl p-6 shadow-2xl space-y-4">
-            <h3 className="text-base font-bold text-white">Criar Novo Projeto / Tarefa</h3>
+            <h3 className="text-base font-bold text-white">
+              {taskToEdit ? 'Editar Projeto / Tarefa' : 'Criar Novo Projeto / Tarefa'}
+            </h3>
 
             <form onSubmit={handleSubmit} className="space-y-3 text-xs">
               <div>
@@ -219,7 +276,10 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
               <div className="flex items-center justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={() => {
+                    setShowModal(false);
+                    resetForm();
+                  }}
                   className="px-4 py-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white cursor-pointer"
                 >
                   Cancelar
@@ -228,10 +288,51 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
                   type="submit"
                   className="px-4 py-2 rounded-xl bg-white hover:bg-neutral-200 text-black font-extrabold cursor-pointer"
                 >
-                  Criar Projeto
+                  {taskToEdit ? 'Salvar Alterações' : 'Criar Projeto'}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {taskToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-md bg-[#121212] border border-neutral-700 rounded-2xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-rose-400">
+              <AlertCircle className="w-6 h-6 shrink-0" />
+              <h3 className="text-base font-bold text-white">Confirmar Exclusão de Projeto</h3>
+            </div>
+
+            <p className="text-xs text-neutral-300 leading-relaxed">
+              Você tem certeza de que deseja excluir o projeto{' '}
+              <strong className="text-white">"{taskToDelete.title}"</strong>
+              {taskToDelete.client ? (
+                <span> ({taskToDelete.client})</span>
+              ) : null}
+              ? Esta ação não pode ser desfeita.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-3">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setTaskToDelete(null)}
+                className="px-4 py-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-neutral-300 text-xs font-semibold cursor-pointer transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={confirmDeleteTask}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors disabled:opacity-50"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                {isDeleting ? 'Excluindo...' : 'Confirmar e Excluir'}
+              </button>
+            </div>
           </div>
         </div>
       )}

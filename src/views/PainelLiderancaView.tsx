@@ -121,18 +121,29 @@ export const PainelLiderancaView: React.FC<PainelLiderancaViewProps> = ({
   // Modals state
   const [showAddGoalModal, setShowAddGoalModal] = useState(false);
   const [showAddNoticeModal, setShowAddNoticeModal] = useState(false);
+  const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
+
+  // Nova meta nasce no mês corrente (período + último dia do mês como prazo).
+  const defaultNewGoal = () => {
+    const now = new Date();
+    const periodRaw = now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    const period = periodRaw.charAt(0).toUpperCase() + periodRaw.slice(1);
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const dueDate = `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
+    return {
+      title: '',
+      targetRole: (isPros ? 'lider_prospeccao' : isMkt ? 'lider_marketing' : 'todos') as LeadershipGoal['targetRole'],
+      metricType: 'leads' as LeadershipGoal['metricType'],
+      targetValue: 100,
+      currentValue: 0,
+      unit: 'unidades',
+      period,
+      dueDate,
+    };
+  };
 
   // New Goal Form
-  const [newGoal, setNewGoal] = useState({
-    title: '',
-    targetRole: (isPros ? 'lider_prospeccao' : isMkt ? 'lider_marketing' : 'todos') as LeadershipGoal['targetRole'],
-    metricType: 'leads' as LeadershipGoal['metricType'],
-    targetValue: 100,
-    currentValue: 0,
-    unit: 'unidades',
-    period: 'Agosto 2026',
-    dueDate: '2026-08-31',
-  });
+  const [newGoal, setNewGoal] = useState(defaultNewGoal);
 
   // New Notice Form
   const [newNotice, setNewNotice] = useState({
@@ -155,7 +166,9 @@ export const PainelLiderancaView: React.FC<PainelLiderancaViewProps> = ({
 
     const roasAverage: number | null = totalSpent > 0 ? totalRevenue / totalSpent : null;
 
-    const totalCampaignLeads = campaigns.reduce((acc, c) => acc + (c.leads || 0), 0) +
+    // Leads de campanha: `leads` quando registrado, senão `conversions`
+    // (o cadastro de campanha trata conversões como leads gerados).
+    const totalCampaignLeads = campaigns.reduce((acc, c) => acc + (c.leads ?? c.conversions ?? 0), 0) +
       marketingCampaigns.reduce((acc, c) => acc + (c.leadsGenerated || 0), 0);
 
     const totalFunnelLeads = marketingFunnels.reduce((acc, f) => acc + (f.leads || 0), 0);
@@ -185,27 +198,58 @@ export const PainelLiderancaView: React.FC<PainelLiderancaViewProps> = ({
     };
   }, [campaigns, marketingCampaigns, marketingFunnels, socialPosts, marketingEditorials, marketingEmailFlows, marketingCopies]);
 
+  // Aba Marketing: contador e lista cobrem as MESMAS campanhas — tráfego pago
+  // (AdCampaign) + campanhas de marketing — normalizadas para exibição.
+  const trafficCampaigns = useMemo(() => [
+    ...campaigns.map((c) => ({
+      id: c.id,
+      name: c.name,
+      platform: c.platform,
+      spent: c.spent,
+      roas: typeof c.roas === 'number' && Number.isFinite(c.roas) ? c.roas : null,
+      leads: c.leads ?? c.conversions ?? 0,
+    })),
+    ...marketingCampaigns.map((c) => ({
+      id: c.id,
+      name: c.title,
+      platform: c.channel,
+      spent: c.spent,
+      roas: c.spent > 0 ? c.revenue / c.spent : null,
+      leads: c.leadsGenerated ?? 0,
+    })),
+  ], [campaigns, marketingCampaigns]);
+
   // ==========================================
   // PROSPECTING & SALES METRICS CALCULATIONS
   // ==========================================
+  // CRMLead não tem campo de valor no tipo: só soma quando o registro traz
+  // contractValue/value (dados legados). Lead sem valor vale "—", nunca R$ 3.500.
+  const leadValue = (l: CRMLead): number | null => {
+    const raw = l as unknown as { contractValue?: unknown; value?: unknown };
+    const n = typeof raw.contractValue === 'number' ? raw.contractValue
+      : typeof raw.value === 'number' ? raw.value : null;
+    return n !== null && Number.isFinite(n) && n >= 0 ? n : null;
+  };
+
   const prosMetrics = useMemo(() => {
     const totalLeads = leads.length;
     const contactedLeads = leads.filter((l) => l.status === 'Contactado' || l.status === 'Em Negociação' || l.status === 'Cliente Fechado').length;
     const inNegotiationLeads = leads.filter((l) => l.status === 'Em Negociação').length;
     const closedLeads = leads.filter((l) => l.status === 'Cliente Fechado').length;
 
-    const totalPipelineValue = leads
-      .filter((l) => l.status === 'Em Negociação' || l.status === 'Cliente Fechado')
-      .reduce((acc, l) => acc + (l.contractValue || l.value || 3500), 0);
+    const pipelineLeads = leads.filter((l) => l.status === 'Em Negociação' || l.status === 'Cliente Fechado');
+    const totalPipelineValue = pipelineLeads.reduce((acc, l) => acc + (leadValue(l) ?? 0), 0);
+    const hasPipelineValue = pipelineLeads.some((l) => leadValue(l) !== null);
 
     const closedRevenue = leads
       .filter((l) => l.status === 'Cliente Fechado')
-      .reduce((acc, l) => acc + (l.contractValue || l.value || 3500), 0);
+      .reduce((acc, l) => acc + (leadValue(l) ?? 0), 0);
 
     const scheduledMeetingsCount = events.filter((e) => e.type === 'Fechamento' || e.type === 'Prospecção' || e.type === 'Alinhamento').length;
 
-    const conversionRate = totalLeads > 0 ? (closedLeads / totalLeads) * 100 : 8.4;
-    const contactRate = totalLeads > 0 ? (contactedLeads / totalLeads) * 100 : 62.5;
+    // Sem leads não há taxa: "—" em vez de percentual inventado.
+    const conversionRate: number | null = totalLeads > 0 ? (closedLeads / totalLeads) * 100 : null;
+    const contactRate: number | null = totalLeads > 0 ? (contactedLeads / totalLeads) * 100 : null;
 
     return {
       totalLeads,
@@ -213,6 +257,7 @@ export const PainelLiderancaView: React.FC<PainelLiderancaViewProps> = ({
       inNegotiationLeads,
       closedLeads,
       totalPipelineValue,
+      hasPipelineValue,
       closedRevenue,
       scheduledMeetingsCount,
       conversionRate,
@@ -267,12 +312,45 @@ export const PainelLiderancaView: React.FC<PainelLiderancaViewProps> = ({
     });
   }, [todayPunchRecords]);
 
+  const closeGoalModal = () => {
+    setShowAddGoalModal(false);
+    setEditingGoalId(null);
+  };
+
+  const openNewGoalModal = () => {
+    setEditingGoalId(null);
+    setNewGoal(defaultNewGoal());
+    setShowAddGoalModal(true);
+  };
+
+  const openEditGoalModal = (goal: LeadershipGoal) => {
+    setEditingGoalId(goal.id);
+    setNewGoal({
+      title: goal.title,
+      targetRole: goal.targetRole,
+      metricType: goal.metricType,
+      targetValue: goal.targetValue,
+      currentValue: goal.currentValue,
+      unit: goal.unit,
+      period: goal.period,
+      dueDate: goal.dueDate,
+    });
+    setShowAddGoalModal(true);
+  };
+
   // Handle submit new Goal
   const handleSubmitGoal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newGoal.title.trim()) return;
 
-    if (onAddGoal) {
+    if (editingGoalId) {
+      if (onUpdateGoal) {
+        await onUpdateGoal(editingGoalId, {
+          ...newGoal,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+    } else if (onAddGoal) {
       await onAddGoal({
         ...newGoal,
         id: `goal-${Date.now()}`,
@@ -281,17 +359,8 @@ export const PainelLiderancaView: React.FC<PainelLiderancaViewProps> = ({
       });
     }
 
-    setShowAddGoalModal(false);
-    setNewGoal({
-      title: '',
-      targetRole: (isPros ? 'lider_prospeccao' : isMkt ? 'lider_marketing' : 'todos'),
-      metricType: 'leads',
-      targetValue: 100,
-      currentValue: 0,
-      unit: 'unidades',
-      period: 'Agosto 2026',
-      dueDate: '2026-08-31',
-    });
+    closeGoalModal();
+    setNewGoal(defaultNewGoal());
   };
 
   // Handle submit new Notice
@@ -366,7 +435,7 @@ export const PainelLiderancaView: React.FC<PainelLiderancaViewProps> = ({
 
           <button
             type="button"
-            onClick={() => setShowAddGoalModal(true)}
+            onClick={openNewGoalModal}
             className="px-4 py-2.5 rounded-2xl bg-white hover:bg-neutral-200 text-black font-black text-xs transition-all shadow-md flex items-center gap-2 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
@@ -569,7 +638,7 @@ export const PainelLiderancaView: React.FC<PainelLiderancaViewProps> = ({
               <div className="flex items-center justify-between">
                 <span className="font-extrabold text-white text-sm flex items-center gap-2">
                   <Megaphone className="w-4 h-4 text-white" />
-                  Campanhas de Tráfego ({campaigns.length + marketingCampaigns.length})
+                  Campanhas de Tráfego ({trafficCampaigns.length})
                 </span>
                 <button
                   type="button"
@@ -581,7 +650,12 @@ export const PainelLiderancaView: React.FC<PainelLiderancaViewProps> = ({
               </div>
 
               <div className="space-y-2.5 max-h-80 overflow-y-auto pr-1 custom-scrollbar">
-                {campaigns.slice(0, 5).map((c) => (
+                {trafficCampaigns.length === 0 ? (
+                  <div className="p-6 text-center text-neutral-500 text-xs rounded-2xl bg-neutral-950 border border-neutral-800">
+                    Nenhuma campanha cadastrada.
+                  </div>
+                ) : (
+                  trafficCampaigns.slice(0, 5).map((c) => (
                   <div key={c.id} className="p-3.5 rounded-2xl bg-neutral-950 border border-neutral-800 text-xs flex items-center justify-between gap-3">
                     <div>
                       <div className="font-bold text-white text-xs">{c.name}</div>
@@ -593,11 +667,12 @@ export const PainelLiderancaView: React.FC<PainelLiderancaViewProps> = ({
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="text-xs font-black text-white font-mono">{c.roas}x ROAS</div>
+                      <div className="text-xs font-black text-white font-mono">{c.roas !== null ? `${c.roas.toFixed(2)}x ROAS` : '—'}</div>
                       <div className="text-[10px] text-neutral-400">{c.leads} leads</div>
                     </div>
                   </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
 
@@ -653,7 +728,7 @@ export const PainelLiderancaView: React.FC<PainelLiderancaViewProps> = ({
                 {prosMetrics.totalLeads}
               </div>
               <div className="text-[11px] text-neutral-400 mt-1">
-                {prosMetrics.contactedLeads} contactados ({prosMetrics.contactRate.toFixed(1)}%)
+                {prosMetrics.contactedLeads} contactados ({prosMetrics.contactRate !== null ? `${prosMetrics.contactRate.toFixed(1)}%` : '—'})
               </div>
             </div>
 
@@ -676,7 +751,7 @@ export const PainelLiderancaView: React.FC<PainelLiderancaViewProps> = ({
                 <DollarSign className="w-4 h-4 text-white" />
               </div>
               <div className="text-3xl font-black text-white tracking-tight">
-                R$ {prosMetrics.totalPipelineValue.toLocaleString('pt-BR')}
+                {prosMetrics.hasPipelineValue ? `R$ ${prosMetrics.totalPipelineValue.toLocaleString('pt-BR')}` : '—'}
               </div>
               <div className="text-[11px] text-neutral-400 mt-1">
                 {prosMetrics.inNegotiationLeads} oportunidades ativas
@@ -689,7 +764,7 @@ export const PainelLiderancaView: React.FC<PainelLiderancaViewProps> = ({
                 <CheckCircle2 className="w-4 h-4 text-white" />
               </div>
               <div className="text-3xl font-black text-white tracking-tight">
-                {prosMetrics.conversionRate.toFixed(1)}%
+                {prosMetrics.conversionRate !== null ? `${prosMetrics.conversionRate.toFixed(1)}%` : '—'}
               </div>
               <div className="text-[11px] text-neutral-400 mt-1">
                 {prosMetrics.closedLeads} clientes novos fechados
@@ -721,7 +796,9 @@ export const PainelLiderancaView: React.FC<PainelLiderancaViewProps> = ({
                 </div>
               ) : (
                 <div className="space-y-2.5 max-h-96 overflow-y-auto pr-1 custom-scrollbar">
-                  {leads.slice(0, 6).map((lead) => (
+                  {leads.slice(0, 6).map((lead) => {
+                    const value = leadValue(lead);
+                    return (
                     <div
                       key={lead.id}
                       className="p-3.5 rounded-2xl bg-neutral-950 border border-neutral-800 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3"
@@ -750,11 +827,12 @@ export const PainelLiderancaView: React.FC<PainelLiderancaViewProps> = ({
                           {lead.status || 'Novo'}
                         </span>
                         <div className="font-mono font-black text-white text-xs">
-                          R$ {lead.contractValue || lead.value || 3500}
+                          {value !== null ? `R$ ${value.toLocaleString('pt-BR')}` : '—'}
                         </div>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -969,7 +1047,7 @@ export const PainelLiderancaView: React.FC<PainelLiderancaViewProps> = ({
 
               <button
                 type="button"
-                onClick={() => setShowAddGoalModal(true)}
+                onClick={openNewGoalModal}
                 className="px-3.5 py-1.5 rounded-xl bg-white text-black font-bold text-xs hover:bg-neutral-200 transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -1010,15 +1088,27 @@ export const PainelLiderancaView: React.FC<PainelLiderancaViewProps> = ({
 
                       <div className="flex items-center justify-between pt-1 text-[11px] text-neutral-500">
                         <span>Prazo: {goal.dueDate}</span>
-                        {onDeleteGoal && (
-                          <button
-                            type="button"
-                            onClick={() => onDeleteGoal(goal.id)}
-                            className="text-neutral-500 hover:text-red-400 transition-colors cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
+                        <span className="flex items-center gap-2">
+                          {onUpdateGoal && (
+                            <button
+                              type="button"
+                              onClick={() => openEditGoalModal(goal)}
+                              className="text-neutral-500 hover:text-white transition-colors cursor-pointer"
+                              title="Editar meta"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {onDeleteGoal && (
+                            <button
+                              type="button"
+                              onClick={() => onDeleteGoal(goal.id)}
+                              className="text-neutral-500 hover:text-red-400 transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </span>
                       </div>
                     </div>
                   );
@@ -1106,11 +1196,11 @@ export const PainelLiderancaView: React.FC<PainelLiderancaViewProps> = ({
             <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
               <span className="font-extrabold text-white text-base flex items-center gap-2">
                 <Award className="w-5 h-5 text-white" />
-                Definir Nova Meta da Agência
+                {editingGoalId ? 'Editar Meta da Agência' : 'Definir Nova Meta da Agência'}
               </span>
               <button
                 type="button"
-                onClick={() => setShowAddGoalModal(false)}
+                onClick={closeGoalModal}
                 className="text-neutral-400 hover:text-white"
               >
                 ✕
@@ -1220,7 +1310,7 @@ export const PainelLiderancaView: React.FC<PainelLiderancaViewProps> = ({
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-neutral-800">
                 <button
                   type="button"
-                  onClick={() => setShowAddGoalModal(false)}
+                  onClick={closeGoalModal}
                   className="px-4 py-2 rounded-xl bg-neutral-900 text-neutral-300 font-bold hover:bg-neutral-800 cursor-pointer"
                 >
                   Cancelar
@@ -1229,7 +1319,7 @@ export const PainelLiderancaView: React.FC<PainelLiderancaViewProps> = ({
                   type="submit"
                   className="px-5 py-2 rounded-xl bg-white text-black font-black hover:bg-neutral-200 transition-all cursor-pointer"
                 >
-                  Salvar Meta
+                  {editingGoalId ? 'Salvar Alterações' : 'Salvar Meta'}
                 </button>
               </div>
             </form>

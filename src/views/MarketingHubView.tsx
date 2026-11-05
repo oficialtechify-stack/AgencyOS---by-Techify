@@ -180,10 +180,10 @@ export const MarketingHubView: React.FC<MarketingHubViewProps> = ({
     clientName: '',
     type: 'Inbound',
     channel: 'Meta Ads',
-    budget: 5000,
+    budget: 0,
     spent: 0,
     revenue: 0,
-    leadsGoal: 200,
+    leadsGoal: 0,
     leadsGenerated: 0,
     status: 'Planejamento',
     startDate: new Date().toISOString().split('T')[0],
@@ -208,12 +208,12 @@ export const MarketingHubView: React.FC<MarketingHubViewProps> = ({
     name: '',
     clientName: '',
     trafficSource: 'Meta Ads',
-    visitors: 5000,
-    leads: 500,
-    mqls: 150,
-    sqls: 50,
-    sales: 10,
-    averageTicket: 1500,
+    visitors: 0,
+    leads: 0,
+    mqls: 0,
+    sqls: 0,
+    sales: 0,
+    averageTicket: 0,
     status: 'Ativo',
     createdAt: new Date().toISOString().split('T')[0],
   });
@@ -224,9 +224,9 @@ export const MarketingHubView: React.FC<MarketingHubViewProps> = ({
     triggerEvent: 'Novo Lead Cadastrado',
     stepsCount: 5,
     subscribersCount: 0,
-    openRate: 40,
-    clickRate: 15,
-    conversionRate: 5,
+    openRate: 0,
+    clickRate: 0,
+    conversionRate: 0,
     status: 'Ativo',
     createdAt: new Date().toISOString().split('T')[0],
   });
@@ -283,10 +283,10 @@ export const MarketingHubView: React.FC<MarketingHubViewProps> = ({
         clientName: '',
         type: 'Inbound',
         channel: 'Meta Ads',
-        budget: 5000,
+        budget: 0,
         spent: 0,
         revenue: 0,
-        leadsGoal: 200,
+        leadsGoal: 0,
         leadsGenerated: 0,
         status: 'Planejamento',
         startDate: new Date().toISOString().split('T')[0],
@@ -773,7 +773,7 @@ export const MarketingHubView: React.FC<MarketingHubViewProps> = ({
           }`}
         >
           <Calculator className="w-4 h-4 text-white" />
-          <span>Simulador & IA Generator</span>
+          <span>Simulador & Modelos prontos</span>
         </button>
       </div>
 

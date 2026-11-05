@@ -1,79 +1,9 @@
 import { EmployeeWorkSchedule, TimeClockRecord, TimeClockType } from '../types';
 
-export const DEFAULT_WORK_SCHEDULES: EmployeeWorkSchedule[] = [
-  {
-    id: 'sched-default-1',
-    userEmail: 'rickmarketing81@gmail.com',
-    userName: 'Marcos Henrique',
-    userRole: 'Diretor Executivo / Master',
-    leadershipRole: 'lider_geral',
-    entryTime: '08:00',
-    lunchStartTime: '12:00',
-    lunchEndTime: '13:00',
-    exitTime: '17:00',
-    toleranceMinutes: 15,
-    strictEnforcement: true,
-    minIntervalMinutes: 0,
-    workDays: ['seg', 'ter', 'qua', 'qui', 'sex'],
-    allowOvertime: true,
-    notes: 'Jornada Padrão de Diretoria (8h diárias)',
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'sched-default-2',
-    userEmail: 'marketing@agencyos.com',
-    userName: 'Lucas Silva',
-    userRole: 'Líder de Marketing & Tráfego',
-    leadershipRole: 'lider_marketing',
-    entryTime: '08:30',
-    lunchStartTime: '12:30',
-    lunchEndTime: '13:30',
-    exitTime: '17:30',
-    toleranceMinutes: 15,
-    strictEnforcement: false,
-    minIntervalMinutes: 0,
-    workDays: ['seg', 'ter', 'qua', 'qui', 'sex'],
-    allowOvertime: true,
-    notes: 'Escala Equipe de Marketing e Performance',
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'sched-default-3',
-    userEmail: 'prospeccao@agencyos.com',
-    userName: 'Mariana Costa',
-    userRole: 'Líder de Prospecção / SDR',
-    leadershipRole: 'lider_prospeccao',
-    entryTime: '08:00',
-    lunchStartTime: '12:00',
-    lunchEndTime: '13:00',
-    exitTime: '17:00',
-    toleranceMinutes: 15,
-    strictEnforcement: false,
-    minIntervalMinutes: 0,
-    workDays: ['seg', 'ter', 'qua', 'qui', 'sex'],
-    allowOvertime: false,
-    notes: 'Escala Equipe Comercial e Cold Calling',
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'sched-default-4',
-    userEmail: 'design@agencyos.com',
-    userName: 'Vitória Santos',
-    userRole: 'Líder de Design & Criação',
-    leadershipRole: 'lider_design',
-    entryTime: '09:00',
-    lunchStartTime: '13:00',
-    lunchEndTime: '14:00',
-    exitTime: '18:00',
-    toleranceMinutes: 15,
-    strictEnforcement: false,
-    minIntervalMinutes: 0,
-    workDays: ['seg', 'ter', 'qua', 'qui', 'sex'],
-    allowOvertime: true,
-    notes: 'Escala Criação e Produção Visual',
-    updatedAt: new Date().toISOString(),
-  },
-];
+// Nenhuma escala pré-cadastrada: escalas reais são vinculadas pelo Master
+// Admin no Firestore (coleção de escalas) e chegam via `employeeWorkSchedules`.
+// Não há pessoas fictícias aqui — sem escala real vinculada, a lista fica vazia.
+export const DEFAULT_WORK_SCHEDULES: EmployeeWorkSchedule[] = [];
 
 /**
  * Find or generate a default schedule for an employee

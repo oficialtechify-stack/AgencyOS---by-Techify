@@ -5,7 +5,6 @@ import {
   TrendingDown,
   Users,
   Search,
-  Bell,
   Sparkles,
   Plus,
   MoreVertical,
@@ -91,13 +90,11 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
   const [isNewCampaignModalOpen, setIsNewCampaignModalOpen] = useState(false);
   const [isNewTransactionModalOpen, setIsNewTransactionModalOpen] = useState(false);
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   // Quick form states
   const [newProjectTitle, setNewProjectTitle] = useState('');
   const [newProjectClient, setNewProjectClient] = useState('');
-  const [newProjectProgress, setNewProjectProgress] = useState(0);
 
   const [newCampaignName, setNewCampaignName] = useState('');
   const [newCampaignPlatform, setNewCampaignPlatform] = useState('Meta Ads');
@@ -115,9 +112,6 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
 
   // Active 3-dots project action menu
   const [activeProjectMenuId, setActiveProjectMenuId] = useState<string | null>(null);
-
-  // Notification backend is not implemented: never render invented notifications.
-  const notifications: { id: string; title: string; text: string; time: string }[] = [];
 
   // Only real Firestore-backed tasks are displayed. No template projects.
   const displayProjects = useMemo(() => tasks
@@ -307,7 +301,7 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
       await onAddTask({
         title: newProjectTitle,
         description: `Cliente: ${newProjectClient || 'Geral'}`,
-        status: newProjectProgress >= 100 ? 'Concluído' : 'Em Andamento',
+        status: 'Em Andamento',
         priority: 'Alta',
         client: newProjectClient || 'Geral',
       });
@@ -449,7 +443,7 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar no AgencyOS..."
+              placeholder="Buscar nesta página (projetos e campanhas)"
               className="w-full pl-9 pr-3 py-2 bg-[#0B152F] border border-[#182855] rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
             />
             {searchQuery && (
@@ -480,41 +474,6 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
             <Bot className="w-3.5 h-3.5 text-blue-300" />
             <span>Copilot Gemini</span>
           </button>
-
-          {/* Notification Bell */}
-          <div className="relative">
-            <button
-              onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-              className="p-2 bg-[#0B152F] border border-[#182855] hover:bg-[#122045] rounded-xl text-slate-300 hover:text-white transition-colors cursor-pointer relative"
-              title="Notificações"
-            >
-              <Bell className="w-4 h-4" />
-              {notifications.length > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-blue-500 ring-2 ring-[#070D1F]" />}
-            </button>
-
-            {/* Notification popover */}
-            {isNotificationsOpen && (
-              <div className="absolute right-0 mt-2 w-80 bg-[#0B152F] border border-[#182855] rounded-2xl shadow-2xl p-3 z-50 space-y-2">
-                <div className="flex items-center justify-between pb-2 border-b border-[#182855] px-1">
-                  <span className="text-xs font-bold text-white">Notificações</span>
-                  <span className="text-[10px] text-slate-500">Atualização em tempo real</span>
-                </div>
-                <div className="space-y-1.5 max-h-64 overflow-y-auto custom-scrollbar">
-                  {notifications.length === 0 && <p className="text-xs text-slate-400 px-2 py-3">Nenhuma notificação disponível.</p>}
-                  {notifications.map((n) => (
-                    <div
-                      key={n.id}
-                      className="p-2 rounded-xl bg-[#0F1D3F]/50 hover:bg-[#0F1D3F] border border-[#182855]/60 text-left transition-colors"
-                    >
-                      <div className="text-xs font-bold text-white leading-tight">{n.title}</div>
-                      <div className="text-[11px] text-slate-400 mt-0.5">{n.text}</div>
-                      <div className="text-[9px] text-slate-500 mt-1">{n.time}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
 
           {/* User Account Chip */}
           <div className="relative">
@@ -1097,7 +1056,13 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
               <h2 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
                 <span>Atividades recentes</span>
               </h2>
-              <span className="text-xs text-blue-400 font-semibold cursor-pointer">Ver todas →</span>
+              <button
+                onClick={() => onNavigate('fluxo-caixa')}
+                className="text-xs text-blue-400 hover:text-blue-300 font-semibold flex items-center gap-0.5 cursor-pointer"
+              >
+                <span>Ver todas</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
             </div>
 
             <div className="divide-y divide-[#14244D] mt-1">
@@ -1172,22 +1137,6 @@ export const DashboardGeralView: React.FC<DashboardGeralViewProps> = ({
                   value={newProjectClient}
                   onChange={(e) => setNewProjectClient(e.target.value)}
                   className="w-full bg-[#0E1B3D] border border-[#182855] rounded-xl px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-                />
-              </div>
-
-              <div>
-                <div className="flex justify-between text-slate-300 font-semibold mb-1">
-                  <span>Progresso Inicial</span>
-                  <span className="text-blue-400">{newProjectProgress}%</span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  step="5"
-                  value={newProjectProgress}
-                  onChange={(e) => setNewProjectProgress(parseInt(e.target.value))}
-                  className="w-full accent-blue-500"
                 />
               </div>
 

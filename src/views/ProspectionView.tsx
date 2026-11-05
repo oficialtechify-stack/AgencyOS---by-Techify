@@ -80,7 +80,7 @@ export const ProspectionView: React.FC<ProspectionViewProps> = ({
               </span>
             </div>
             <p className="text-xs text-neutral-400 mt-0.5">
-              Gestão de demandas comerciais, distribuição de leads por Instagram, esteira de fechamentos e acompanhamento de contratos em tempo real.
+              Gestão de demandas comerciais, esteira de fechamentos e acompanhamento de contratos em tempo real.
             </p>
           </div>
         </div>

@@ -70,7 +70,36 @@ import { DesignerHubView } from './views/DesignerHubView';
 import { MarketingHubView } from './views/MarketingHubView';
 import { PainelLiderancaView } from './views/PainelLiderancaView';
 import { PontoView } from './views/PontoView';
+import { EmpresaChatView } from './views/EmpresaChatView';
 import { SecureTimeClockModal } from './components/timeclock/SecureTimeClockModal';
+
+// Telas com branch no main do App. Qualquer activeView fora desta lista
+// (e fora de 'landing'/'trial-signup', tratadas antes) cai no fallback
+// "Tela não encontrada" em vez de um main vazio.
+const KNOWN_APP_VIEWS: string[] = [
+  'dashboard',
+  'kpis',
+  'fluxo-caixa',
+  'maps-scraper',
+  'profile',
+  'prospection',
+  'social-hub',
+  'estoque',
+  'kanban',
+  'relatorios',
+  'campanhas',
+  'marketing',
+  'agenda',
+  'calculadora-roi',
+  'ia-consultora',
+  'designer',
+  'lideranca',
+  'ponto',
+  'admin',
+  'leadspay-master',
+  'leadspay-companies',
+  'chat',
+];
 
 export default function App() {
   const [state, setState] = useState<AppState>(() => loadState());
@@ -337,9 +366,25 @@ export default function App() {
     Date.now() >= userProfile.trialEndsAt;
 
   const setView = (view: ViewType) => {
+    // 'technical-docs' não é uma tela: é só o modal de documentação.
+    // Abrir o modal e manter a tela atual em vez de cair no main vazio.
+    if ((view as string) === 'technical-docs') {
+      setShowDocsModal(true);
+      return;
+    }
     const targetView = (view as string) === 'studio-agency' ? 'designer' : view;
     setState((prev) => ({ ...prev, activeView: targetView }));
   };
+  // Estado persistido pode trazer 'technical-docs' ou 'studio-agency'
+  // sem passar pelo setView: resolve aqui em vez de cair no main vazio.
+  useEffect(() => {
+    if (state.activeView === 'technical-docs') {
+      setShowDocsModal(true);
+      setState((prev) => ({ ...prev, activeView: 'dashboard' }));
+    } else if ((state.activeView as string) === 'studio-agency') {
+      setState((prev) => ({ ...prev, activeView: 'designer' }));
+    }
+  }, [state.activeView]);
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
     const gmailReturn = query.get('copilot');
@@ -503,6 +548,17 @@ export default function App() {
     }
   };
 
+  const handleUpdateStockItem = async (id: string, updates: any) => {
+    setState((prev) => ({
+      ...prev,
+      stockItems: prev.stockItems.map((i) => (i.id === id ? { ...i, ...updates } : i)),
+    }));
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await updateCollectionItem(targetUid, 'stockItems', id, updates);
+    }
+  };
+
   const handleAddTask = async (task: any) => {
     const newItem = { ...task, id: task.id || `task-${Date.now()}` };
     setState((prev) => ({
@@ -523,6 +579,17 @@ export default function App() {
     const targetUid = getWorkspaceTargetUid();
     if (targetUid) {
       await updateCollectionItem(targetUid, 'tasks', id, { status });
+    }
+  };
+
+  const handleUpdateTask = async (id: string, updates: any) => {
+    setState((prev) => ({
+      ...prev,
+      tasks: prev.tasks.map((t) => (t.id === id ? { ...t, ...updates } : t)),
+    }));
+    const targetUid = getWorkspaceTargetUid();
+    if (targetUid) {
+      await updateCollectionItem(targetUid, 'tasks', id, updates);
     }
   };
 
@@ -1619,7 +1686,6 @@ export default function App() {
                   kpiPeriods={state.kpiPeriods}
                   onAddPeriod={handleAddKPIPeriod}
                   onDeletePeriod={handleDeleteKPIPeriod}
-                  onExportReport={() => setView('relatorios')}
                 />
               )}
 
@@ -1676,6 +1742,7 @@ export default function App() {
                 <EstoqueView
                   items={state.stockItems}
                   onAddItem={handleAddStockItem}
+                  onUpdateItem={handleUpdateStockItem}
                   onDeleteItem={handleDeleteStockItem}
                 />
               )}
@@ -1684,6 +1751,7 @@ export default function App() {
                 <KanbanView
                   tasks={state.tasks}
                   onAddTask={handleAddTask}
+                  onUpdateTask={handleUpdateTask}
                   onUpdateTaskStatus={handleUpdateTaskStatus}
                   onDeleteTask={handleDeleteTask}
                 />
@@ -1703,6 +1771,7 @@ export default function App() {
                 <CampanhasView
                   campaigns={state.campaigns}
                   onAddCampaign={handleAddCampaign}
+                  onUpdateCampaign={handleUpdateCampaign}
                   onDeleteCampaign={handleDeleteCampaign}
                 />
               )}
@@ -1823,6 +1892,47 @@ export default function App() {
                 <LeadsPayMasterView
                   currentUser={userProfile || effectiveProfile}
                 />
+              )}
+
+              {state.activeView === 'leadspay-companies' && (
+                <LeadsPayMasterView
+                  currentUser={userProfile || effectiveProfile}
+                  initialTab="companies"
+                />
+              )}
+
+              {state.activeView === 'chat' && (
+                <EmpresaChatView
+                  currentUser={userProfile}
+                  userProfile={userProfile}
+                  allUsers={allUsers}
+                  messages={state.chatMessages || []}
+                  channels={state.chatChannels || []}
+                  timeClockRecords={state.timeClockRecords || []}
+                  prospectionDemands={state.prospectionDemands || []}
+                  prospectionContracts={state.prospectionContracts || []}
+                  techifyPackages={state.techifyPackages || []}
+                  onSendMessage={handleSendMessage}
+                  onDeleteMessage={handleDeleteChatMessage}
+                  onCreateChannel={handleCreateChatChannel}
+                  onMarkChannelAsRead={handleMarkChannelAsRead}
+                />
+              )}
+
+              {!KNOWN_APP_VIEWS.includes(state.activeView as string) && (
+                <div className="p-8 sm:p-12 text-center space-y-3">
+                  <h2 className="text-lg font-black text-white">Tela não encontrada</h2>
+                  <p className="text-xs text-neutral-400 max-w-md mx-auto">
+                    A tela &ldquo;{state.activeView}&rdquo; não existe ou não está disponível
+                    neste painel. Volte para a visão geral para continuar.
+                  </p>
+                  <button
+                    onClick={() => setView('dashboard')}
+                    className="px-4 py-2 rounded-xl bg-white hover:bg-neutral-200 text-black font-bold text-xs cursor-pointer"
+                  >
+                    Voltar para a Visão geral
+                  </button>
+                </div>
               )}
             </>
           )}

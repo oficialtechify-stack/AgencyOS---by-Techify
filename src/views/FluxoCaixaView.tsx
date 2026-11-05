@@ -92,7 +92,7 @@ export const FluxoCaixaView: React.FC<FluxoCaixaViewProps> = ({
           <div className="text-3xl font-black text-white">
             R$ {saldo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </div>
-          <p className="text-[10px] text-neutral-500">Lucro líquido acumulado</p>
+          <p className="text-[10px] text-neutral-500">Saldo em caixa</p>
         </div>
       </div>
 

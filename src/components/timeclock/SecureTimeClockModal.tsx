@@ -32,7 +32,6 @@ import {
   getStrictSequentialStatus,
   validateScheduleTime,
   getRoleBadgeStyle,
-  DEFAULT_WORK_SCHEDULES,
 } from '../../lib/timeClockUtils';
 
 interface SecureTimeClockModalProps {
@@ -92,6 +91,7 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
   // Camera State
   const [showCamera, setShowCamera] = useState(false);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -155,6 +155,7 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
 
   const handleStartCamera = async () => {
     setShowCamera(true);
+    setCameraError(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: 320, height: 320, facingMode: 'user' },
@@ -167,7 +168,7 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
     } catch (err: any) {
       console.warn('Camera error:', err);
       setShowCamera(false);
-      alert('Não foi possível abrir a câmera. Você ainda pode bater o ponto seguro via GPS.');
+      setCameraError('Não foi possível abrir a câmera. Você ainda pode bater o ponto seguro via GPS.');
     }
   };
 
@@ -760,6 +761,17 @@ export const SecureTimeClockModal: React.FC<SecureTimeClockModalProps> = ({
               </div>
 
               {/* Camera Modal Stream View if Active */}
+              {cameraError && (
+                <div className="p-3 rounded-2xl bg-amber-950/60 border border-amber-800/80 text-amber-300 text-xs font-bold flex items-center justify-between gap-2 animate-in fade-in">
+                  <span className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                    {cameraError}
+                  </span>
+                  <button type="button" onClick={() => setCameraError(null)} className="text-amber-400 hover:text-white shrink-0" aria-label="Fechar aviso">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
               {showCamera && (
                 <div className="p-4 rounded-2xl bg-black border border-[#253B61] flex flex-col items-center gap-3 animate-in fade-in">
                   <video

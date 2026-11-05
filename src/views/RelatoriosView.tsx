@@ -17,6 +17,14 @@ export const RelatoriosView: React.FC<RelatoriosViewProps> = ({
   leads = [],
   stockItems = [],
 }) => {
+  // Último período = mês mais recente (MM/AAAA), não o último inserido.
+  const monthKey = (s: string) => {
+    const [m, y] = (s || '').split('/').map(Number);
+    return (y || 0) * 12 + (m || 0);
+  };
+  const sortedKpis = [...kpiPeriods].sort((a, b) => monthKey(b.monthYear) - monthKey(a.monthYear));
+  const latestKPI = sortedKpis[0];
+
   const downloadTXT = (filename: string, content: string) => {
     const element = document.createElement('a');
     const file = new Blob([content], { type: 'text/plain;charset=utf-8' });
@@ -28,7 +36,6 @@ export const RelatoriosView: React.FC<RelatoriosViewProps> = ({
   };
 
   const exportFinancialReport = () => {
-    const latestKPI = kpiPeriods[kpiPeriods.length - 1];
     let text = `=========================================\n`;
     text += `   RELATÓRIO FINANCEIRO - AGENCYOS\n`;
     text += `   Gerado em: ${new Date().toLocaleString('pt-BR')}\n`;
@@ -42,6 +49,8 @@ export const RelatoriosView: React.FC<RelatoriosViewProps> = ({
       text += `- CAC: R$ ${latestKPI.cac.toLocaleString('pt-BR')}\n`;
       text += `- Churn Rate: ${latestKPI.churnRate}%\n`;
       text += `- Clientes Ativos: ${latestKPI.activeClients}\n\n`;
+    } else {
+      text += `MÉTRICAS ATUAIS: — (nenhum período de KPI registrado)\n\n`;
     }
 
     text += `HISTÓRICO DE TRANSAÇÕES DE CAIXA (${transactions.length}):\n`;
@@ -58,7 +67,7 @@ export const RelatoriosView: React.FC<RelatoriosViewProps> = ({
     text += `   Gerado em: ${new Date().toLocaleString('pt-BR')}\n`;
     text += `=========================================\n\n`;
 
-    text += `CAMPANHAS ATIVAS (${campaigns.length}):\n`;
+    text += `CAMPANHAS REGISTRADAS (${campaigns.length}):\n`;
     campaigns.forEach((c, i) => {
       text += `${i + 1}. ${c.name} [${c.platform}]\n`;
       text += `   Investimento: R$ ${c.spend} | Retorno: R$ ${c.revenue} | ROAS: ${c.roas}x\n`;
@@ -115,10 +124,65 @@ export const RelatoriosView: React.FC<RelatoriosViewProps> = ({
     text += `- Itens de Estoque: ${stockItems.length}\n\n`;
 
     text += `-----------------------------------------\n`;
-    text += `2. LEADS E CRM:\n`;
-    leads.forEach((l) => {
-      text += `- ${l.name} | ${l.category} | ${l.phone} | Status: ${l.status}\n`;
-    });
+    text += `2. FINANÇAS:\n`;
+    if (latestKPI) {
+      text += `- Período mais recente: ${latestKPI.monthYear}\n`;
+      text += `- MRR: R$ ${latestKPI.mrr.toLocaleString('pt-BR')} | ARR: R$ ${latestKPI.arr.toLocaleString('pt-BR')}\n`;
+      text += `- LTV: R$ ${latestKPI.ltv.toLocaleString('pt-BR')} | CAC: R$ ${latestKPI.cac.toLocaleString('pt-BR')}\n`;
+      text += `- Churn Rate: ${latestKPI.churnRate}% | Clientes Ativos: ${latestKPI.activeClients}\n`;
+    } else {
+      text += `- KPIs: — (nenhum período registrado)\n`;
+    }
+    const totalEntradas = transactions.filter((t) => t.type === 'Entrada').reduce((acc, t) => acc + Number(t.amount || 0), 0);
+    const totalSaidas = transactions.filter((t) => t.type === 'Saída').reduce((acc, t) => acc + Number(t.amount || 0), 0);
+    text += `- Total de Entradas: R$ ${totalEntradas.toLocaleString('pt-BR')} | Total de Saídas: R$ ${totalSaidas.toLocaleString('pt-BR')} | Saldo: R$ ${(totalEntradas - totalSaidas).toLocaleString('pt-BR')}\n`;
+    if (transactions.length === 0) {
+      text += `- Movimentações: — (nenhuma transação registrada)\n`;
+    } else {
+      transactions.forEach((t, i) => {
+        text += `  ${i + 1}. [${t.date}] ${t.type} - ${t.category}: R$ ${t.amount} (${t.description})\n`;
+      });
+    }
+    text += `\n`;
+
+    text += `-----------------------------------------\n`;
+    text += `3. TRÁFEGO PAGO:\n`;
+    if (campaigns.length === 0) {
+      text += `- Campanhas: — (nenhuma campanha registrada)\n`;
+    } else {
+      campaigns.forEach((c, i) => {
+        const cpl = c.conversions > 0 ? ` | CPL: R$ ${(c.spend / c.conversions).toFixed(2)}` : '';
+        text += `${i + 1}. ${c.name} [${c.platform}] (${c.status})\n`;
+        text += `   Investimento: R$ ${c.spend} | Retorno: R$ ${c.revenue} | ROAS: ${c.roas}x\n`;
+        text += `   Cliques: ${c.clicks} | Conversões: ${c.conversions}${cpl}\n\n`;
+      });
+    }
+    text += `\n`;
+
+    text += `-----------------------------------------\n`;
+    text += `4. LEADS E CRM:\n`;
+    if (leads.length === 0) {
+      text += `- Leads: — (nenhum lead registrado)\n`;
+    } else {
+      leads.forEach((l) => {
+        text += `- ${l.name} | ${l.category} | ${l.phone} | Status: ${l.status}\n`;
+      });
+    }
+    text += `\n`;
+
+    text += `-----------------------------------------\n`;
+    text += `5. PROJETOS:\n`;
+    text += `- Projetos: — (esta tela não recebe dados de projetos)\n\n`;
+
+    text += `-----------------------------------------\n`;
+    text += `6. ESTOQUE:\n`;
+    if (stockItems.length === 0) {
+      text += `- Itens: — (nenhum item registrado)\n`;
+    } else {
+      stockItems.forEach((item, i) => {
+        text += `${i + 1}. ${item.name} (${item.category}) | Quantidade: ${item.quantity} un | Preço Unitário: R$ ${item.unitPrice} | Status: ${item.status}\n`;
+      });
+    }
 
     downloadTXT(`relatorio_completo_agencyos_${Date.now()}.txt`, text);
   };
@@ -134,7 +198,7 @@ export const RelatoriosView: React.FC<RelatoriosViewProps> = ({
         <h2 className="text-xl font-black text-white">Exporte relatórios completos em formato .txt</h2>
         <p className="text-xs text-neutral-400">
           Gere arquivos de texto formatados para backup local, auditoria interna ou envio rápido por
-          WhatsApp e email.
+          email.
         </p>
       </div>
 

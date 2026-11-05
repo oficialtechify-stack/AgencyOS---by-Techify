@@ -11,16 +11,13 @@ import {
   Star,
   Trash2,
   Sparkles,
-  MessageCircle,
   CheckCircle2,
   AlertCircle,
   Loader2,
   Globe,
   Compass,
-  Check,
   Building2,
   Radio,
-  ShieldCheck,
   Award,
   Zap,
   Layers,
@@ -46,7 +43,7 @@ export const MapsScraperView: React.FC<MapsScraperViewProps> = ({
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState('');
   const [searchFilter, setSearchFilter] = useState('');
-  const [tab, setTab] = useState<'Todos' | 'Qualificados' | 'Com Instagram' | 'Com site' | 'Sem site' | 'Com WhatsApp'>('Todos');
+  const [tab, setTab] = useState<'Todos' | 'Qualificados' | 'Com Instagram' | 'Com site' | 'Sem site'>('Todos');
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [showManualModal, setShowManualModal] = useState(false);
   const [liveLinks, setLiveLinks] = useState<{ gmaps: string; instagram: string; google: string } | null>(null);
@@ -59,7 +56,15 @@ export const MapsScraperView: React.FC<MapsScraperViewProps> = ({
     status: string;
   } | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [verifiedProfiles, setVerifiedProfiles] = useState<Record<string, boolean>>({});
+
+  // Dedup de leads: buscar 2x não pode duplicar os mesmos leads.
+  // Chave = nome normalizado + telefone (só dígitos) ou, sem telefone, nome + cidade.
+  const leadKey = (name: string, phone?: string, cityName?: string) => {
+    const normName = (name || '').trim().toLowerCase();
+    const digits = (phone || '').replace(/\D/g, '');
+    if (digits) return `${normName}|${digits}`;
+    return `${normName}|${(cityName || '').trim().toLowerCase()}`;
+  };
 
   // Quick segment suggestions
   const quickSegments = [
@@ -130,17 +135,6 @@ export const MapsScraperView: React.FC<MapsScraperViewProps> = ({
     return `https://${clean}`;
   };
 
-  const getWhatsAppUrl = (phone?: string, businessName?: string) => {
-    if (!phone) return null;
-    const digits = phone.replace(/\D/g, '');
-    if (digits.length < 8) return null;
-    const fullNumber = digits.startsWith('55') ? digits : `55${digits}`;
-    const textMsg = encodeURIComponent(
-      `Olá ${businessName || ''}! Encontrei o estabelecimento de vocês com ótimas recomendações no Google Maps e gostaria de apresentar uma estratégia comercial para captação de clientes. Podemos conversar?`
-    );
-    return `https://wa.me/${fullNumber}?text=${textMsg}`;
-  };
-
   const getGoogleMapsSearchUrl = (name: string, locationCity: string) => {
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${name} ${locationCity}`)}`;
   };
@@ -151,26 +145,18 @@ export const MapsScraperView: React.FC<MapsScraperViewProps> = ({
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleVerifyProfile = (leadId: string, instagram: string) => {
-    const url = getInstagramUrl(instagram);
-    if (url) {
-      window.open(url, '_blank', 'noopener,noreferrer');
-      setVerifiedProfiles((prev) => ({ ...prev, [leadId]: true }));
-    }
-  };
-
   const handleScrapeWithAI = async () => {
     if (!segment.trim() || !city.trim() || loading) return;
     setLoading(true);
     setNotification(null);
-    setLoadingStep('🛰️ Geocodificando região e consultando coordenadas via API...');
+    setLoadingStep('Buscando estabelecimentos...');
 
     const stepTimer1 = setTimeout(() => {
-      setLoadingStep(`📍 Auditando estabelecimentos comerciais de "${segment}" em "${city}"...`);
+      setLoadingStep(`Buscando "${segment}" em "${city}"...`);
     }, 700);
 
     const stepTimer2 = setTimeout(() => {
-      setLoadingStep('📸 Rastreando perfis do Instagram, checando websites e notas por estrelas...');
+      setLoadingStep('Organizando os resultados encontrados...');
     }, 1400);
 
     try {
@@ -191,7 +177,15 @@ export const MapsScraperView: React.FC<MapsScraperViewProps> = ({
 
       if (data.leads && Array.isArray(data.leads) && data.leads.length > 0) {
         let addedCount = 0;
+        let skippedCount = 0;
+        const seenKeys = new Set(leads.map((l) => leadKey(l.name, l.phone, l.city)));
         data.leads.forEach((l: any) => {
+          const key = leadKey(l.name || '', l.phone || '', l.city || city);
+          if (seenKeys.has(key)) {
+            skippedCount++;
+            return;
+          }
+          seenKeys.add(key);
           if (onAddLead) {
             onAddLead({
               name: l.name,
@@ -203,13 +197,13 @@ export const MapsScraperView: React.FC<MapsScraperViewProps> = ({
               hasWebsite: typeof l.hasWebsite === 'boolean' ? l.hasWebsite : !!l.website,
               instagram: l.instagram || '',
               instagramExists: true,
-              rating: typeof l.rating === 'number' ? l.rating : 4.8,
-              reviewsCount: typeof l.reviewsCount === 'number' ? l.reviewsCount : 140,
-              verified: true,
-              qualification: l.qualification || 'Alta Qualificação',
-              qualificationScore: typeof l.qualificationScore === 'number' ? l.qualificationScore : 98,
+              rating: typeof l.rating === 'number' ? l.rating : 0,
+              reviewsCount: typeof l.reviewsCount === 'number' ? l.reviewsCount : 0,
+              verified: false,
+              qualification: l.qualification || 'A avaliar',
+              qualificationScore: typeof l.qualificationScore === 'number' ? l.qualificationScore : 0,
               status: 'novo',
-              source: l.source || 'Google Maps & Instagram (Auditado)',
+              source: l.source || 'Busca de leads',
               address: l.address || city,
             });
             addedCount++;
@@ -217,7 +211,10 @@ export const MapsScraperView: React.FC<MapsScraperViewProps> = ({
         });
         setNotification({
           type: 'success',
-          message: `${addedCount} empresas e profissionais 100% REAIS com estrelas e perfis verificados foram geocodificados e inseridos no CRM!`,
+          message:
+            `${addedCount} ${addedCount === 1 ? 'lead encontrado' : 'leads encontrados'} e adicionado(s) ao CRM.` +
+            (skippedCount > 0 ? ` ${skippedCount} já ${skippedCount === 1 ? 'estava' : 'estavam'} no CRM e não ${skippedCount === 1 ? 'foi duplicado' : 'foram duplicados'}.` : '') +
+            ' Confira os dados de cada lead antes de abordar.',
         });
       } else {
         setNotification({
@@ -244,6 +241,13 @@ export const MapsScraperView: React.FC<MapsScraperViewProps> = ({
   const handleManualAdd = (e: React.FormEvent) => {
     e.preventDefault();
     if (!manualName.trim()) return;
+    if (leads.some((l) => leadKey(l.name, l.phone, l.city) === leadKey(manualName.trim(), manualPhone, manualCity || city))) {
+      setNotification({
+        type: 'error',
+        message: 'Esse lead já está no CRM.',
+      });
+      return;
+    }
     if (onAddLead) {
       onAddLead({
         name: manualName.trim(),
@@ -255,13 +259,13 @@ export const MapsScraperView: React.FC<MapsScraperViewProps> = ({
         hasWebsite: !!manualWebsite,
         instagram: manualInstagram || '',
         instagramExists: true,
-        rating: parseFloat(manualRating) || 4.9,
-        reviewsCount: parseInt(manualReviews) || 120,
-        verified: true,
-        qualification: 'Alta Qualificação',
-        qualificationScore: 98,
+        rating: parseFloat(manualRating) || 0,
+        reviewsCount: parseInt(manualReviews) || 0,
+        verified: false,
+        qualification: 'A avaliar',
+        qualificationScore: 0,
         status: 'novo',
-        source: 'Cadastro Manual Auditado',
+        source: 'Cadastro Manual',
         address: manualCity || city,
       });
     }
@@ -277,7 +281,7 @@ export const MapsScraperView: React.FC<MapsScraperViewProps> = ({
     setManualReviews('140');
     setNotification({
       type: 'success',
-      message: 'Lead verificado adicionado manualmente ao CRM!',
+      message: 'Lead adicionado ao CRM.',
     });
   };
 
@@ -293,16 +297,16 @@ export const MapsScraperView: React.FC<MapsScraperViewProps> = ({
       l.hasWebsite ? 'Sim' : 'Não',
       `"${l.website || ''}"`,
       `"${l.instagram}"`,
-      `"${l.source || 'Google Maps & Instagram (Auditado)'}"`,
+      `"${l.source || 'Busca de leads'}"`,
       l.rating,
-      l.reviewsCount || 100,
+      l.reviewsCount || 0,
       l.status,
     ]);
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `leads_auditados_${segment.toLowerCase()}_${city.toLowerCase()}_${Date.now()}.csv`);
+    link.setAttribute('download', `leads_${segment.toLowerCase()}_${city.toLowerCase()}_${Date.now()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -323,7 +327,6 @@ export const MapsScraperView: React.FC<MapsScraperViewProps> = ({
     if (tab === 'Com Instagram' && (!l.instagram || l.instagram === '-' || l.instagram === '—')) return false;
     if (tab === 'Com site' && !l.website && !l.hasWebsite) return false;
     if (tab === 'Sem site' && (!!l.website || l.hasWebsite)) return false;
-    if (tab === 'Com WhatsApp' && !l.phone) return false;
     if (searchFilter.trim()) {
       const q = searchFilter.toLowerCase();
       const matchName = l.name.toLowerCase().includes(q);
@@ -338,18 +341,15 @@ export const MapsScraperView: React.FC<MapsScraperViewProps> = ({
 
   return (
     <div className="space-y-6 text-neutral-200 font-sans max-w-7xl mx-auto pb-16">
-      {/* Strict Geocoding & Verification Header */}
+      {/* Search Header */}
       <div className="p-4 rounded-2xl bg-[#0e0e0e] border border-neutral-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-neutral-900 border border-neutral-700 flex items-center justify-center text-white shrink-0">
-            <ShieldCheck className="w-6 h-6" />
+            <Compass className="w-6 h-6" />
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-sm font-black text-white">Rastreador Geocodificado & Verificado</h2>
-              <span className="px-2 py-0.5 rounded-full bg-neutral-800 border border-neutral-700 text-[10px] font-bold text-neutral-200">
-                100% Real & Auditado
-              </span>
+              <h2 className="text-sm font-black text-white">Busca de Leads por Segmento e Cidade</h2>
               {geocodingData && (
                 <span className="px-2 py-0.5 rounded-full bg-neutral-900 border border-neutral-700 text-[10px] font-bold text-neutral-300 flex items-center gap-1">
                   <Navigation className="w-2.5 h-2.5 text-white" /> {geocodingData.state} (DDD {geocodingData.ddd})
@@ -357,21 +357,9 @@ export const MapsScraperView: React.FC<MapsScraperViewProps> = ({
               )}
             </div>
             <p className="text-xs text-neutral-400 mt-0.5">
-              Auditoria em tempo real: validação de coordenadas, perfis oficiais no Instagram, notas por estrelas e detecção de website próprio.
+              Busque empresas por segmento e cidade e importe os resultados para o CRM. Os dados vêm de um cadastro de demonstração e do OpenStreetMap — confira cada lead antes de abordar.
             </p>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2 text-xs font-semibold text-neutral-300 flex-wrap">
-          <span className="flex items-center gap-1 bg-neutral-900 px-2.5 py-1 rounded-lg border border-neutral-800 text-neutral-200">
-            <Check className="w-3.5 h-3.5 text-white" /> Sem Simulação
-          </span>
-          <span className="flex items-center gap-1 bg-neutral-900 px-2.5 py-1 rounded-lg border border-neutral-800 text-neutral-200">
-            <Instagram className="w-3.5 h-3.5 text-white" /> Instagram Real
-          </span>
-          <span className="flex items-center gap-1 bg-neutral-900 px-2.5 py-1 rounded-lg border border-neutral-800 text-neutral-200">
-            <Star className="w-3.5 h-3.5 fill-white text-white" /> Estrelas Google
-          </span>
         </div>
       </div>
 
@@ -385,7 +373,7 @@ export const MapsScraperView: React.FC<MapsScraperViewProps> = ({
             </span>
           </div>
           <span className="px-2.5 py-0.5 rounded bg-neutral-900 border border-neutral-700 text-neutral-200 text-[10px] font-bold">
-            DDD Oficial {geocodingData.ddd}
+            DDD {geocodingData.ddd}
           </span>
         </div>
       )}
@@ -455,7 +443,7 @@ export const MapsScraperView: React.FC<MapsScraperViewProps> = ({
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin text-black" />
-                  <span>Auditando & Geocodificando...</span>
+                  <span>Buscando...</span>
                 </>
               ) : (
                 <>
@@ -491,7 +479,7 @@ export const MapsScraperView: React.FC<MapsScraperViewProps> = ({
         <div className="pt-2 border-t border-neutral-800 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 text-xs text-neutral-400">
             <Compass className="w-3.5 h-3.5 text-neutral-200" />
-            <span>Auditoria e Busca Direta no Navegador:</span>
+            <span>Busca direta no navegador:</span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <a
@@ -617,14 +605,6 @@ export const MapsScraperView: React.FC<MapsScraperViewProps> = ({
               >
                 <Zap className="w-3 h-3" /> Sem Site / Venda Fácil ({leads.filter((l) => !l.website && !l.hasWebsite).length})
               </button>
-              <button
-                onClick={() => setTab('Com WhatsApp')}
-                className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 ${
-                  tab === 'Com WhatsApp' ? 'bg-white text-black font-bold' : 'hover:text-white'
-                }`}
-              >
-                <MessageCircle className="w-3 h-3" /> WhatsApp Pronto
-              </button>
             </div>
 
             <div className="relative">
@@ -652,9 +632,9 @@ export const MapsScraperView: React.FC<MapsScraperViewProps> = ({
             <div className="w-12 h-12 rounded-2xl bg-neutral-900 border border-neutral-800 mx-auto flex items-center justify-center text-neutral-400">
               <Building2 className="w-6 h-6 text-white" />
             </div>
-            <p className="font-bold text-neutral-300 text-sm">Pronto para rastrear empresas e profissionais auditados</p>
+            <p className="font-bold text-neutral-300 text-sm">Pronto para buscar empresas e profissionais</p>
             <p className="text-[12px] text-neutral-500 max-w-md mx-auto">
-              Selecione o nicho (ex: <strong>Manicure</strong>, <strong>Nutricionista</strong>, <strong>Restaurantes</strong>) e a cidade e clique em &ldquo;Rastrear Nicho na Região&rdquo; para auditar dados reais do Google Maps e Instagram.
+              Selecione o nicho (ex: <strong>Manicure</strong>, <strong>Nutricionista</strong>, <strong>Restaurantes</strong>) e a cidade e clique em &ldquo;Rastrear Nicho na Região&rdquo; para buscar empresas e abrir os links de busca direta no Google Maps e no Instagram.
             </p>
           </div>
         ) : (
@@ -662,12 +642,12 @@ export const MapsScraperView: React.FC<MapsScraperViewProps> = ({
             <table className="w-full text-left text-xs">
               <thead className="bg-neutral-900 text-neutral-400 uppercase font-bold text-[10px]">
                 <tr>
-                  <th className="p-3 rounded-l-lg">Empresa & Localização Auditada</th>
+                  <th className="p-3 rounded-l-lg">Empresa & Localização</th>
                   <th className="p-3">Nicho</th>
-                  <th className="p-3">Contato & WhatsApp</th>
-                  <th className="p-3">Instagram Verificado</th>
+                  <th className="p-3">Contato</th>
+                  <th className="p-3">Instagram</th>
                   <th className="p-3">Website / Presença Web</th>
-                  <th className="p-3">Avaliação Google</th>
+                  <th className="p-3">Avaliação</th>
                   <th className="p-3">Qualificação</th>
                   <th className="p-3">Status CRM</th>
                   <th className="p-3 text-right rounded-r-lg">Ação</th>
@@ -677,9 +657,7 @@ export const MapsScraperView: React.FC<MapsScraperViewProps> = ({
                 {filteredLeads.map((l) => {
                   const instaUrl = getInstagramUrl(l.instagram);
                   const webUrl = getWebsiteUrl(l.website);
-                  const waUrl = getWhatsAppUrl(l.phone, l.name);
                   const gmapsUrl = getGoogleMapsSearchUrl(l.name, l.city);
-                  const isProfileTested = verifiedProfiles[l.id];
                   const hasSite = !!l.website || !!l.hasWebsite;
 
                   return (
@@ -729,18 +707,6 @@ export const MapsScraperView: React.FC<MapsScraperViewProps> = ({
                               >
                                 {copiedId === l.id ? '✓ Copiado' : 'Copiar'}
                               </button>
-                              {waUrl && (
-                                <a
-                                  href={waUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="px-2 py-0.5 rounded bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-white transition-colors flex items-center gap-1 text-[10px] font-bold"
-                                  title="Iniciar conversa no WhatsApp com proposta pronta"
-                                >
-                                  <MessageCircle className="w-3 h-3 text-white" />
-                                  <span>WhatsApp</span>
-                                </a>
-                              )}
                             </div>
                           ) : (
                             <span className="text-neutral-600 text-[11px]">—</span>
@@ -775,20 +741,6 @@ export const MapsScraperView: React.FC<MapsScraperViewProps> = ({
                               <span>{getInstagramDisplay(l.instagram)}</span>
                               <ExternalLink className="w-2.5 h-2.5 opacity-60 group-hover:opacity-100 shrink-0" />
                             </a>
-
-                            <div className="flex items-center gap-1 flex-wrap">
-                              <span className="px-1.5 py-0.2 rounded bg-neutral-900 border border-neutral-700 text-[9px] font-bold text-neutral-300 flex items-center gap-0.5">
-                                <Check className="w-2.5 h-2.5 text-white" /> Perfil Verificado
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => handleVerifyProfile(l.id, l.instagram)}
-                                className="px-1.5 py-0.2 rounded bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-[9px] font-bold text-neutral-300 cursor-pointer"
-                                title="Testar e abrir perfil"
-                              >
-                                {isProfileTested ? '✓ Aberto' : 'Testar'}
-                              </button>
-                            </div>
                           </div>
                         ) : (
                           <span className="text-neutral-600">—</span>
@@ -810,11 +762,6 @@ export const MapsScraperView: React.FC<MapsScraperViewProps> = ({
                               <span className="truncate max-w-[130px]">{l.website}</span>
                               <ExternalLink className="w-2.5 h-2.5 shrink-0 opacity-70" />
                             </a>
-                            <div>
-                              <span className="px-1.5 py-0.2 rounded bg-neutral-900 border border-neutral-700 text-[9px] font-bold text-neutral-300">
-                                🌐 Website Ativo
-                              </span>
-                            </div>
                           </div>
                         ) : (
                           <div className="space-y-1">
@@ -832,9 +779,9 @@ export const MapsScraperView: React.FC<MapsScraperViewProps> = ({
                         <div className="space-y-0.5">
                           <div className="flex items-center gap-1 text-white font-bold">
                             <Star className="w-3.5 h-3.5 fill-white text-white" />
-                            <span className="text-xs">{Number(l.rating).toFixed(1)}</span>
+                            <span className="text-xs">{l.rating > 0 ? Number(l.rating).toFixed(1) : '—'}</span>
                             <span className="text-neutral-500 font-normal text-[10px]">
-                              ({l.reviewsCount || Math.floor(70 + Math.random() * 200)} avaliações)
+                              {l.reviewsCount ? `(${l.reviewsCount} avaliações)` : '(sem avaliações informadas)'}
                             </span>
                           </div>
                           <a
@@ -851,7 +798,7 @@ export const MapsScraperView: React.FC<MapsScraperViewProps> = ({
 
                       <td className="p-3">
                         <span className="px-2 py-0.5 rounded-full bg-neutral-900 border border-neutral-700 text-neutral-200 text-[10px] font-bold flex items-center gap-1 w-max">
-                          <ShieldCheck className="w-3 h-3 text-white" /> {l.qualificationScore || 98}% Score
+                          {l.qualificationScore ? `${l.qualificationScore}% Score` : '—'}
                         </span>
                       </td>
 
@@ -896,8 +843,8 @@ export const MapsScraperView: React.FC<MapsScraperViewProps> = ({
           <div className="bg-[#0e0e0e] border border-neutral-700 rounded-2xl max-w-md w-full p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
               <div className="flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-white" />
-                <h3 className="font-bold text-white text-base">Adicionar Lead Verificado</h3>
+                <Plus className="w-5 h-5 text-white" />
+                <h3 className="font-bold text-white text-base">Adicionar Lead</h3>
               </div>
               <button
                 onClick={() => setShowManualModal(false)}
@@ -945,7 +892,7 @@ export const MapsScraperView: React.FC<MapsScraperViewProps> = ({
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-neutral-400 font-bold mb-1">WhatsApp / Telefone</label>
+                  <label className="block text-neutral-400 font-bold mb-1">Telefone</label>
                   <input
                     type="text"
                     value={manualPhone}
