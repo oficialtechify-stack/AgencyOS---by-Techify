@@ -153,7 +153,7 @@ export const PainelLiderancaView: React.FC<PainelLiderancaViewProps> = ({
     const totalRevenue = campaigns.reduce((acc, c) => acc + (c.revenue || 0), 0) +
       marketingCampaigns.reduce((acc, c) => acc + (c.revenue || 0), 0);
 
-    const roasAverage = totalSpent > 0 ? totalRevenue / totalSpent : 4.2;
+    const roasAverage: number | null = totalSpent > 0 ? totalRevenue / totalSpent : null;
 
     const totalCampaignLeads = campaigns.reduce((acc, c) => acc + (c.leads || 0), 0) +
       marketingCampaigns.reduce((acc, c) => acc + (c.leadsGenerated || 0), 0);
@@ -161,7 +161,7 @@ export const PainelLiderancaView: React.FC<PainelLiderancaViewProps> = ({
     const totalFunnelLeads = marketingFunnels.reduce((acc, f) => acc + (f.leads || 0), 0);
     const totalMarketingLeads = totalCampaignLeads + totalFunnelLeads;
 
-    const cplAverage = totalMarketingLeads > 0 && totalSpent > 0 ? totalSpent / totalMarketingLeads : 12.5;
+    const cplAverage: number | null = totalMarketingLeads > 0 && totalSpent > 0 ? totalSpent / totalMarketingLeads : null;
 
     const activeCampaignsCount = campaigns.filter((c) => c.status === 'Ativo').length +
       marketingCampaigns.filter((c) => c.status === 'Ativa' || c.status === 'Em Otimização').length;
@@ -463,7 +463,7 @@ export const PainelLiderancaView: React.FC<PainelLiderancaViewProps> = ({
                 <TrendingUp className="w-4 h-4 text-white" />
               </div>
               <div className="text-3xl font-black text-white tracking-tight">
-                {mktMetrics.roasAverage.toFixed(2)}x
+                {mktMetrics.roasAverage !== null ? `${mktMetrics.roasAverage.toFixed(2)}x` : '—'}
               </div>
               <div className="text-[11px] text-neutral-400 mt-1 flex items-center gap-1">
                 <span>Receita: <strong className="text-white font-mono">R$ {mktMetrics.totalRevenue.toLocaleString('pt-BR')}</strong></span>
@@ -492,7 +492,7 @@ export const PainelLiderancaView: React.FC<PainelLiderancaViewProps> = ({
                 {mktMetrics.totalMarketingLeads.toLocaleString('pt-BR')}
               </div>
               <div className="text-[11px] text-neutral-400 mt-1">
-                CPL Médio: <strong className="text-white font-mono">R$ {mktMetrics.cplAverage.toFixed(2)}</strong>
+                CPL Médio: <strong className="text-white font-mono">{mktMetrics.cplAverage !== null ? `R$ ${mktMetrics.cplAverage.toFixed(2)}` : '—'}</strong>
               </div>
             </div>
 

@@ -11,9 +11,6 @@ import express from 'express';
 import { registerSocialMetaRoutes } from '../src/server/socialMeta.js';
 import { registerAdminManageRoutes } from '../src/server/adminManage.js';
 import { registerAgencyCopilotRoutes } from '../src/server/agencyCopilot.js';
-import { registerHyperframesRoutes } from '../src/server/hyperframesVideo.js';
-import { GoogleGenAI } from '@google/genai';
-import { scrapeRealLeads } from '../src/server/leadScraperEngine.js';
 import { handleLeadsPayWebhookEvent } from '../src/server/leadspayHandler.js';
 
 const app = express();
@@ -37,7 +34,23 @@ app.use(express.json({ limit: '1mb', verify: (request, _response, body) => { (re
 registerSocialMetaRoutes(app);
 registerAdminManageRoutes(app);
 registerAgencyCopilotRoutes(app);
-registerHyperframesRoutes(app);
+// Heavy video module loads on first use, not at serverless cold start.
+// The routes are registered once, on the first request under this prefix.
+// Registration appends the routes after this middleware, so next() reaches
+// them on the same request; later requests hit the registered routes.
+let hyperframesRoutesRegistered = false;
+app.use('/api/social/hyperframes', async (req, res, next) => {
+  try {
+    if (!hyperframesRoutesRegistered) {
+      const { registerHyperframesRoutes } = await import('../src/server/hyperframesVideo.js');
+      registerHyperframesRoutes(app);
+      hyperframesRoutesRegistered = true;
+    }
+    return next();
+  } catch (err) {
+    return next(err);
+  }
+});
 
 // Enable CORS for Vercel deployments and preview iframes
 app.use((req, res, next) => {
@@ -50,9 +63,12 @@ app.use((req, res, next) => {
   next();
 });
 
-const getGeminiClient = () => {
+// Loaded on first AI request, not at cold start: @google/genai is heavy
+// and most invocations never touch the AI routes.
+const getGeminiClient = async () => {
   const key = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
   if (!key) return null;
+  const { GoogleGenAI } = await import('@google/genai');
   return new GoogleGenAI({
     apiKey: key,
     httpOptions: {
@@ -142,7 +158,7 @@ Responda sempre em Português do Brasil com formatação rica em markdown, objet
     let responseText = '';
 
     // 1. Tentar Gemini primeiro
-    const gemini = getGeminiClient();
+    const gemini = await getGeminiClient();
     if (gemini) {
       const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
       const contents: any[] = [];
@@ -208,7 +224,7 @@ app.post('/api/ai/social-caption', async (req, res) => {
   try {
     const { topic, tone } = req.body;
     const prompt = `Crie uma legenda altamente engajante para redes sociais sobre "${topic}". Tom: ${tone || 'Profissional'}.`;
-    const gemini = getGeminiClient();
+    const gemini = await getGeminiClient();
     let result = '';
     if (gemini) {
       try {
@@ -231,7 +247,8 @@ app.post('/api/ai/social-caption', async (req, res) => {
 app.post('/api/ai/lead-scraper', async (req, res) => {
   try {
     const { segment, city } = req.body;
-    const gemini = getGeminiClient();
+    const gemini = await getGeminiClient();
+    const { scrapeRealLeads } = await import('../src/server/leadScraperEngine.js');
     const result = await scrapeRealLeads(segment, city, gemini || undefined);
     res.json(result);
   } catch {

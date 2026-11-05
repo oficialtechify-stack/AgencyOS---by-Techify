@@ -14,17 +14,29 @@ type AdminCtx = {
   conflictingOwnerLink: boolean;
 };
 class AdminError extends Error { constructor(public status: number, message: string) { super(message); } }
+// Parse the Admin service account once per serverless instance instead of on
+// every request: adminServices() runs on nearly every admin call, and the
+// same JSON.parse also ran in signLegacyClaim/copilotMembershipSignature.
+// A failed parse is not cached, so a later request retries it.
+let cachedServiceAccount: any;
+function getServiceAccount(): any {
+  if (cachedServiceAccount === undefined) {
+    const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+    cachedServiceAccount = raw ? JSON.parse(raw) : null;
+  }
+  return cachedServiceAccount;
+}
 function adminServices() {
-  const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
-  if (!raw) throw new AdminError(503, 'Firebase Admin não configurado na Vercel.');
+  const credential = getServiceAccount();
+  if (!credential) throw new AdminError(503, 'Firebase Admin não configurado na Vercel.');
   const app = getApps().find(a => a.name === 'agencyos-admin') ||
-    initializeApp({ credential: cert(JSON.parse(raw)), projectId: 'agencyos-1c3fc' }, 'agencyos-admin');
+    initializeApp({ credential: cert(credential), projectId: 'agencyos-1c3fc' }, 'agencyos-admin');
   return { db: getFirestore(app), auth: getAuth(app) };
 }
 // Protect legacy ownership mappings against document forgery even if deployed
 // Firestore rules accidentally allow client writes. Signing key is server-only.
 function signLegacyClaim(oldUid: string, claimantUid: string, email: string) {
-  const credential = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON || '{}');
+  const credential = getServiceAccount() || {};
   if (!credential.private_key) throw new AdminError(503, 'Chave Firebase Admin indisponível.');
   return createHmac('sha256', credential.private_key)
     .update(['agencyos-legacy-workspace-v1', oldUid, claimantUid, email].join('\u0000'))
@@ -37,7 +49,7 @@ function legacyClaimValid(doc: any, oldUid: string, uid: string, email: string) 
   return received.length === expected.length && timingSafeEqual(received, expected);
 }
 function copilotMembershipSignature(uid: string, ownerUid: string): string {
-  const privateKey = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON || '{}').private_key;
+  const privateKey = (getServiceAccount() || {}).private_key;
   if (!privateKey) throw new AdminError(503, 'Credencial administrativa indisponível.');
   return createHmac('sha256', privateKey)
     .update(['agencyos-copilot-member-v1', uid, ownerUid].join('\u0000')).digest('hex');
@@ -247,18 +259,22 @@ export function registerAdminManageRoutes(app: Express) {
       const actor = await authorize(req), { db, auth } = adminServices();
       // The company's team is ALWAYS scoped to its own owner UID.
       // Even a platform administrator must not blend everyone into their team.
-      const teamSnap = await db.collection('users')
+      // Fire both list queries in parallel: they are independent, and the
+      // sequential awaits were the main cost of this endpoint.
+      const teamQuery = db.collection('users')
         .where('agencyOwnerUid', '==', actor.ownerUid).limit(150).get();
+      // SaaS client accounts are a distinct area, available only to a
+      // custom-claim platform administrator (not based on email/role/plan).
+      // Non-admins never issue the client query at all.
+      const clientQuery = actor.platformAdmin
+        ? db.collection('users').where('userType', '==', 'client').limit(150).get()
+        : Promise.resolve(null);
+      const [teamSnap, clientSnap] = await Promise.all([teamQuery, clientQuery]);
       const teamDocs = teamSnap.docs.filter(d =>
         d.id !== actor.ownerUid &&
         d.data().agencyOwnerUid === actor.ownerUid &&
         d.data().userType === 'employee'
       );
-      // SaaS client accounts are a distinct area, available only to a
-      // custom-claim platform administrator (not based on email/role/plan).
-      const clientSnap = actor.platformAdmin
-        ? await db.collection('users').where('userType', '==', 'client').limit(150).get()
-        : null;
       const clientDocs = (clientSnap?.docs || []).filter(d =>
         d.data().userType === 'client' &&
         (!d.data().agencyOwnerUid || d.data().agencyOwnerUid === d.id)

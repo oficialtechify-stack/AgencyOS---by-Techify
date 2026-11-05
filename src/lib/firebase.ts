@@ -264,7 +264,20 @@ export async function getOrCreateUserProfile(user: User, customAgencyName?: stri
   // already create a Firestore profile keyed by the invited user's Auth UID.
   // For existing accounts preserve every field and their explicit relationship.
   if (snap.exists()) {
-    return { ...(snap.data() as FirestoreUserProfile), uid: user.uid };
+    const existing = snap.data() as FirestoreUserProfile;
+    // Backfill: profiles created before the email field existed self-heal on
+    // the next login instead of staying blank forever. The write is
+    // best-effort: if it fails (e.g. rules), login must still succeed and
+    // the merged profile is returned for this session.
+    if (!existing.email && cleanEmail) {
+      try {
+        await updateDoc(userRef, { email: cleanEmail });
+      } catch (err) {
+        console.warn('Não foi possível preencher o e-mail do perfil:', err);
+      }
+      return { ...existing, email: cleanEmail, uid: user.uid };
+    }
+    return { ...existing, uid: user.uid };
   }
 
   // New independent company. Never infer another agency by matching email,
